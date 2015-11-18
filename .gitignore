@@ -1,0 +1,12 @@
+#############
+##Download (added by Jonathan)
+#############
+
+*.csv
+*.xls
+*.xlsx
+
+.ipynb_checkpoints/
+.git/
+downloads/
+downloads_old/
