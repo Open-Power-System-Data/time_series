@@ -16,75 +16,57 @@
 
 import yaml
 import os
+import numpy as np
 import pandas as pd
+import pytz
 
 
 # # 2. Folder path
 
-# This section creates a folder inside the notebook's directory on the users computer where data are read from.
+# This section defines a folder inside the notebook's directory on the users computer where downloaded data are read from as well as another folder and file for the output, which contains the merged data from the TSOs
 
-# In[18]:
+# In[2]:
 
 downloadpath = 'downloads/'
 outputpath = 'output/'
+outputfile = 'output_1.csv'
 if not os.path.exists(outputpath): os.makedirs(outputpath)
 
 
-# In[3]:
+# # Input Parameters
+# 
+# Here we define which Sources/TSOs and technologies the skript should look for in the downloads folder.
+# At the moment, We use just the parameters dict from the downloads script, although most of the information contained is superfluous here.
+# Later we want to use this section to pass information on the peculiarities of the input CSV data tables like:
+# * delimiter character used
+# * how many lines to skip at the beginning/end of each file
+# * which column contains which data
+# * encoding
+# * DST handling
+
+# In[4]:
 
 conf = """
-    Fingrid: 
+    TenneT: 
         wind: 
-            url_template: http://www.fingrid.fi/en/electricity-market/load-and-generation/windpower/Pages/default.aspx/Excel/TimeSeries.xls?beginDate=20150101&endDate=20151231&variables=H4sIAAAAAAAEAO29B2AcSZYlJi9tynt_SvVK1-B0oQiAYBMk2JBAEOzBiM3mkuwdaUcjKasqgcplVmVdZhZAzO2dvPfee--999577733ujudTif33_8_XGZkAWz2zkrayZ4hgKrIHz9-fB8_Ih7_ZFYX2aTMmyP769nyvDp6_CJb5EfPzn7_N1999fzsJ788--L49_99vv3m8V3-_PHZ8jKv25_MynV-dJ6VTf74rv_RY_7xrKoXWfu6rYvlxdGPj378x3ce3-1_8firZdG-yd-1R198d353_viu_fvxm6It86PvFstZuqqu8jq9yJd5nbVFtUy3uPWdx3el0ePnxTI_qcqqTu96f3y7XZRHP_7k5MnDHeo8_Pjx63l19eWyvH62btd1_jRrMzOWyDdA3aeP_bM5-n8AhQmq0kUBAAA1&cultureId=en-US&dataTimePrecision=5
+            url_template: http://www.tennettso.de/site/de/phpbridge?commandpath=Tatsaechliche_und_prognostizierte_Windenergieeinspeisung%2FmonthDataSheetCsv.php&querystring=monat%3D{u_start:%Y-%m}&contenttype=text%2Fx-csv
             bundle: MONTHLY
-            start: 2014-11-28
-            end: recent
-            filetype: xls
-    Elia: 
-        wind1: 
-            url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData?beginDate={u_start:%Y-%m-%d}T23%3A00%3A00.000Z&endDate={u_end:%Y-%m-%d}T23%3A00%3A00.000Z&isOffshore=&isEliaConnected=
-            bundle: MONTHLY
-            start: 2012-01-01  #the data starts from 2012-19-01
-            end: 2012-03-01
-            filetype: xls        
-        wind2: 
-            url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData?beginDate={u_start:%Y-%m-%d}T23%3A00%3A00.000Z&endDate={u_end:%Y-%m-%d}T22%3A00%3A00.000Z&isOffshore=&isEliaConnected=
-            bundle: MONTHLY
-            start: 2012-03-01
-            end: 2012-04-01
-            filetype: xls        
-        wind3: 
-            url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData?beginDate={u_start:%Y-%m-%d}T22%3A00%3A00.000Z&endDate={u_end:%Y-%m-%d}T22%3A00%3A00.000Z&isOffshore=&isEliaConnected=
-            bundle: MONTHLY
-            start: 2012-04-01
-            end: recent
-            filetype: xls                
-        pv: 
-            url_template: http://publications.elia.be/Publications/Publications/SolarForecasting.v3.svc/ExportSolarForecastGraph?dateFrom={u_start:%Y-%m-%d}T23%3A00%3A00.000Z&dateTo={u_end:%Y-%m-%d}T23%3A00%3A00.000Z&sourceId=1
-            bundle: MONTHLY
-            start: 2012-11-14
-            end: recent
-            filetype: xls     
-    Amprion: 
-        wind: 
-            url_template: http://preview.amprion.de/applications/applicationfiles/winddaten.php?mode=download&format=csv&start={u_start:%Y.%m.%d}&end={u_end:%Y.%m.%d}
-            bundle: complete
-            start: 2006-01-03
-            end: recent
-            filetype: csv 
-        pv: 
-            url_template: http://amprion.de/applications/applicationfiles/PV_einspeisung.php?mode=download&format=csv&start={u_start:%Y.%m.%d}&end={u_end:%Y.%m.%d}
-            bundle: complete
-            start: 2010-01-07
+            start: 2006-01-01
             end: recent
             filetype: csv        
-#    CEPS: 
-#        wind_pv: 
-#            url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx&from={u_start:%m.%d.%Y}%2012:00:00%20AM&to={u_end:%m/%d/%Y}%2011:59:59%20PM&hasinterval=False&sol=26&lang=ENG&agr=QH&fnc=SUM&ver=RT&para1=all&
-#            bundle: complete
-#            start: 2012-01-01
-#            end: recent
-#            filetype: xlsx      
+        pv: 
+            url_template: http://www.tennettso.de/site/de/phpbridge?commandpath=Tatsaechliche_und_prognostizierte_Solarenergieeinspeisung%2FmonthDataSheetCsv.php&sub=total&querystring=monat%3D{u_start:%Y-%m}&contenttype=text%2Fx-csv
+            bundle: MONTHLY
+            start: 2010-01-01
+            end: recent
+            filetype: csv   
+"""
+conf = yaml.load(conf)
+
+
+# In[14]:
+
+conf = """
     TransnetBW: 
         wind: 
             url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/windenergie?app=wind&activeTab=csv&selectMonatDownload={month}&view=1&download=true
@@ -97,117 +79,22 @@ conf = """
             bundle: special
             start: 2011-01-01
             end: recent
-            filetype: csv   
-    TenneT: 
-        wind: 
-            url_template: http://www.tennettso.de/site/de/phpbridge?commandpath=Tatsaechliche_und_prognostizierte_Windenergieeinspeisung%2FmonthDataSheetCsv.php&querystring=monat%3D{u_start:%Y-%m}&contenttype=text%2Fx-csv
-            bundle: MONTHLY
-            start: 2005-07-13
-            end: recent
-            filetype: csv
-        
-        pv: 
-            url_template: http://www.tennettso.de/site/de/phpbridge?commandpath=Tatsaechliche_und_prognostizierte_Solarenergieeinspeisung%2FmonthDataSheetCsv.php&sub=total&querystring=monat%3D{u_start:%Y-%m}&contenttype=text%2Fx-csv
-            bundle: MONTHLY
-            start: 2010-01-01
-            end: recent
-            filetype: csv   
-    50hertz: 
-        wind: 
-            url_template: http://ws.50hertz.com/web01/api/WindPowerForecast/DownloadFile?fileName={u_start:%Y}.csv&callback=?
-            bundle: YEARLY
-            start: 2005-01-01
-            end: recent
-            filetype: csv        
-        pv: 
-            url_template: http://ws.50hertz.com/web01/api/PhotovoltaicForecast/DownloadFile?fileName={u_start:%Y}.csv&callback=?
-            bundle: YEARLY
-            start: 2012-01-01
-            end: recent
-            filetype: csv  
-    RTE: 
-        wind_pv: 
-            url_template: http://clients.rte-france.com/servlets/RealProdServlet?annee={u_start:%Y}
-            bundle: YEARLY
-            start: 2014-01-01
-            end: recent 
-            filetype: zip #xls 
-    Svenska_Kraftnaet: 
-        wind_pv_1: 
-            url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot{u_start:%Y}.xls
-            bundle: YEARLY
-            start: 2002-01-01
-            end: 2009-01-01
-            filetype: xls        
-        wind_pv_2: 
-            url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot201001-06.xls
-            bundle: YEARLY
-            start: 2010-01-01
-            end: 2010-01-01
-            filetype: xls        
-        wind_pv_3: 
-            url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot2010-07-12.xls
-            bundle: YEARLY
-            start: 2010-01-01
-            end: 2010-01-01
-            filetype: xls       
-        wind_pv_4: 
-            url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n-fot2011-01-12.xls
-            bundle: YEARLY
-            start: 2011-01-01
-            end: 2011-01-01
-            filetype: xls        
-        wind_pv_5: 
-            url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot{u_start:%Y}-01-12.xls
-            bundle: YEARLY
-            start: 2012-01-01
-            end: 2014-01-01
-            filetype: xls    
-    OeMag: 
-        wind_1: 
-            url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xls
-            bundle: YEARLY
-            start: 2003-01-01
-            end: 2011-01-01
-            filetype: xls        
-        wind_2: 
-            url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xlsx
-            bundle: YEARLY
-            start: 2012-01-01
-            end: recent
-            filetype: xls
-"""
-conf = yaml.load(conf)
-
-
-# In[4]:
-
-conf = """
-TransnetBW: 
-        wind: 
-            url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/windenergie?app=wind&activeTab=csv&selectMonatDownload={month}&view=1&download=true
-            bundle: special
-            start: 2010-01-01
-            end: recent
-            filetype: csv       
-        pv: 
-            url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/fotovoltaik?app=solar&activeTab=csv&selectMonatDownload={month}&view=1&download=true
-            bundle: special
-            start: 2011-01-01
-            end: recent
             filetype: csv
 """
 conf = yaml.load(conf)
 
 
-# In[16]:
+# In[15]:
 
 def readData(filePath, source, tech):
+    """Read data from a CSV file taking into account source peculiarities"""
+    
     if os.path.getsize(filePath) < 128:
         print("file is smaller than 128 Byte, which means it's probably empty")
-        data = pd.DataFrame() # return empty DataFrame
+        data = pd.DataFrame() # an empty DataFrame
         return data
-    if source = 'TransnetBW':
+    
+    if source == 'TransnetBW':
         data = pd.read_csv(
             filePath,
             decimal=',',
@@ -216,61 +103,74 @@ def readData(filePath, source, tech):
             index_col = "Timestamp",
             dayfirst=True,
         )
-
-#        data = data.drop('Unnamed: 6', 1)
-        data = data.drop('Datum bis', axis=1)
-        data = data.drop('Uhrzeit bis', axis=1)
-#        data.fillna(0,inplace=True)
-    
+        data['test'] = data.index #.tz_localize('UTC', ambiguous = 'NaT').tz_convert('Europe/Berlin')
+        data.index = data.index.tz_localize('Europe/Berlin', ambiguous = 'infer')
+        
+        actualCol = source+'_'+tech+'_actual'    
         forecastCol = source+'_'+tech+'_forecast'
-        actualCol = source+'_'+tech+'_forecast'
 
         data.rename(
             columns={'Prognose (MW)': forecastCol, 'Ist-Wert (MW)': actualCol},
             inplace=True
         )
-    
-        if 'Datum' in data.columns: 
-            del data['Datum']
-        if 'Uhrzeit' in data.columns: 
-            del data['Uhrzeit']
-    elif source = 'TenneT':
+
+    elif source == 'TenneT':
         data = pd.read_csv(
-            filePath
-        
-    
+            filePath,
+            sep=";",
+            encoding = 'latin_1',
+            usecols = list(range(5)),
+            #skiprows = 4,
+            header=3,
+            #index_col = False,
+            names=['Datum','Position',source+'_'+tech+'_forecast',source+'_'+tech+'_actual',source+'_'+tech+'_offshore_share']
+        )
+        data['Datum'].fillna(method='ffill', limit = 99, inplace=True)           
+        data['hour'] = (np.trunc((data['Position']-1) /4)).astype(int).astype(str)
+        data['minute'] = (((data['Position']-1) % 4)*15).astype(int).astype(str)
+        data['time'] = data['Datum']+' '+data['hour']+':'+data['minute']
+        data['Timestamp'] = pd.to_datetime(data['time'])
+        data.set_index('Timestamp',inplace=True)
+        data.index = data.index.tz_localize('Europe/Berlin')
+
+        actualCol = source+'_'+tech+'_actual'    
+        forecastCol = source+'_'+tech+'_forecast'
+            
+    data = data[[actualCol, forecastCol, 'test']]
     return data
 
 
-# In[24]:
+# # Iterate over sources
+# For each source/TSO and technology specified in the conf dict, this section finds all the downloaded files in the downloads folder and then calls the read function with the relevant parameters on each file.
 
-rng = pd.date_range(start='01/01/2003 00:00', end='18/11/2015 23:45', freq='15 Min')
-resultDataSet = pd.DataFrame(index=rng)
-resultDataSet.index.names = ['Timestamp']
+# In[16]:
+
+resultDataSet = pd.DataFrame()
 for source, tech in conf.items():
     for tech, param in tech.items():
         for filename in os.listdir(downloadpath):
             if source in filename:
                 if tech in filename:
-                    print('reading' filename)
-                    try:
-                        dataToAdd = readData(downloadpath + filename, source, tech)
-                        resultDataSet = resultDataSet.combine_first(dataToAdd)
-                    except ValueError:
-                        atLeastOneError = 'yes'
-                        print('error')
-                        
-resultDataSet
+                    print('reading', filename)
+                    dataToAdd = readData(downloadpath + filename, source, tech)
+                    resultDataSet = resultDataSet.combine_first(dataToAdd)
 
 
-# In[25]:
+# In[17]:
 
-resultDataSet.to_csv(outputpath+"Output1.csv", sep=';')
+#resultDataSet['2015-01-01':'2015-01-01']
+resultDataSet['2015-03-29 00:00:00+01:00':'2015-10-25 06:00:00+01:00']
+#resultDataSet
 
 
-# ### to do
+# In[53]:
+
+resultDataSet.to_csv(outputpath+outputfile, sep=';')
+
+
+# # Notizen
 # 
-# periodindex ?
+# PeriodIndex statt DatetimeIndex verwenden?
 # 
 # Iso Format:
 # 
@@ -283,6 +183,36 @@ resultDataSet.to_csv(outputpath+"Output1.csv", sep=';')
 # month_year, day_year, hour_day, 
 # hour_year, weekday, peak / off-peak
 # 
+# Was in welcher Spalte steht muss dem Skript mitgeteilt werden, die Spaltennamen in den Dateien helfen nicht. Aber evtl könnte man diese auslesen und den durch das Skript zugewiesenen neuen Spaltenamen gegenüberstellen, um auf Fehler zu überprüfen
+# 
+# read_csv:
+# 
+# * usecols
+# 
+# csv sniffer
+# 
+# datetime.timedelta instead of dateutil.relativedelta
+# 
+# Kontrollspalte in der ich selber die Zeit berechne
+# 
+# TransnetBW Fehler  29.03.2015 03:30 - 05:00 
+# 
+
+# In[77]:
+
+rng = pd.date_range(start='01/01/2015 00:00', end='18/11/2015 23:45', freq='60 Min', tz = 'UTC')
+#rng.tz_localize('UTC').tz_convert('Europe/Berlin') #, ambiguous = 'infer')
+#testDataSet = pd.DataFrame(index=rng)
+testDataSet = pd.DataFrame(rng)
+testDataSet.index = rng
+#testDataSet.index.names = ['timestamp']
+testDataSet[0].tz_convert('Europe/Berlin') #, ambiguous = 'NaT') #.tz_convert('Europe/Berlin')
+#testDataSet['Berlin'] = testDataSet.index.tz_convert('UTC')
+testDataSet['new'] = rng.tz_convert('Europe/Berlin')
+#testDataSet['2015-03-29':'2015-10-25 04:00']
+#testDataSet
+rng
+
 
 # In[ ]:
 

@@ -113,8 +113,7 @@ conf = """
             bundle: MONTHLY
             start: 2006-01-01
             end: recent
-            filetype: csv
-        
+            filetype: csv        
         pv: 
             url_template: http://www.tennettso.de/site/de/phpbridge?commandpath=Tatsaechliche_und_prognostizierte_Solarenergieeinspeisung%2FmonthDataSheetCsv.php&sub=total&querystring=monat%3D{u_start:%Y-%m}&contenttype=text%2Fx-csv
             bundle: MONTHLY
@@ -402,4 +401,10 @@ original_filename = file.headers['content-disposition'].split('filename=')[-1]
 #print(original_filename)
 original_filename.replace('"','')
 #print(original_filename)
+
+
+# In[22]:
+
+path = 'downloads/'
+if not os.path.exists(path): os.makedirs(path)
 
