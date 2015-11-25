@@ -2,11 +2,11 @@
 ##Download (added by Jonathan)
 #############
 
-*.csv
+#*.csv
 *.xls
 *.xlsx
 
 .ipynb_checkpoints/
 .git/
-downloads/
+#downloads/
 downloads_old/
