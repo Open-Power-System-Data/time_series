@@ -307,7 +307,7 @@ for source, tech in conf.items():
 # ## 3.3 Display the Dataset
 # This section can be executed to display a preview of the merged dataset.
 
-# In[16]:
+# In[ ]:
 
 resultDataSet
 
@@ -318,9 +318,4 @@ resultDataSet
 # In[11]:
 
 resultDataSet.to_csv(outputpath+outputfile, sep=';')
-
-
-# In[ ]:
-
-
 
