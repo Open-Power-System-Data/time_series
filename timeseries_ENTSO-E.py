@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[2]:
 
 import pytz
 import yaml
@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 
-# In[2]:
+# In[3]:
 
 downloadpath = 'downloads1/'
 archivepath = 'archive1/'
@@ -27,7 +27,7 @@ if not os.path.exists(downloadpath): os.makedirs(downloadpath)
 if not os.path.exists(outputpath): os.makedirs(outputpath)
 
 
-# In[3]:
+# In[4]:
 
 conf = """
     ENTSO-E: 
@@ -54,13 +54,12 @@ conf = """
 conf = yaml.load(conf)
 
 
-# In[4]:
+# In[5]:
 
 def make_url(url_template, filetype, source, tech, start, end, session, url_params):
     """construct URLs from a template, filling in start- and enddates and call download funtion."""    
     filename = source+'_'+tech+'_'+start.strftime('%Y-%m-%d')+'_'+end.strftime('%Y-%m-%d')
-#    full_url = url_template.format(u_start = start, u_end = end)
-#    download(full_url, filename, filetype, session)
+
     conf['ENTSO-E']['Data_Portal']['url_params']['opt_Month'] = (
         conf['ENTSO-E']['Data_Portal']['x_Month'].format(u_start = start, u_end = end)
         )
@@ -68,10 +67,6 @@ def make_url(url_template, filetype, source, tech, start, end, session, url_para
         conf['ENTSO-E']['Data_Portal']['x_Year'].format(u_start = start, u_end = end)
         )
     resp = session.get(url_template, params=url_params)
-#    resp = requests.get(url_template, params=url_params)
-    
-#    import pdb; pdb.set_trace()
-#    time.sleep(10)
     
     original_filename = resp.headers['content-disposition'].split('filename=')[-1].replace('"','').replace(';','')
     logger.info('Attempting download of: %s \n From URL: %s \n original filename: %s', filename, resp.url, original_filename)
@@ -84,13 +79,13 @@ def make_url(url_template, filetype, source, tech, start, end, session, url_para
                 output_file.write(chunk)
 
 
-# In[31]:
+# In[7]:
 
 for source, tech in conf.items():
     for tech, parameter in tech.items():
         session = requests.session()
         g_start = parameter['start']
-        g_start = datetime.date(2015,12,1)
+#        g_start = datetime.date(2015,12,1)
         if parameter['end'] == 'recent':
             g_end = datetime.date(2015,12,31)
         else:
@@ -104,35 +99,10 @@ for source, tech in conf.items():
             if parameter['frequency'] == 'Y':
                 p_end = p_start + relativedelta(years = 1, days = -1)
                 
-#            make_url(param['url_template'], param['filetype'], source, tech, p_start, p_end, session, param['url_params'])   
-            filename = source+'_'+tech+'_'+p_start.strftime('%Y-%m-%d')+'_'+p_end.strftime('%Y-%m-%d')
-            parameter['url_params']['opt_Month'] = parameter['x_Month'].format(u_start = p_start, u_end = p_end)
-            parameter['url_params']['opt_Year'] = parameter['x_Year'].format(u_start = p_start, u_end = p_end)
-            
-            resp = session.get(parameter['url_template'], params=parameter['url_params'])
-            
-            original_filename = resp.headers['content-disposition'].split('filename=')[-1].replace('"','').replace(';','')
-            logger.info('Attempting download of: %s \n From URL: %s \n original filename: %s', filename, resp.url, original_filename)
-            work_file = downloadpath+filename+'.'+param['filetype']
-            if os.path.exists(work_file):
-                logger.info('Filename already exists. Skip to next.')
-            else:
-                with open(work_file, 'wb') as outputfile:
-                    for chunk in resp.iter_content(1024):
-                        outputfile.write(chunk)
+            make_url(parameter['url_template'], parameter['filetype'], source, tech, p_start, p_end, session, parameter['url_params'])   
 
 
-# In[32]:
-
-parameter['url_params'][parameter['url_dates']]
-
-
-# In[733]:
-
-parameter['url_dates']
-
-
-# In[23]:
+# In[9]:
 
 def readData(filePath, source, tech):
     data = pd.read_excel(
@@ -143,7 +113,7 @@ def readData(filePath, source, tech):
 #        parse_cols = None #None means: parse all columns
         )
     
-#    dst_transition_days = [d.date() for d in pytz.timezone('Europe/Berlin')._utc_transition_times[1:]]
+#   #Create a list of the dst-transistion hours
     dst_transition_times = [d.replace(hour=2) for d in pytz.timezone('Europe/Berlin')._utc_transition_times[1:]]
     
     #the original data has days and countries in the rows and hours in the columns.
@@ -169,52 +139,7 @@ def readData(filePath, source, tech):
     return data
 
 
-# In[709]:
-
-def readData(filePath, source, tech):
-    if tech in ['wind_pv_1', 'wind_pv_2']:
-        skipper = 3
-        cols = [0,1,3,4]
-        colnames = ['date', 'hour', 'SE_wind_actual', 'SE_hydro']
-    elif tech in ['wind_pv_3', 'wind_pv_4', 'wind_pv_5', 'wind_pv_6']:
-        if tech == 'wind_pv_4':
-            skipper = 4
-        else:
-            skipper = 6
-        cols = [0,2,3,8]
-        colnames = ['datetime', 'SE_wind_actual', 'SE_hydro', 'SE_pv_actual']
-        
-    data = pd.read_excel(
-        io = filePath,
-        sheetname = -1,
-        header = None,
-        skiprows = skipper,
-        index_col = None,
-        parse_cols = cols
-        )
-
-#    data.reset_index(inplace=True)
-#    if 'index' in data.columns: data.drop('index', axis = 1, inplace = True)
-        
-    data.columns = colnames
-
-    if tech in ['wind_pv_1', 'wind_pv_2']:
-        data = data[data['date'].notnull()] #applies to 2009
-        data['dt_index'] = pd.to_datetime(data['date'].astype(int).astype(str)+' '+data['hour'].astype(int).astype(str).str.replace('00','')+':00', dayfirst = False, infer_datetime_format = True)
-        data.drop(['date','hour'], axis=1, inplace = True)
-    else:
-        data = data[((data['datetime'].notnull()) & (data['datetime'].astype(str) != 'Tot summa GWh'))] #applies to 2011
-        data['dt_index'] = pd.to_datetime(data['datetime'], dayfirst = True)#, infer_datetime_format = True)
-        data.drop(['datetime'], axis=1, inplace = True)
-        
-    data.set_index('dt_index', inplace=True)
-    data.index = (data.index.tz_localize('UTC') + pd.offsets.Hour(-1)).tz_convert('Europe/Berlin')   
-    
-    return data
-    
-
-
-# In[24]:
+# In[10]:
 
 resultDataSet = pd.DataFrame()
 for source, tech in conf.items():
@@ -223,63 +148,15 @@ for source, tech in conf.items():
             if source in filename and tech in filename:
                 logger.info('reading %s', filename)
                 dataToAdd = readData(downloadpath + filename, source, tech)
-                resultDataSet = dataToAdd#resultDataSet.combine_first(dataToAdd)
+                resultDataSet = resultDataSet.combine_first(dataToAdd)
 
 
-# In[22]:
+# In[11]:
 
-resultDataSet #['2015-10-24']
-
-
-# In[ ]:
-
-#tz = pytz.timezone("Europe/Berlin")
-#slicer = pd.DatetimeIndex(pytz.timezone('Europe/Berlin')._utc_transition_times[1:]).tz_localize('UTC').tz_convert('Europe/Berlin').tz_localize(None)
-#slice_list = list(slicer[slicer.month == 10])
-slicer = pytz.timezone('Europe/Berlin')._utc_transition_times[1:]
-slicer = [d.replace(hour=2) for d in slicer if d.month == 3]
-slicer
-
-
-# In[34]:
-
-datetime.datetime(2007, 3, 26, 1, 0).ctime()
-
-
-# In[83]:
-
-data = resultDataSet
-slicer = pd.DatetimeIndex(pytz.timezone('Europe/Berlin')._utc_transition_times[1:]).tz_localize('UTC').tz_convert('Europe/Berlin').tz_localize(None)
-slicer = slicer[slicer.month == 10]
-data.index not in slicer]
-
-
-# In[ ]:
-
-März: 1 eintra rausschmeißen
-Oktober: 30 einträge rausschmeißen
-
-
-# In[121]:
-
-import pandas as pd
-idx = pd.date_range(start='2005-01-01', end='2015-12-31', freq='D')
-data = pd.DataFrame(index=idx)
-data['capacity_pv_50Hertz']= 'Hier Code für Summe über PV-Kapazität in 50Hertz Regelzone An einem Stichtag einfügen'
-data_to_merge_with_other_timeseries = data.resample('15min', fill_method='ffill')
-
-
-# In[ ]:
-
-data_to_merge_with_other_timeseries
+resultDataSet
 
 
 # In[649]:
 
 resultDataSet.to_csv(outputpath+outputfile, sep=';', float_format='%.2f', decimal=',')
-
-
-# In[ ]:
-
-
 
