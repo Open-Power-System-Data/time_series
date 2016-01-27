@@ -102,15 +102,15 @@ for source, tech in conf.items():
             make_url(parameter['url_template'], parameter['filetype'], source, tech, p_start, p_end, session, parameter['url_params'])   
 
 
-# In[9]:
+# In[27]:
 
 def readData(filePath, source, tech):
     data = pd.read_excel(
         io = filePath,
         header=9,
-#        skiprows = None,
+        skiprows = None,
         index_col = [0,1],
-#        parse_cols = None #None means: parse all columns
+        parse_cols = None #None means: parse all columns
         )
     
 #   #Create a list of the dst-transistion hours
@@ -125,7 +125,7 @@ def readData(filePath, source, tech):
     #truncate the hours column and replace letters (incating which is which during fall dst-transition)
     #hours are indexed 1-24 rather then 0-23, so we deduct 1
     data['hour'] = (data['raw_hour'].str[:2].str.replace('A','').str.replace('B','').astype(int) - 1).astype(str)    
-    data['dt_index'] = pd.to_datetime(data['Day']+' '+data['hour']+':00')
+    data['dt_index'] = pd.to_datetime(data['Day']+' '+data['hour']+':00', infer_datetime_format = True)
     data.set_index('dt_index', inplace=True)    
     
     # drop 2nd occurence of 03:00 appearing in October data except for autumn dst-transition
@@ -134,12 +134,12 @@ def readData(filePath, source, tech):
     data = data[~((data['raw_hour'] == '03:00:00') & (data.index.isin(dst_transition_times)))]
     
     data.index = data.index.tz_localize('Europe/Berlin', ambiguous='infer')
-#    data = data.drop(['Day', 'hour', 'raw_hour'], axis=1, inplace = True)
+    data.drop(['Day', 'hour', 'raw_hour'], axis=1, inplace = True)
     data.rename(columns=lambda x: 'load_'+x, inplace=True)
     return data
 
 
-# In[10]:
+# In[30]:
 
 resultDataSet = pd.DataFrame()
 for source, tech in conf.items():
@@ -151,7 +151,7 @@ for source, tech in conf.items():
                 resultDataSet = resultDataSet.combine_first(dataToAdd)
 
 
-# In[11]:
+# In[32]:
 
 resultDataSet
 
