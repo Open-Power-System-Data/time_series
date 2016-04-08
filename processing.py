@@ -51,6 +51,11 @@ from itertools import chain
 import logging
 
 
+# In[ ]:
+
+HEADERS = ['variable', 'country', 'attribute', 'source', 'web']
+
+
 # ## 2.2 Set up a log.
 
 # In[ ]:
@@ -67,12 +72,16 @@ logger.setLevel('INFO')
 
 data_sets = {}
 for res_key in ['15min', '60min']:
-    data_sets[res_key] = pd.read_csv(
-        'raw_data_' + res_key + '.csv',
-        header=[0,1,2,3,4],
-        index_col=0,
-        parse_dates=True
-        )
+    filename = 'raw_data_' + res_key + '.csv'
+    try:
+        data_sets[res_key] = pd.read_csv(
+            filename,
+            header=[0,1,2,3,4],
+            index_col=0,
+            parse_dates=True
+            )
+    except Exception:
+        logging.error('Error reading file: {}'.format(filename))
 
 
 # # 3. Own calculations
@@ -231,21 +240,19 @@ data_sets['15min'] = patched
 
 # In[ ]:
 
-HEADERS = ['variable', 'country', 'attribute', 'source', 'web']
-
-
-# In[ ]:
-
 web = 'http://data.open-power-system-data.org/datapackage_timeseries'
 for tech in ['wind', 'solar']:
     for attribute in ['generation', 'forecast']:
         sum_col = pd.Series()
         for tso in ['DE50hertz', 'DEamprion', 'DEtennet', 'DEtransnetbw']:
-            add_col = data_sets['15min'][tech, tso, attribute]
-            if len(sum_col) == 0:
-                sum_col = add_col
-            else:
-                sum_col = sum_col + add_col.values
+            try:
+                add_col = data_sets['15min'][tech, tso, attribute]
+                if len(sum_col) == 0:
+                    sum_col = add_col
+                else:
+                    sum_col = sum_col + add_col.values
+            except KeyError:
+                pass
                 
         # Create a new MultiIndex
         tuples = [(tech, 'DE', attribute, 'own calculation', web)]
@@ -254,12 +261,15 @@ for tech in ['wind', 'solar']:
         data_sets['15min'] = data_sets['15min'].combine_first(sum_col)
         
         # Calculate the profile column
-        if attribute == 'generation':
-            profile_col = sum_col.values / data_sets['15min'][tech, 'DE', 'capacity']
-            tuples = [(tech, 'DE', 'profile', 'own calculation', web)]
-            columns = pd.MultiIndex.from_tuples(tuples, names=HEADERS)
-            profile_col.columns = columns
-            data_sets['15min'] = data_sets['15min'].combine_first(profile_col)
+        try:
+            if attribute == 'generation':
+                profile_col = sum_col.values / data_sets['15min'][tech, 'DE', 'capacity']
+                tuples = [(tech, 'DE', 'profile', 'own calculation', web)]
+                columns = pd.MultiIndex.from_tuples(tuples, names=HEADERS)
+                profile_col.columns = columns
+                data_sets['15min'] = data_sets['15min'].combine_first(profile_col)
+        except KeyError:
+            pass  # FIXME
 
 
 # New columns for the aggregated data have been added to the 15 minutes dataset.
@@ -276,7 +286,10 @@ data_sets['15min']
 # In[ ]:
 
 resampled = data_sets['15min'].resample('H').mean()
-data_sets['60min'] = data_sets['60min'].combine_first(resampled)
+try:
+    data_sets['60min'] = data_sets['60min'].combine_first(resampled)
+except KeyError:
+    data_sets['60min'] = resampled
 
 
 # New columns for the resampled data have been added to the 60 minutes dataset.
@@ -494,15 +507,16 @@ for res_key in ['15min', '60min']:
 
 # In[ ]:
 
-def write_sql():
+def write_sql(path):
     for res_key, data_set in data_sets_singleindex.items():
-        f = 'timeseries' + res_key
+        table = 'timeseries' + res_key
         ds = data_set.copy()
         ds.index = ds.index.strftime('%Y-%m-%dT%H:%M:%SZ')
-        ds.to_sql(f, sqlite3.connect(f + '.sqlite'),
+        ds.to_sql(table, sqlite3.connect(path),
                   if_exists='replace', index_label='timestamp')
     return
-get_ipython().magic('time write_sql()')
+
+write_sql('data.sqlite')
 
 
 # ## 5.2 Write to Excel
@@ -516,7 +530,7 @@ def write_excel():
                                    data_sets_multiindex.items()):
         f = 'timeseries' + res_key
         data_set.to_excel(f+ '.xlsx', float_format='%.2f')
-get_ipython().magic('time write_excel()')
+write_excel()
 
 
 # ## 5.3 Write to CSV
@@ -532,7 +546,7 @@ def write_csv():
         f = 'timeseries' + res_key
         data_set.to_csv(f + '.csv', float_format='%.2f',
                         date_format='%Y-%m-%dT%H:%M:%SZ')
-get_ipython().magic('time write_csv()')
+write_csv()
 
 
 # # 6. Plausibility checks
@@ -541,17 +555,17 @@ get_ipython().magic('time write_csv()')
 
 # In[ ]:
 
-pv = compact.xs(('solar'), level=('variable'), axis=1, drop_level=False)
-pv.index = pd.MultiIndex.from_arrays([pv.index.date, pv.index.time], names=['date','time'])
-pv
+# pv = compact.xs(('solar'), level=('variable'), axis=1, drop_level=False)
+# pv.index = pd.MultiIndex.from_arrays([pv.index.date, pv.index.time], names=['date','time'])
+# pv
 
 
 # In[ ]:
 
-pv.groupby(level='time').max()
+# pv.groupby(level='time').max()
 
 
 # In[ ]:
 
-pv.unstack().idxmax().to_frame().unstack().transpose()
+# pv.unstack().idxmax().to_frame().unstack().transpose()
 

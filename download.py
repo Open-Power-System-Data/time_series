@@ -246,10 +246,16 @@ OPSD:
 # # 3. Download files one by one
 
 # Load the parameters for the data sources we wish to include into a [YAML](https://en.wikipedia.org/wiki/YAML)-string.
+# 
+# To select whith data sources to download, adjust the list ``datasets_to_download`` accordingly, e.g.:
+# 
+#     datasets_to_download = hertz + tennet
 
 # In[ ]:
 
-conf = yaml.load(hertz + amprion + tennet + transnetbw + entso + opsd)
+datasets_to_download = hertz + amprion + tennet + transnetbw + entso + opsd
+
+conf = yaml.load(datasets_to_download)
 
 
 # In the following we iterate over the sources and resources (load/wind/solar, forecast/generation/capacity) specified above and download the data for a the period given in the parameters. Each file is saved under it's original filename. Note that the original file names are often not self-explanatory (called "data" or "January"). The files content is revealed by its place in the directory structure.
@@ -284,6 +290,10 @@ def download(session, source, resource, p, start, end):
     count_files =  len(os.listdir(container))   
     if count_files == 0:
         if source == 'OPSD':
+            if 'MORPH_OPSD_BETA_PW' in os.environ:
+                password = os.environ['MORPH_OPSD_BETA_PW']
+            else:
+                password = getpass.getpass('Please enter the beta-user password:')
             password = getpass.getpass('Please enter the beta-user password:')
             resp = session.get(p['url_template'], auth=('beta', password))
             original_filename = p['url_template'].split('/')[-1]
