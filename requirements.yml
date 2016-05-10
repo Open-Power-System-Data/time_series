@@ -1,0 +1,22 @@
+name: datapackage_timeseries
+
+channels:
+ - conda-forge
+
+dependencies:
+- python=3.5
+- bottleneck  # accelerates some pandas operations
+- cssselect=0.9.1  # pandas: parse HTML
+- jupyter
+- lxml  # pandas: parse HTML  # FIXME is this correct?
+- notebook
+- numexpr  # accelerates some pandas operations
+- numpy
+- openpyxl  # pandas: excel i/o
+- pandas=0.18.1
+- pytz
+- pyyaml
+- requests
+- xlrd  # pandas: excel i/o
+- pip:
+    - pycountry==1.20
