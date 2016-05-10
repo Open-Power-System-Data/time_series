@@ -1,0 +1,140 @@
+OPSD:
+    capacities:
+        url_template: http://data.open-power-system-data.org/datapackage_renewables/2016-03-09/renewable_capacity_germany_timeseries.csv
+        filename: renewable_capacity_germany_timeseries.csv
+        url_params_template:
+        frequency: complete
+        start: 2005-01-01
+        end: recent
+        filetype: csv
+
+ENTSO-E:
+    load:
+        url_template: https://www.entsoe.eu/fileadmin/template/other/statistical_database/excel.php
+        url_params_template:
+            pid: '136'
+            opt_period: '0'
+            send: send
+            opt_Response: '99'
+            dataindx: '0'
+            opt_Month: '{u_start.month}'
+            opt_Year: '{u_start.year}'
+        frequency: M
+        start: 2006-01-01
+        end: recent
+        filetype: xls
+
+##
+# German transmission system operators: 50Hertz, Amprion, TenneT, TransnetBW
+##
+
+50Hertz:
+    wind_generation:
+        url_template: http://ws.50hertz.com/web01/api/WindPowerActual/DownloadFile
+        url_params_template:
+            callback: '?'
+            fileName: '{u_start:%Y}.csv'
+        frequency: A
+        start: 2005-01-01
+        end: recent
+        filetype: csv
+    solar_generation:
+        url_template: http://ws.50hertz.com/web01/api/PhotovoltaicActual/DownloadFile
+        url_params_template:
+            callback: '?'
+            fileName: '{u_start:%Y}.csv'
+        frequency: A
+        start: 2012-01-01
+        end: recent
+        filetype: csv
+    wind_forecast:
+        url_template: http://ws.50hertz.com/web01/api/WindPowerForecast/DownloadFile
+        url_params_template:
+            callback: '?'
+            fileName: '{u_start:%Y}.csv'
+        frequency: A
+        start: 2005-01-01
+        end: recent
+        filetype: csv
+    solar_forecast:
+        url_template: http://ws.50hertz.com/web01/api/PhotovoltaicForecast/DownloadFile
+        url_params_template:
+            callback: '?'
+            fileName: '{u_start:%Y}.csv'
+        frequency: A
+        start: 2012-01-01
+        end: recent
+        filetype: csv
+
+Amprion:
+    wind:
+        url_template: http://amprion.de/applications/applicationfiles/winddaten2.php
+        url_params_template:
+            mode: download
+            format: csv
+            start: '{u_start.day}.{u_start.month}.{u_start.year}'
+            end: '{u_end.day}.{u_end.month}.{u_end.year}' # dates must not be zero-padded
+        frequency: complete
+        start: 2008-01-04
+        end: recent
+        filetype: csv
+    solar:
+        url_template: http://amprion.de/applications/applicationfiles/PV_einspeisung.php
+        url_params_template:
+            mode: download
+            format: csv
+            start: '{u_start.day}.{u_start.month}.{u_start.year}'
+            end: '{u_end.day}.{u_end.month}.{u_end.year}' # dates must not be zero-padded
+        frequency: complete
+        start: 2010-01-07
+        end: recent
+        filetype: csv
+
+TenneT:
+    wind:
+        url_template: http://www.tennettso.de/site/de/phpbridge
+        url_params_template:
+            commandpath: Tatsaechliche_und_prognostizierte_Windenergieeinspeisung/monthDataSheetCsv.php
+            contenttype: text/x-csv
+            querystring: monat={u_start:%Y-%m}
+        frequency: M
+        start: 2006-01-01
+        end: recent
+        filetype: csv
+    solar:
+        url_template: http://www.tennettso.de/site/de/phpbridge
+        url_params_template:
+            commandpath: Tatsaechliche_und_prognostizierte_Solarenergieeinspeisung/monthDataSheetCsv.php
+            sub: total
+            contenttype: text/x-csv
+            querystring: monat={u_start:%Y-%m}
+        frequency: M
+        start: 2010-01-01
+        end: recent
+        filetype: csv
+
+TransnetBW:
+    wind:
+        url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/windenergie
+        url_params_template:
+            app: wind
+            activeTab: csv
+            view: '1'
+            download: 'true'
+            selectMonatDownload: '{u_transnetbw}'
+        frequency: M
+        start: 2010-01-01
+        end: recent
+        filetype: csv
+    solar:
+        url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/fotovoltaik
+        url_params_template:
+            app: wind
+            activeTab: csv
+            view: '1'
+            download: 'true'
+            selectMonatDownload: '{u_transnetbw}'
+        frequency: M
+        start: 2011-01-01
+        end: recent
+        filetype: csv
