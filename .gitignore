@@ -1,0 +1,11 @@
+# Downloaded data
+original_data
+
+# Processed data
+*.csv
+*.xlsx
+*.sqlite
+*.sql
+
+# Generated files
+datapackage.json
