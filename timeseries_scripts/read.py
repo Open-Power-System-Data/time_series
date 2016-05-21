@@ -1,43 +1,11 @@
+"""
+Open Power System Data
 
-# coding: utf-8
+Timeseries Datapackage
 
-# # 1. Read
+read.py : read time series files
 
-# Part of the project [Open Power System Data](http://open-power-system-data.org/).
-# 
-# Find the latest version of this notebook an [GitHub](https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/master/download.read)
-# 
-# Go back to the main notebook ([GitHub](https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/master/main.ipynb?) / [local copy](main.ipynb))
-# 
-# This notebook reads the data saved by the download script ([GitHub](https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/master/download.ipynb) / [local copy](download.ipynb))
-
-# # Table of Contents
-# * [1. Read](#1.-Read)
-# * [2. Preparations](#2.-Preparations)
-# 	* [2.1 Libraries](#2.1-Libraries)
-# 	* [2.2 Set up a log.](#2.2-Set-up-a-log.)
-# 	* [2.3 Locate the download directory](#2.3-Locate-the-download-directory)
-# 	* [2.4 Set the level names of the MultiIndex](#2.4-Set-the-level-names-of-the-MultiIndex)
-# * [3. read-functions for individual data sources](#3.-read-functions-for-individual-data-sources)
-# 	* [3.1 ENTSO-E](#3.1-ENTSO-E)
-# 	* [3.2 '50Hertz](#3.2-'50Hertz)
-# 	* [3.3 Amprion](#3.3-Amprion)
-# 	* [3.4 TenneT](#3.4-TenneT)
-# 	* [3.5 TransnetBW](#3.5-TransnetBW)
-# 	* [3.6 Capacities](#3.6-Capacities)
-# * [4. Read files one by one](#4.-Read-files-one-by-one)
-# 	* [4.1 Create empty DataFrames](#4.1-Create-empty-DataFrames)
-# 	* [4.2 Apply the processing function one-by-one](#4.2-Apply-the-processing-function-one-by-one)
-# * [5. Write the data to disk for further processing](#5.-Write-the-data-to-disk-for-further-processing)
-# 
-
-# # 2. Preparations
-
-# ## 2.1 Libraries
-
-# Loading some python libraries.
-
-# In[ ]:
+"""
 
 from datetime import datetime, date, timedelta
 import pytz
@@ -48,43 +16,22 @@ import pandas as pd
 import logging
 
 
-# ## 2.2 Set up a log.
+def read_entso(filepath, web, headers):
+    """
+    Read a .xls file with hourly load data from the ENTSO Data Portal
+    into a dataframe. Returns a pandas.DataFrame.
 
-# In[ ]:
+    Parameters
+    ----------
+    filepath : str
+        Directory path of file to be read.
+    web : str
+        URL linking to the source website where this data comes from.
+    headers : list
+        List of strings indicating the level names of the pandas.MultiIndex
+        for the columns of the dataframe.
 
-logger = logging.getLogger('log')
-logger.setLevel('INFO')
-
-
-# ## 2.3 Locate the download directory
-
-# Set the local path where the input data is stored. This script expects a file structure acording to the following schema:
-# * \working_directory\downloadpath\source\resource\container\file.csv
-# 
-# for example:
-# * \datapackage_timeseries\original_data\TransnetBW\wind\2010-01-01_2010-01-31\mwindeinsp_ist_prognose_2010_01.csv
-
-# In[ ]:
-
-downloadpath = 'original_data'
-
-
-# ## 2.4 Set the level names of the MultiIndex
-
-# These are the rows at the top of the data used to store metadata internally. In the output data created by the processing script ([local copy](processing.ipynb#) / [GitHub](https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/master/processing.ipynb)), this information will be moved to the [datapackage.json](datapackage.json#) File.
-
-# In[ ]:
-
-HEADERS = ['variable', 'country', 'attribute', 'source', 'web']
-
-
-# # 3. read-functions for individual data sources
-
-# ## 3.1 ENTSO-E
-
-# In[ ]:
-
-def read_entso(filepath, web):
+    """
     df = pd.read_excel(
         io=filepath,
         header=9,
@@ -134,17 +81,13 @@ def read_entso(filepath, web):
     
     # Create the MultiIndex.  
     tuples = [('load', country, 'load', 'ENTSO-E', web) for country in df.columns]
-    columns = pd.MultiIndex.from_tuples(tuples, names=HEADERS)
+    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     df.columns = columns
     
     return df
 
 
-# ## 3.2 '50Hertz
-
-# In[ ]:
-
-def read_hertz(filepath, tech_attribute, web):
+def read_hertz(filepath, tech_attribute, web, HEADERS):
     tech = tech_attribute.split('_')[0]
     attribute = tech_attribute.split('_')[1]
     df = pd.read_csv(
@@ -185,11 +128,7 @@ def read_hertz(filepath, tech_attribute, web):
     return df
 
 
-# ## 3.3 Amprion
-
-# In[ ]:
-
-def read_amprion(filepath, tech, web):
+def read_amprion(filepath, tech, web, HEADERS):
     df = pd.read_csv(
         filepath,
         sep=';',
@@ -230,18 +169,7 @@ def read_amprion(filepath, tech, web):
     return df
 
 
-# ## 3.4 TenneT
-
-# The Tennet Data doesn't feature a time column. Instead, the quarter-hourly data entries for each day are numbered by their position, creating an index ranging...
-# * from 1 to 96 on normal days,
-# * from 1 to 92 on spring dst-transition dates,
-# * from 1 to 100 on fall dst-transition days.
-# 
-# This index can be used to compute a timestamp. However, there are a couple of errors in the data, which is why a lot of exceptions need to be specified.
-
-# In[ ]:
-
-def read_tennet(filepath, tech, web):
+def read_tennet(filepath, tech, web, HEADERS):
     df = pd.read_csv(
         filepath,
         sep=';',
@@ -333,11 +261,7 @@ def read_tennet(filepath, tech, web):
     return df
 
 
-# ## 3.5 TransnetBW
-
-# In[ ]:
-
-def read_transnetbw(filepath, tech, web):
+def read_transnetbw(filepath, tech, web, HEADERS):
     df = pd.read_csv(
         filepath,
         sep=';',
@@ -374,11 +298,7 @@ def read_transnetbw(filepath, tech, web):
     return df
 
 
-# ## 3.6 Capacities
-
-# In[ ]:
-
-def read_capacities(filepath, web):
+def read_capacities(filepath, web, HEADERS):
     df = pd.read_csv(
         filepath,
         sep=',',
@@ -404,111 +324,64 @@ def read_capacities(filepath, web):
     df = df.resample('15min').ffill()
     
     # Create the MultiIndex
-    source = 'own calculation'
-    tuples = [(tech, 'DE', 'capacity', source, web) for tech in df.columns]
+    tuples = [(tech, 'DE', 'capacity', 'own calculation', web) for tech in df.columns]
     columns = pd.MultiIndex.from_tuples(tuples, names=HEADERS)
     df.columns = columns
     
     return df
 
 
-# # 4. Read files one by one
+def read(sources_yaml_path, out_path, headers, subset=None):
 
-# ## 4.1 Create empty DataFrames
+    data_sets = {'15min': pd.DataFrame(), '60min': pd.DataFrame()}
 
-# We create a dictionary with an empty DataFrame each for data with 15/60 minute resolution. This line deletes all data previously loaded into the data_sets.
+    with open(sources_yaml_path, 'r') as f:
+        sources = yaml.load(f.read())
 
-# In[ ]:
+    # If subset is given, only keep source_name keys in subset
+    if subset is not None:
+        sources = {k: v for k, v in sources.items() if k in subset}
 
-data_sets = {'15min': pd.DataFrame(), '60min': pd.DataFrame()}
-
-
-# ## 4.2 Apply the processing function one-by-one
-
-# For each source/TSO and technology specified in the conf dict, this section finds all the downloaded files in the downloads folder and then calls the matching read function.
-# The datasets returned by the read function are then merged with the other data of the same resolution.
-
-# This section contains a python dictionary indicating which datasources there are, which data types they provide and a link to the source to be included in the columnd header.
-
-# In[ ]:
-
-conf = """
-60min:
-    ENTSO-E:
-        load: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx #Hourly load values of all countries for a specific month
-15min:
-    50Hertz: 
-        wind_generation: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
-        wind_forecast: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
-        solar_generation: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
-        solar_forecast: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
-    Amprion:
-        wind: http://www.amprion.net/en/wind-feed-in
-        solar: http://www.amprion.net/en/photovoltaic-infeed
-    TenneT:
-        wind: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-wind-energy-feed-in
-        solar: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-photovoltaic-energy-feed-in
-    TransnetBW:
-        wind: https://www.transnetbw.com/en/key-figures/renewable-energies/wind-infeed
-        solar: https://www.transnetbw.com/en/key-figures/renewable-energies/photovoltaic
-    OPSD:
-        capacities: http://data.open-power-system-data.org/datapackage_renewables/
-"""
-conf = yaml.load(conf)
-
-
-# In[ ]:
-
-for resolution, sources in conf.items():
-    for source, resources in sources.items():
-        for resource, web in resources.items():
-            resource_dir = os.path.join(downloadpath, source, resource)
-            if not os.path.exists(resource_dir):
-                logger.info('folder not found for %s, %s', source, resource)
+    for source_name, source_dict in sources.items():
+        for variable_name, param_dict in source_dict.items():
+            variable_dir = os.path.join(out_path, source_name, variable_name)
+            if not os.path.exists(variable_dir):
+                logging.info('folder not found for %s, %s', source_name, variable_name)
             else:
-                for container in os.listdir(resource_dir):
-                    files = os.listdir(os.path.join(resource_dir, container))
+                for container in os.listdir(variable_dir):
+                    files = os.listdir(os.path.join(variable_dir, container))
                     if not len(files) == 1:
-                        logger.info('error: found more than one file in %s %s %s',
-                                    source, resource, container)
+                        logging.info('error: found more than one file in %s %s %s',
+                                    source_name, variable_name, container)
                     else:                        
-                        logger.info('reading %s %s %s',
-                                    source, resource, files[0])
-                        filepath = os.path.join(resource_dir, container, files[0])
+                        logging.info('reading %s %s %s',
+                                    source_name, variable_name, files[0])
+                        filepath = os.path.join(variable_dir, container, files[0])
                         if os.path.getsize(filepath) < 128:
-                            logger.info('file is smaller than 128 Byte,' +
-                                    'which means it is probably empty')
+                            logging.info('file is smaller than 128 Byte,' +
+                                        'which means it is probably empty')
                         else:
-                            if source == 'ENTSO-E':
-                                data_to_add = read_entso(filepath, web)
-                            elif source == 'Svenska_Kraftnaet':
-                                data_to_add = read_svenskakraftnaet(filepath, source, resource, web)
-                            elif source == '50Hertz':
-                                data_to_add = read_hertz(filepath, resource, web)
-                            elif source == 'Amprion':
-                                data_to_add = read_amprion(filepath, resource, web)
-                            elif source == 'TenneT':
-                                data_to_add = read_tennet(filepath, resource, web)
-                            elif source == 'TransnetBW':
-                                data_to_add = read_transnetbw(filepath, resource, web)
-                            elif source == 'OPSD':
-                                data_to_add = read_capacities(filepath, web)
-                            
+                            if source_name == 'ENTSO-E':
+                                data_to_add = read_entso(filepath, param_dict['web'], headers)
+                            elif source_name == 'Svenska_Kraftnaet':
+                                data_to_add = read_svenskakraftnaet(filepath, source_name, variable_name, param_dict['web'], headers)
+                            elif source_name == '50Hertz':
+                                data_to_add = read_hertz(filepath, variable_name, param_dict['web'], headers)
+                            elif source_name == 'Amprion':
+                                data_to_add = read_amprion(filepath, variable_name, param_dict['web'], headers)
+                            elif source_name == 'TenneT':
+                                data_to_add = read_tennet(filepath, variable_name, param_dict['web'], headers)
+                            elif source_name == 'TransnetBW':
+                                data_to_add = read_transnetbw(filepath, variable_name, param_dict['web'], headers)
+                            elif source_name == 'OPSD':
+                                data_to_add = read_capacities(filepath, param_dict['web'], headers)
+
                             # cut off data_to_add at end of year:
                                 data_to_add = data_to_add[:'2015-12-31 22:45:00']
 
-                            if len(data_sets[resolution]) == 0:
-                                data_sets[resolution] = data_to_add
+                            if len(data_sets[param_dict['resolution']]) == 0:
+                                data_sets[param_dict['resolution']] = data_to_add
                             else:
-                                data_sets[resolution] =                                 data_sets[resolution].combine_first(data_to_add)
-
-
-# # 5. Write the data to disk for further processing
-
-# In[ ]:
-
-for resolution, data_set in data_sets.items():
-    data_set.to_csv('raw_data_' + resolution + '.csv', float_format='%.2f')
-
-
-# The data should now be processed further. using the processing script ([GitHub](https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/master/processing.ipynb) / [local copy](processing.ipynb))
+                                data_sets[param_dict['resolution']] = \
+                                data_sets[param_dict['resolution']].combine_first(data_to_add)
+    return data_sets

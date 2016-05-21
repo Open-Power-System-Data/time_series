@@ -3,10 +3,12 @@ OPSD:
         url_template: http://data.open-power-system-data.org/datapackage_renewables/2016-03-09/renewable_capacity_germany_timeseries.csv
         filename: renewable_capacity_germany_timeseries.csv
         url_params_template:
-        frequency: complete
-        start: 2005-01-01
-        end: recent
-        filetype: csv
+            frequency: complete
+            start: 2005-01-01
+            end: recent
+            filetype: csv
+        resolution: 15min
+        web: http://data.open-power-system-data.org/datapackage_renewables/
 
 ENTSO-E:
     load:
@@ -23,6 +25,9 @@ ENTSO-E:
         start: 2006-01-01
         end: recent
         filetype: xls
+        resolution: 15min
+        web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx #Hourly load values of all countries for a specific month
+
 
 ##
 # German transmission system operators: 50Hertz, Amprion, TenneT, TransnetBW
@@ -38,6 +43,8 @@ ENTSO-E:
         start: 2005-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     solar_generation:
         url_template: http://ws.50hertz.com/web01/api/PhotovoltaicActual/DownloadFile
         url_params_template:
@@ -47,6 +54,8 @@ ENTSO-E:
         start: 2012-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
     wind_forecast:
         url_template: http://ws.50hertz.com/web01/api/WindPowerForecast/DownloadFile
         url_params_template:
@@ -56,6 +65,8 @@ ENTSO-E:
         start: 2005-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     solar_forecast:
         url_template: http://ws.50hertz.com/web01/api/PhotovoltaicForecast/DownloadFile
         url_params_template:
@@ -65,6 +76,8 @@ ENTSO-E:
         start: 2012-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
 
 Amprion:
     wind:
@@ -78,6 +91,8 @@ Amprion:
         start: 2008-01-04
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.amprion.net/en/wind-feed-in
     solar:
         url_template: http://amprion.de/applications/applicationfiles/PV_einspeisung.php
         url_params_template:
@@ -89,6 +104,8 @@ Amprion:
         start: 2010-01-07
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.amprion.net/en/photovoltaic-infeed
 
 TenneT:
     wind:
@@ -101,6 +118,8 @@ TenneT:
         start: 2006-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-wind-energy-feed-in
     solar:
         url_template: http://www.tennettso.de/site/de/phpbridge
         url_params_template:
@@ -112,6 +131,8 @@ TenneT:
         start: 2010-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-photovoltaic-energy-feed-in
 
 TransnetBW:
     wind:
@@ -126,6 +147,8 @@ TransnetBW:
         start: 2010-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: https://www.transnetbw.com/en/key-figures/renewable-energies/wind-infeed
     solar:
         url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/fotovoltaik
         url_params_template:
@@ -138,3 +161,5 @@ TransnetBW:
         start: 2011-01-01
         end: recent
         filetype: csv
+        resolution: 15min
+        web: https://www.transnetbw.com/en/key-figures/renewable-energies/photovoltaic
