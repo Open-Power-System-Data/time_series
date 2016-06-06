@@ -163,3 +163,47 @@ TransnetBW:
         filetype: csv
         resolution: 15min
         web: https://www.transnetbw.com/en/key-figures/renewable-energies/photovoltaic
+        
+Svenska_Kraftnaet: 
+    wind_pv_1: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot{u_start:%Y}.xls
+        url_params_template:
+        frequency: A
+        start: 2002-01-01
+        end: 2009-01-01
+        filetype: xls        
+    wind_pv_2: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot201001-06.xls
+        url_params_template:
+        frequency: A
+        start: 2010-01-01
+        end: 2010-01-01
+        filetype: xls        
+    wind_pv_3: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot2010-07-12.xls
+        url_params_template:
+        frequency: A
+        start: 2010-01-01
+        end: 2010-01-01
+        filetype: xls       
+    wind_pv_4: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n-fot2011-01-12.xls
+        url_params_template:
+        frequency: A
+        start: 2011-01-01
+        end: 2011-01-01
+        filetype: xls        
+    wind_pv_5: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot{u_start:%Y}-01-12.xls
+        url_params_template:
+        frequency: A
+        start: 2012-01-01
+        end: 2014-12-31
+        filetype: xls  
+    wind_pv_6: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot2015-01-08.xls
+        url_params_template:
+        frequency: A
+        start: 2015-01-01
+        end: 2015-08-31
+        filetype: xls

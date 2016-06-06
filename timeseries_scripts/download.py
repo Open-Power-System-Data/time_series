@@ -65,12 +65,17 @@ def download_file(source_name, variable_name, out_path,
              + (datetime.now().year - start.year) * 12)
 
     # Create the parameters dict containing timespan info to be pasted with url
+    url_params = {}
     if param_dict['url_params_template']:
-        url_params = {}
         for key, value in param_dict['url_params_template'].items():
             url_params[key] = value.format(u_start=start,
                                            u_end=end,
                                            u_transnetbw=count)
+        url = param_dict['url_template']
+    else:
+        url = param_dict['url_template'].format(u_start=start,
+                                                u_end=end,
+                                                u_transnetbw=count)        
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
@@ -82,7 +87,7 @@ def download_file(source_name, variable_name, out_path,
     # Attempt the download if there is no file yet.
     count_files = len(os.listdir(container))
     if count_files == 0:
-        resp = session.get(param_dict['url_template'], params=url_params)
+        resp = session.get(url, params=url_params)
 
         if 'filename' in param_dict:
             original_filename = param_dict['filename']

@@ -14,6 +14,10 @@ import os
 import numpy as np
 import pandas as pd
 import logging
+#import sys
+logger = logging.getLogger('log')
+logger.setLevel('INFO')
+#logger.handlers[0].stream = sys.stdout
 
 
 def read_entso(filepath, web, headers):
@@ -330,6 +334,47 @@ def read_capacities(filepath, web, HEADERS):
     
     return df
 
+def read_Svenska_Kraftnaet(filePath, source, tech):
+    if tech in ['wind_pv_1', 'wind_pv_2']:
+        skipper = 3
+        cols = [0,1,3,4]
+        colnames = ['date', 'hour', 'SE_wind_actual', 'SE_hydro']
+    elif tech in ['wind_pv_3', 'wind_pv_4', 'wind_pv_5', 'wind_pv_6']:
+        if tech == 'wind_pv_4':
+            skipper = 4
+        else:
+            skipper = 6
+        cols = [0,2,3,8]
+        colnames = ['datetime', 'SE_wind_actual', 'SE_hydro', 'SE_pv_actual']
+        
+    data = pd.read_excel(
+        io = filePath,
+        sheetname = -1,
+        header = None,
+        skiprows = skipper,
+        index_col = None,
+        parse_cols = cols
+        )
+
+#    data.reset_index(inplace=True)
+#    if 'index' in data.columns: data.drop('index', axis = 1, inplace = True)
+        
+    data.columns = colnames
+
+    if tech in ['wind_pv_1', 'wind_pv_2']:
+        data = data[data['date'].notnull()] #applies to 2009
+        data['dt_index'] = pd.to_datetime(data['date'].astype(int).astype(str)+' '+data['hour'].astype(int).astype(str).str.replace('00','')+':00', dayfirst = False, infer_datetime_format = True)
+        data.drop(['date','hour'], axis=1, inplace = True)
+    else:
+        data = data[((data['datetime'].notnull()) & (data['datetime'].astype(str) != 'Tot summa GWh'))] #applies to 2011
+        data['dt_index'] = pd.to_datetime(data['datetime'], dayfirst = True)#, infer_datetime_format = True)
+        data.drop(['datetime'], axis=1, inplace = True)
+        
+    data.set_index('dt_index', inplace=True)
+    data.index = (data.index.tz_localize('UTC') + pd.offsets.Hour(-1)).tz_convert('Europe/Berlin')   
+    
+    return data
+
 
 def read(sources_yaml_path, out_path, headers, subset=None):
 
@@ -346,19 +391,19 @@ def read(sources_yaml_path, out_path, headers, subset=None):
         for variable_name, param_dict in source_dict.items():
             variable_dir = os.path.join(out_path, source_name, variable_name)
             if not os.path.exists(variable_dir):
-                logging.info('folder not found for %s, %s', source_name, variable_name)
+                logger.info('folder not found for %s, %s', source_name, variable_name)
             else:
                 for container in os.listdir(variable_dir):
                     files = os.listdir(os.path.join(variable_dir, container))
                     if not len(files) == 1:
-                        logging.info('error: found more than one file in %s %s %s',
+                        logger.info('error: found more than one file in %s %s %s',
                                     source_name, variable_name, container)
                     else:                        
-                        logging.info('reading %s %s %s',
+                        logger.info('reading %s %s %s',
                                     source_name, variable_name, files[0])
                         filepath = os.path.join(variable_dir, container, files[0])
                         if os.path.getsize(filepath) < 128:
-                            logging.info('file is smaller than 128 Byte,' +
+                            logger.info('file is smaller than 128 Byte,' +
                                         'which means it is probably empty')
                         else:
                             if source_name == 'ENTSO-E':
