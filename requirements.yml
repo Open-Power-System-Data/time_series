@@ -6,9 +6,7 @@ channels:
 dependencies:
 - python=3.5
 - bottleneck  # accelerates some pandas operations
-- cssselect=0.9.1  # pandas: parse HTML
 - jupyter
-- lxml  # pandas: parse HTML  # FIXME is this correct?
 - notebook
 - numexpr  # accelerates some pandas operations
 - numpy
