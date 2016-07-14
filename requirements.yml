@@ -7,7 +7,6 @@ dependencies:
 - python=3.5
 - bottleneck  # accelerates some pandas operations
 - jupyter
-- lxml  # pandas: parse HTML  # FIXME is this correct?
 - notebook
 - numexpr  # accelerates some pandas operations
 - numpy
