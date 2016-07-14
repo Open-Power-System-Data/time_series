@@ -3,10 +3,10 @@ OPSD:
         url_template: http://data.open-power-system-data.org/datapackage_renewables/2016-03-09/renewable_capacity_germany_timeseries.csv
         filename: renewable_capacity_germany_timeseries.csv
         url_params_template:
-            frequency: complete
-            start: 2005-01-01
-            end: recent
-            filetype: csv
+        frequency: complete
+        start: 2005-01-01
+        end: recent
+        filetype: csv
         resolution: 15min
         web: http://data.open-power-system-data.org/datapackage_renewables/
 
@@ -23,9 +23,9 @@ ENTSO-E:
             opt_Year: '{u_start.year}'
         frequency: M
         start: 2006-01-01
-        end: recent
+        end: 2015-12-31
         filetype: xls
-        resolution: 15min
+        resolution: 60min
         web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx #Hourly load values of all countries for a specific month
 
 
@@ -164,46 +164,202 @@ TransnetBW:
         resolution: 15min
         web: https://www.transnetbw.com/en/key-figures/renewable-energies/photovoltaic
         
-Svenska_Kraftnaet: 
-    wind_pv_1: 
-        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot{u_start:%Y}.xls
+Svenska Kraftnaet: 
+    wind_solar_1: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}.xls
         url_params_template:
         frequency: A
         start: 2002-01-01
-        end: 2009-01-01
-        filetype: xls        
-    wind_pv_2: 
-        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot201001-06.xls
+        end: 2009-12-31
+        filetype: xls
+        resolution: 60min
+        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        filename: n_fot{u_start:%Y}.xls
+    wind_solar_2: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot201001-06.xls
         url_params_template:
-        frequency: A
+        frequency: irregular
         start: 2010-01-01
-        end: 2010-01-01
-        filetype: xls        
-    wind_pv_3: 
-        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot2010-07-12.xls
+        end: 2010-06-30
+        filetype: xls
+        resolution: 60min
+        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        filename: n_fot201001-06.xls
+    wind_solar_3: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot2010-07-12.xls
         url_params_template:
-        frequency: A
-        start: 2010-01-01
-        end: 2010-01-01
-        filetype: xls       
-    wind_pv_4: 
-        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n-fot2011-01-12.xls
+        frequency: irregular
+        start: 2010-07-01
+        end: 2010-12-31
+        filetype: xls
+        resolution: 60min
+        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        filename: n_fot2010-07-12.xls
+    wind_solar_4: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n-fot2011-01-12.xls
         url_params_template:
         frequency: A
         start: 2011-01-01
-        end: 2011-01-01
-        filetype: xls        
-    wind_pv_5: 
-        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot{u_start:%Y}-01-12.xls
+        end: 2011-12-31
+        filetype: xls
+        resolution: 60min
+        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        filename: n-fot2011-01-12.xls
+    wind_solar_5: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}-01-12.xls
         url_params_template:
         frequency: A
         start: 2012-01-01
         end: 2014-12-31
-        filetype: xls  
-    wind_pv_6: 
-        url_template: http://www.svk.se/siteassets/aktorsportalen/statistik/sverigestatistik/n_fot2015-01-08.xls
+        filetype: xls
+        resolution: 60min
+        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        filename: n_fot{u_start:%Y}-01-12.xls
+    wind_solar_6: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
         url_params_template:
         frequency: A
         start: 2015-01-01
-        end: 2015-08-31
+        end: 2015-12-31
         filetype: xls
+        resolution: 60min
+        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
+    wind_solar_7: 
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls
+        url_params_template:
+        frequency: A
+        start: 2016-01-01
+        end: 2016-12-31
+        filetype: xls
+        resolution: 60min
+        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        filename: forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls        
+Elia: 
+    wind: 
+        url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
+        url_params_template:
+            beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
+            endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
+            isOffshore: ''
+            isEliaConnected: ''
+        frequency: M #the frequency could in principle be chosen arbitrarily, even complete, but in practise the server often times out if too much data is requested at once, i.e. monthly
+        start: 2012-01-01  #the data starts from 2012-01-19
+        end: recent
+        filetype: xls
+        resolution: 15min
+        web: http://www.elia.be/en/grid-data/power-generation/wind-power
+    wind-offshore: 
+        url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
+        url_params_template:
+            beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
+            endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
+            isOffshore: 'true'
+            isEliaConnected: ''
+        frequency: Q
+        start: 2012-01-01  #the data starts from 2012-01-19
+        end: recent
+        filetype: xls
+        resolution: 15min
+        web: http://www.elia.be/en/grid-data/power-generation/wind-power
+
+Elia2:
+    wind-dsos: 
+        url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
+        url_params_template:
+            beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
+            endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
+            isOffshore: ''
+            isEliaConnected: 'false'
+        frequency: Q
+        start: 2012-01-01  #the data starts from 2012-01-19
+        end: recent
+        filetype: xls
+        resolution: 15min
+        web: http://www.elia.be/en/grid-data/power-generation/wind-power
+    solar: 
+        url_template: http://publications.elia.be/Publications/Publications/SolarForecasting.v3.svc/ExportSolarForecastGraph
+        url_params_template:
+            dateFrom: '{u_start:%Y-%m-%d}T23:00:00.000Z'
+            dateTo: '{u_end:%Y-%m-%d}T23:00:00.000Z'
+            sourceId: '1'
+        frequency: M
+        start: 2012-11-01 #the data starts from 2012-11-14
+        end: recent
+        filetype: xls
+        resolution: 15min
+        web: http://www.elia.be/en/grid-data/power-generation/Solar-power-generation-data/Graph
+
+Energinet.dk:
+    prices_wind_solar:
+        frequency: complete
+        start: 2000-01-01 # or even earlier for some data, but not useful as other sources don't go as far back
+        end: recent 
+        filetype: xls
+        resolution: 60min
+        web: http://www.energinet.dk/en/el/engrosmarked/udtraek-af-markedsdata/Sider/default.aspx
+
+# For the Following sources, the download/read has not yet been implemented
+RTE: 
+    wind_solar: 
+        url_template: http://clients.rte-france.com/servlets/RealProdServlet
+        url_params_template:
+            annee: '{u_start:%Y}'
+        frequency: A
+        start: 2014-01-01
+        end: recent 
+        filetype: zip #xls 
+        resolution: 60min
+        web: http://www.elia.be/en/grid-data/power-generation/Solar-power-generation-data/Graph
+        
+Fingrid: 
+    wind: 
+        url_template: http://www.fingrid.fi/en/electricity-market/load-and-generation/windpower/Pages/default.aspx/Excel/TimeSeries.xls?
+        url_params_template:
+            beginDate: '{u_start:%Y%m%d}'
+            endDate: '{u_start:%Y%m%d}'
+            variables: H4sIAAAAAAAEAO29B2AcSZYlJi9tynt_SvVK1-B0oQiAYBMk2JBAEOzBiM3mkuwdaUcjKasqgcplVmVdZhZAzO2dvPfee--999577733ujudTif33_8_XGZkAWz2zkrayZ4hgKrIHz9-fB8_Ih7_ZFYX2aTMmyP769nyvDp6_CJb5EfPzn7_N1999fzsJ788--L49_99vv3m8V3-_PHZ8jKv25_MynV-dJ6VTf74rv_RY_7xrKoXWfu6rYvlxdGPj378x3ce3-1_8firZdG-yd-1R198d353_viu_fvxm6It86PvFstZuqqu8jq9yJd5nbVFtUy3uPWdx3el0ePnxTI_qcqqTu96f3y7XZRHP_7k5MnDHeo8_Pjx63l19eWyvH62btd1_jRrMzOWyDdA3aeP_bM5-n8AhQmq0kUBAAA1
+            cultureId: en-US
+            dataTimePrecision: 5
+        bundle: MONTHLY ???
+        start: 2014-11-28
+        end: recent
+        filetype: xls
+
+CEPS: 
+    wind_pv: 
+        url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx
+        url_params_template:
+            from: '{u_start:%m.%d.%Y}%2012:00:00%20AM'
+            to: '{u_end:%m/%d/%Y}%2011:59:59%20PM'
+            hasinterval: False
+            sol: 26
+            lang: ENG
+            agr: QH
+            fnc: SUM
+            ver: RT
+            para1: all
+        bundle: complete
+        start: 2012-01-01
+        end: recent
+        filetype: xlsx
+
+OeMag: 
+    wind_1: 
+        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xls
+        bundle: YEARLY
+        start: 2003-01-01
+        end: 2011-01-01
+        filetype: xls        
+    wind_2: 
+        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xlsx
+        bundle: YEARLY
+        start: 2012-01-01
+        end: 2013-12-31
+        filetype: xlsx
+    wind_3: 
+        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/Winderzeugung_{u_start:%Y}.xlsx
+        bundle: YEARLY
+        start: 2013-01-01
+        end: 2013-12-31
+        filetype: xlsx
