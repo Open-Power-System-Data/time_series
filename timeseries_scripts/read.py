@@ -6,7 +6,7 @@ Timeseries Datapackage
 read.py : read time series files
 
 """
-
+# Jan: The first line of imports is not used in the script
 from datetime import datetime, date, timedelta
 import pytz
 import yaml
@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger('log')
 logger.setLevel('INFO')
 
-
+# Jan: web is a misleading argument name. I would use url or maybe web_url.
 def read_elia(filepath, variable_name, web, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
@@ -39,6 +39,7 @@ def read_elia(filepath, variable_name, web, headers):
     """
     df = pd.read_excel(
         io=filepath,
+        # Jan: PEP 8 suggests not to have whitespace around parameter equals.
         header = None,
         skiprows = 4,
         index_col = 0,
@@ -63,7 +64,7 @@ def read_elia(filepath, variable_name, web, headers):
     
     return df
 
-
+# Jan: See above read_elia
 def read_energinet_dk(filepath, web, headers):
     """
     Read a .csv file with wind/solar power timeseries and price data from 
@@ -99,7 +100,11 @@ def read_energinet_dk(filepath, web, headers):
         (df['hour'] - 1).astype(str) + ':00'
     )
     df.set_index('timestamp', inplace=True) 
-    
+
+    # Jan: Splitting the list comprehension makes it more readable. For example:
+    # utc_trans =  pytz.timezone('Europe/Copenhagen')._utc_transition_times
+    # dst_transitions_spring = [d.replace(hour=2) for d in utc_trans if d.year >= 2000 and d.month == 3]
+
     # Create a list of spring-daylight savings time (DST)-transitions 
     dst_transitions_spring = [
         d.replace(hour=2)
@@ -107,7 +112,7 @@ def read_energinet_dk(filepath, web, headers):
         in pytz.timezone('Europe/Copenhagen')._utc_transition_times
         if d.year >= 2000 and d.month == 3
     ]
-
+    # Jan: hourd == hour?
     # Drop 3rd hourd for (spring) DST-transition. 
     df = df[~df.index.isin(dst_transitions_spring)]    
     
@@ -141,7 +146,7 @@ def read_energinet_dk(filepath, web, headers):
         
     return df
 
-
+# Jan: See above read_elia
 def read_entso(filepath, web, headers):
     """
     Read a .xls file with hourly load data from the ENTSO Data Portal
@@ -164,7 +169,7 @@ def read_entso(filepath, web, headers):
         skiprows=None,
         index_col=[0, 1], # create MultiIndex from first 2 columns ['Country', 'Day']
         parse_cols = None, # None means: parse all columns
-        na_values = ['n.a.']
+        na_values = ['n.a.'] # Jan: Whitespace before/after parameter equals is not recommended according to PEP 8.
     )
         
     df.columns.names = ['raw_hour']
@@ -215,7 +220,7 @@ def read_entso(filepath, web, headers):
     
     return df
 
-
+# Jan: See above read_elia
 def read_hertz(filepath, tech_attribute, web, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
@@ -273,7 +278,7 @@ def read_hertz(filepath, tech_attribute, web, headers):
     
     return df
 
-
+# Jan: See above read_elia
 def read_amprion(filepath, variable_name, web, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
@@ -323,7 +328,9 @@ def read_amprion(filepath, variable_name, web, headers):
     index2 = index2.tz_localize('Europe/Berlin', ambiguous=dst_arr)        
     df.index = index1.append(index2)
     df.index = df.index.tz_convert(None)
-    
+
+    # Jan: Why not use the 80 character limit?
+    # Jan: tuples = [ (variable_name, 'DEamprion', attribute, 'Amprion', web) for attribute in df.columns]
     # Create the MultiIndex
     tuples = [
         (variable_name, 'DEamprion', attribute, 'Amprion', web)
@@ -335,7 +342,7 @@ def read_amprion(filepath, variable_name, web, headers):
 
     return df
 
-
+# Jan: See above read_elia, description of variable_name has one `` too much.
 def read_tennet(filepath, variable_name, web, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
@@ -379,6 +386,10 @@ def read_tennet(filepath, variable_name, web, headers):
     df['date'].fillna(method='ffill', limit = 100, inplace=True)
 
     for i in range(len(df.index)):
+        # Jan: Writing the whole logical expression in one line makes it more readable:
+        # if df['pos'][i] == 92 and ((i == len(df.index) - 1) or (df['pos'][i + 1] == 1)):
+        #    pass
+
         # On the day in March when summertime begins, shift the data forward by
         # 1 hour, beginning with the 9th quarter-hour, so the index runs again
         # up to 96
@@ -394,10 +405,12 @@ def read_tennet(filepath, variable_name, web, headers):
             # Instead of having the quarter-hours' index run up to 100, we want 
             # to have it set back by 1 hour beginning from the 13th
             # quarter-hour, ending at 96
+            # Jan: No need for the outer parenthesis
             if (df['pos'][i] == 100 and not (df['pos'] == 101).any()):                    
                 slicer = df[(df['date'] == df['date'][i]) & (df['pos'] >= 13)].index
                 df.loc[slicer, 'pos'] = df['pos'] - 4                     
 
+            # Jan: Typo qauter
             # In 2011 and 2012, there are 101 qaurter hours on the day the 
             # summertime ends, so 1 too many.  From looking at the data, we
             # inferred that the 13'th quarter hour is the culprit, so we drop
@@ -410,6 +423,7 @@ def read_tennet(filepath, variable_name, web, headers):
     # On 2012-03-25, there are 94 entries, where entries 8 and 10 are probably
     # wrong.
     if df['date'][0] == '2012-03-01':
+        # Jan: You could write this in one line instead. Plenty of space left.
         df = df[~((df['date'] == '2012-03-25') & 
                   ((df['pos'] == 8) | (df['pos'] == 10)))]
         slicer = df[(df['date'] == '2012-03-25') & (df['pos'] >= 9)].index
@@ -440,7 +454,8 @@ def read_tennet(filepath, variable_name, web, headers):
 
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
-    
+
+    # Jan: Writing this in one line makes it more readable
     # Create the MultiIndex
     tuples = [
         (variable_name, 'DEtennet', attribute, 'TenneT', web)
@@ -455,7 +470,7 @@ def read_tennet(filepath, variable_name, web, headers):
     
     return df
 
-
+# Jan: see above other function definitions
 def read_transnetbw(filepath, variable_name, web, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
@@ -513,7 +528,7 @@ def read_transnetbw(filepath, variable_name, web, headers):
     
     return df
 
-
+# Jan: See other function definitions
 def read_capacities(filepath, web, headers):
     """
     Read a .csv file with capacity timeseries data from the OPSD renewables
@@ -558,7 +573,8 @@ def read_capacities(filepath, web, headers):
     df.index = df.index.tz_localize('Europe/Berlin')
     df.index = df.index.tz_convert(None)
     df = df.resample('15min').ffill()
-    
+
+    # Jan: Writing the list comprehension in one line makes it more readable
     # Create the MultiIndex
     tuples = [
         (tech, 'DE', 'capacity', 'own calculation', web)
@@ -570,6 +586,7 @@ def read_capacities(filepath, web, headers):
     
     return df
 
+# Jan: See comments related to the variable name web.
 def read_svenska_kraftnaet(filePath, variable_name, web, headers):
     """
     Read a .xls file with wind and solar power timeseries data from 
@@ -604,7 +621,7 @@ def read_svenska_kraftnaet(filePath, variable_name, web, headers):
         io = filePath,
         #read the last sheet (in some years,
         # there are hidden sheets that would cause errors)
-        sheetname = -1, 
+        sheetname = -1, # Jan: No whitespace around parameter equals (PEP 8)
         header = None,
         skiprows = skipper,
         index_col = None,
@@ -629,12 +646,14 @@ def read_svenska_kraftnaet(filePath, variable_name, web, headers):
         df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst = True) 
         
     df.set_index('timestamp', inplace=True)
+    # Jan: Typo in daylight
     # The timestamp ("Tid" in the original) gives the time without 
     # dayligt savings time adjustments (normaltid). To convert to UTC,
     # one hour has to be deducted
     df.index = df.index + pd.offsets.Hour(-1)   
     
     # Create the MultiIndex
+    # Jan: List comprehension
     tuples = [
         (tech, 'SE', 'generation', 'Svenska Kraftnaet', web)
         for tech
@@ -725,7 +744,16 @@ def read(sources_yaml_path, out_path, headers, subset=None):
                                 data_to_add = read_elia(filepath, variable_name, param_dict['web'], headers)
 
                             # cut off data_to_add at end of year:
+                                # Jan: Remove the new line above to make more clear that this belongs to the elif.
                                 data_to_add = data_to_add[:'2015-12-31 22:45:00']
+
+                            # Jan: Using the variable key = param_dict['resolution'] makes the whole expression more
+                            # readable. For example:
+                            # key = param_dict['resolution']
+                            # if len(data_sets[key]) == 0:
+                            #     data_sets[key] = data_to_add
+                            # else:
+                            #     data_sets[key] = data_sets[key].combine_first(data_to_add)
 
                             if len(data_sets[param_dict['resolution']]) == 0:
                                 data_sets[param_dict['resolution']] = data_to_add

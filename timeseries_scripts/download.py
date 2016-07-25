@@ -84,6 +84,10 @@ def download_file(source_name, variable_name, out_path,
     )
     
     if source_name == 'Elia':
+        # Jan: The closing bracket in line 3 lines below does not belong to the localize function but to astimezone.
+        # I would suggest arranging the start and end expression in one line
+        # start = tz('Europe/Brussels').localize(datetime.combine(start, time())).astimezone(tz('UTC'))
+
         start = tz('Europe/Brussels').localize(
             datetime.combine(start, time())).astimezone(tz('UTC')
         )       
