@@ -9,3 +9,6 @@ original_data
 
 # Generated files
 datapackage.json
+.idea/
+.ipynb_checkpoints/main-checkpoint.ipynb
+timeseries_scripts/__pycache__/
