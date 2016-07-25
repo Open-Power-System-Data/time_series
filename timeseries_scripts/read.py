@@ -586,6 +586,7 @@ def read_capacities(filepath, web, headers):
     
     return df
 
+
 # Jan: See comments related to the variable name web.
 def read_svenska_kraftnaet(filePath, variable_name, web, headers):
     """
@@ -720,12 +721,16 @@ def read(sources_yaml_path, out_path, headers, subset=None):
                         filepath = os.path.join(variable_dir, container, files[0])
                         # Check if file is not empty
                         if os.path.getsize(filepath) < 128:
+                            # Jan: Why not in one line?
                             logger.info(
                                 'file is smaller than 128 Byte, which means it is probably empty'
                             )
                         else:
+                            # Jan: You could use web_key =  param_dict['web'] in your data_to_add = ... expression.
+                            # Makes it more readable in my opinion.
                             if source_name == 'ENTSO-E':
                                 data_to_add = read_entso(filepath, param_dict['web'], headers)
+                            # Jan: elif or if?
                             if source_name == 'Energinet.dk':
                                 data_to_add = read_energinet_dk(filepath, param_dict['web'], headers)
                             elif source_name == 'Svenska Kraftnaet':
