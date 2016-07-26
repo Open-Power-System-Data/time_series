@@ -84,6 +84,10 @@ def download_file(source_name, variable_name, out_path,
     )
     
     if source_name == 'Elia':
+        # Jan: The closing bracket in line 3 lines below does not belong to the localize function but to astimezone.
+        # I would suggest arranging the start and end expression in one line
+        # start = tz('Europe/Brussels').localize(datetime.combine(start, time())).astimezone(tz('UTC'))
+
         start = tz('Europe/Brussels').localize(
             datetime.combine(start, time())).astimezone(tz('UTC')
         )       
@@ -177,7 +181,7 @@ def download_source(source_name, source_dict, out_path, start_date=None, end_dat
         session.auth = ('beta', password)
     else:
         session = None
-        
+    # Jan: For readability it makes sense to substitute param_dict['end' / 'start'] with variables.
     for variable_name, param_dict in source_dict.items():
         if param_dict['end'] == 'recent':
             param_dict['end'] = datetime.today().date()        
@@ -185,6 +189,7 @@ def download_source(source_name, source_dict, out_path, start_date=None, end_dat
         if start_date:
             if start_date <= param_dict['start']:
                 pass # do nothing
+            # Jan: This comparison could be written as param_dict['start'] < start_date < param_dict['end']
             elif start_date > param_dict['start'] and start_date < param_dict['end']:
                 param_dict['start'] = start_date # replace  param_dict['start']
             else: 
@@ -192,7 +197,8 @@ def download_source(source_name, source_dict, out_path, start_date=None, end_dat
 
         if end_date:
             if end_date <= param_dict['start']:
-                continue # skip this variable from the source dict, relevant e.g. in Sweden                
+                continue # skip this variable from the source dict, relevant e.g. in Sweden
+                # Jan: Can also be simplified
             elif end_date > param_dict['start'] and end_date < param_dict['end']:
                 param_dict['end'] = end_date # replace  param_dict['end']
             else: 
