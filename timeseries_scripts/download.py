@@ -9,7 +9,7 @@ download.py : download time series files
 
 import argparse
 from datetime import datetime, date, time, timedelta
-from pytz import timezone as tz
+import pytz
 import getpass
 import logging
 import os
@@ -59,37 +59,35 @@ def download_file(source_name, variable_name, out_path,
         session = requests.session()
 
     logger.info(
-        'Downloading data:\n         '
-        'Source:      {}\n         '
-        'Variable:    {}\n         '
-        'Data starts: {:%Y-%m-%d} \n         '
+        'Downloading data:\n\t '
+        'Source:      {}\n\t '
+        'Variable:    {}\n\t '
+        'Data starts: {:%Y-%m-%d}\n\t '
         'Data ends:   {:%Y-%m-%d}'
         .format(source_name, variable_name, start, end)
     )
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
-    container = os.path.join(
-        out_path, source_name, variable_name,
-        start.strftime('%Y-%m-%d') + '_' +
-        end.strftime('%Y-%m-%d')
-    )
+    container = os.path.join(out_path, source_name, variable_name,
+                             start.strftime('%Y-%m-%d') + '_' +
+                             end.strftime('%Y-%m-%d'))
     os.makedirs(container, exist_ok=True)    
     
     # Get number of months between now and start (required for TransnetBW).
-    count = (
-        datetime.now().month
-        - start.month
-        + (datetime.now().year - start.year) * 12
-    )
+    count = (datetime.now().month
+             - start.month
+             + (datetime.now().year - start.year) * 12)
     
+    # Belgian TSO Elia requires start/end with time in UTC format
     if source_name == 'Elia':
-        start = tz('Europe/Brussels').localize(
-            datetime.combine(start, time())).astimezone(tz('UTC')
-        )       
-        end = tz('Europe/Brussels').localize(
-            datetime.combine(end+timedelta(days=1), time())).astimezone(tz('UTC')
-        )
+        start = (pytz.timezone('Europe/Brussels')
+                 .localize(datetime.combine(start, time()))
+                 .astimezone(pytz.timezone('UTC')))
+                 
+        end = (pytz.timezone('Europe/Brussels')
+               .localize(datetime.combine(end+timedelta(days=1), time()))
+               .astimezone(pytz.timezone('UTC')))
         
     url_params = {} # A dict for paramters
     # For most sources, we can use HTTP get method with paramters-dict
@@ -130,11 +128,12 @@ def download_file(source_name, variable_name, out_path,
                 original_filename = param_dict['filename'].format(u_start=start, u_end=end)  
             else:
                 logger.info(
-                    'original filename could neither be retrieved from server nor sources.yml'
+                    'original filename could neither be retrieved from server'
+                    'nor sources.yml'
                 )
                 original_filename = 'data'
 
-        logger.info('Downloaded from URL: %s Original filename: %s',
+        logger.info('Downloaded from URL: %s\n\t Original filename: %s',
                      resp.url, original_filename)
         
         #Save file to disk
@@ -144,14 +143,14 @@ def download_file(source_name, variable_name, out_path,
                 output_file.write(chunk)
 
     elif count_files == 1:
-        logger.info('There is already a file: %s', os.listdir(container)[0])
+        logger.info('Found local file: %s', os.listdir(container)[0])
 
     else:
         logger.info('There must not be more than one file in: %s. Please check ',
                      container)
 
 
-def download_source(source_name, source_dict, out_path, start_date=None, end_date=None):
+def download_source(source_name, source_dict, out_path, start_from_user=None, end_from_user=None):
     """
     Download all files for source_name as specified by the given
     source_dict into out_path. Returns None.
@@ -164,9 +163,9 @@ def download_source(source_name, source_dict, out_path, start_date=None, end_dat
         Dictionary of variables and their parameters for the given source.
     out_path : str
         Base download directory in which to save all downloaded files.
-    start_date : datetime.date, optional
+    start_from_user : datetime.date, optional
         Start of period for which to download the data.
-    end_date : datetime.date, optional
+    end_from_user : datetime.date, optional
         End of period for which to download the data
 
     """
@@ -177,32 +176,37 @@ def download_source(source_name, source_dict, out_path, start_date=None, end_dat
         session.auth = ('beta', password)
     else:
         session = None
-        
+
     for variable_name, param_dict in source_dict.items():
-        if param_dict['end'] == 'recent':
-            param_dict['end'] = datetime.today().date()        
+        start_server = param_dict['start']
+        end_server = param_dict['end']
+        
+        if end_server == 'recent':
+            end_server = datetime.now().date()        
 
-        if start_date:
-            if start_date <= param_dict['start']:
+        if start_from_user:
+            if start_from_user <= start_server:
                 pass # do nothing
-            elif start_date > param_dict['start'] and start_date < param_dict['end']:
-                param_dict['start'] = start_date # replace  param_dict['start']
+            # elif start_from_user > param_dict['start'] and start_from_user < param_dict['end']:
+            elif start_server < start_from_user < end_server:    
+                start_server = start_from_user  # replace start_server
             else: 
+                continue  # skip this variable from the source dict, relevant e.g. in Sweden
+
+        if end_from_user:
+            if end_from_user <= start_server:
                 continue # skip this variable from the source dict, relevant e.g. in Sweden
-
-        if end_date:
-            if end_date <= param_dict['start']:
-                continue # skip this variable from the source dict, relevant e.g. in Sweden                
-            elif end_date > param_dict['start'] and end_date < param_dict['end']:
-                param_dict['end'] = end_date # replace  param_dict['end']
+            # elif end_from_user > param_dict['start'] and end_from_user < param_dict['end']:
+            elif start_server < end_from_user < end_server:
+                end_server = end_from_user  # replace  end_server
             else: 
-                pass # do nothing
+                pass  # do nothing
                 
                 
         if param_dict['frequency'] in ['complete', 'irregular']:
             download_file(
                 source_name, variable_name, out_path, param_dict,
-                start=param_dict['start'], end=param_dict['end'],
+                start=start_server, end=end_server,
                 session=session
             )
         
@@ -213,18 +217,16 @@ def download_source(source_name, source_dict, out_path, start_date=None, end_dat
             # individual files to be downloaded.
 
             starts = pd.date_range(
-                start=param_dict['start'], end=param_dict['end'],
+                start=start_server, end=end_server,
                 freq=param_dict['frequency'] + 'S',
-                #tz=timezone
             )
             ends = pd.date_range(
-                start=param_dict['start'], end=param_dict['end'],
+                start=start_server, end=end_server,
                 freq=param_dict['frequency'],
-                #tz=timezone
             )
 
             if len(ends) == 0:
-                ends = pd.DatetimeIndex([param_dict['end']])
+                ends = pd.DatetimeIndex([end_server])
     
             for s, e in zip(starts, ends):
                 download_file(
@@ -233,7 +235,7 @@ def download_source(source_name, source_dict, out_path, start_date=None, end_dat
                 )
 
 
-def download(sources_yaml_path, out_path, start_date=None, end_date=None, subset=None):
+def download(sources_yaml_path, out_path, start_from_user=None, end_from_user=None, subset=None):
     """
     Load YAML file with sources from disk, and download all files for each
     source into the given out_path. Returns None.
@@ -244,17 +246,17 @@ def download(sources_yaml_path, out_path, start_date=None, end_date=None, subset
         Filepath of sources.yml
     out_path : str
         Base download directory in which to save all downloaded files.    
-    start_date : datetime.date, optional
+    start_from_user : datetime.date, optional
         Start of period for which to download the data.
-    end_date : datetime.date, optional
+    end_from_user : datetime.date, optional
         End of period for which to download the data
     subset : list or iterable, optional
         If given, specifies a subset of data sources to download,
         e.g.: ['TenneT', '50Hertz'].
 
     """
-    for name, date in {'end_date': end_date, 'start_date': start_date}.items():
-        if date and date > datetime.today().date():
+    for name, date in {'end_from_user': end_from_user, 'start_from_user': start_from_user}.items():
+        if date and date > datetime.now().date():
             logger.info('%s given was %s, must be smaller than %s, '
                         'we have no data for the future!',
                         name, date, datetime.today().date())
@@ -268,14 +270,14 @@ def download(sources_yaml_path, out_path, start_date=None, end_date=None, subset
         sources = {k: v for k, v in sources.items() if k in subset}
 
     for source_name, source_dict in sources.items():
-        download_source(source_name, source_dict, out_path, start_date, end_date)
+        download_source(source_name, source_dict, out_path, start_from_user, end_from_user)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('sources_yaml_path', type=str)
     parser.add_argument('out_path', type=str)
-    parser.add_argument('end_date', type=date)
+    parser.add_argument('end_from_user', type=date)
     parser.add_argument('-s', '--subset', nargs='*', action='append')
     args = parser.parse_args()
 

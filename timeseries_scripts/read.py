@@ -6,8 +6,6 @@ Timeseries Datapackage
 read.py : read time series files
 
 """
-
-from datetime import datetime, date, timedelta
 import pytz
 import yaml
 import os
@@ -19,7 +17,7 @@ logger = logging.getLogger('log')
 logger.setLevel('INFO')
 
 
-def read_elia(filepath, variable_name, web, headers):
+def read_elia(filepath, variable_name, url, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
     Elia into a dataframe. Returns a pandas.DataFrame.
@@ -30,7 +28,7 @@ def read_elia(filepath, variable_name, web, headers):
         Directory path of file to be read.
     variable_name : str
         Name of variable, e.g. ``solar`
-    web : str
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -39,10 +37,10 @@ def read_elia(filepath, variable_name, web, headers):
     """
     df = pd.read_excel(
         io=filepath,
-        header = None,
-        skiprows = 4,
-        index_col = 0,
-        parse_cols = [0, 2, 4, 5]
+        header=None,
+        skiprows=4,
+        index_col=0,
+        parse_cols=[0, 2, 4, 5]
     )
 
     df.columns = ['forecast', 'generation', 'capacity']
@@ -53,18 +51,14 @@ def read_elia(filepath, variable_name, web, headers):
     df.index = df.index.tz_convert(None)
 
     # Create the MultiIndex
-    tuples = [
-        (variable_name, 'BE', attribute, 'Elia', web)
-        for attribute
-        in df.columns
-    ]
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
+    tuples = [(variable_name, 'BE', attribute, 'Elia', url)
+              for attribute in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
 
 
-def read_energinet_dk(filepath, web, headers):
+def read_energinet_dk(filepath, url, headers):
     """
     Read a .csv file with wind/solar power timeseries and price data from 
     TransnetBW into a dataframe. Returns a pandas.DataFrame.
@@ -74,7 +68,7 @@ def read_energinet_dk(filepath, web, headers):
     filepath : str
         Directory path of file to be read.
     web : str
-        URL linking to the source website where this data comes from.
+        URL linking to the source urlsite where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe.
@@ -83,8 +77,8 @@ def read_energinet_dk(filepath, web, headers):
     df = pd.read_excel(
         io=filepath,
         header=2, # the column headers are taken from 3rd row. 
-        # Row 2 also contains header info like in a multiindex, 
-        # i.e. wether the coulms are price or generation data. 
+        # 2nd row also contains header info like in a multiindex, 
+        # i.e. wether the colums are price or generation data. 
         # However, we will make our own columnnames below. 
         # Row 3 is enough to unambigously identify the columns 
         skiprows=None,
@@ -96,19 +90,16 @@ def read_energinet_dk(filepath, web, headers):
     df.reset_index(inplace=True)
     df['timestamp'] = pd.to_datetime(
         df['date'].astype(str) + ' ' +
-        (df['hour'] - 1).astype(str) + ':00'
-    )
+        (df['hour'] - 1).astype(str) + ':00')
     df.set_index('timestamp', inplace=True) 
-    
+
     # Create a list of spring-daylight savings time (DST)-transitions 
     dst_transitions_spring = [
         d.replace(hour=2)
-        for d
-        in pytz.timezone('Europe/Copenhagen')._utc_transition_times
-        if d.year >= 2000 and d.month == 3
-    ]
+        for d in pytz.timezone('Europe/Copenhagen')._utc_transition_times
+        if d.year >= 2000 and d.month == 3]
 
-    # Drop 3rd hourd for (spring) DST-transition. 
+    # Drop 3rd hour for (spring) DST-transition from df. 
     df = df[~df.index.isin(dst_transitions_spring)]    
     
     dst_arr = np.ones(len(df.index), dtype=bool)
@@ -117,32 +108,48 @@ def read_energinet_dk(filepath, web, headers):
     
     source = 'Energinet.dk'
     colmap = {
-        'DK-West': ('price', 'DKw', 'Elspot', source, web),
-        'DK-East': ('price', 'DKw', 'Elspot', source, web),
-        'Norway': ('price', 'NO', 'Elspot', source, web),
-        'Sweden (SE)': ('price', 'SE', 'Elspot', source, web),
-        'Sweden (SE3)': ('price', 'SE3', 'Elspot', source, web),
-        'Sweden (SE4)': ('price', 'SE4', 'Elspot', source, web),
-        'DE European Power Exchange': ('price', 'DE', 'EPEX', source, web),
-        'DK-West: Wind power production': ('wind', 'DKw', 'generation', source, web),
-        'DK-West: Solar cell production (estimated)': ('solar', 'Dke', 'generation', source, web),
-        'DK-East: Wind power production': ('wind', 'DKe', 'generation', source, web),
-        'DK-East: Solar cell production (estimated)': ('solar', 'DKe', 'generation', source, web),
-        'DK: Wind power production (onshore)': ('wind', 'DK', 'onshore', source, web),
-        'DK: Wind power production (offshore)': ('wind', 'DK', 'offshore', source, web)
+        'DK-West': 
+            ('price', 'DK-West', 'Elspot', source, url),
+        'DK-East': 
+            ('price', 'DK-East', 'Elspot', source, url),
+        'Norway': 
+            ('price', 'NO', 'Elspot', source, url),
+        'Sweden (SE)': 
+            ('price', 'SE', 'Elspot', source, url),
+        'Sweden (SE3)': 
+            ('price', 'SE-3', 'Elspot', source, url),
+        'Sweden (SE4)': 
+            ('price', 'SE-4', 'Elspot', source, url),
+        'DE European Power Exchange': 
+            ('price', 'DE', 'EPEX', source, url),
+        'DK-West: Wind power production': 
+            ('wind-total', 'DK-West', 'generation', source, url),
+        'DK-West: Solar cell production (estimated)': 
+            ('solar', 'DK-West', 'generation', source, url),
+        'DK-East: Wind power production': 
+            ('wind-total', 'DK-East', 'generation', source, url),
+        'DK-East: Solar cell production (estimated)': 
+            ('solar', 'DK-East', 'generation', source, url),
+        'DK: Wind power production (onshore)': 
+            ('wind-onshore', 'DK', 'generation', source, url),
+        'DK: Wind power production (offshore)': 
+            ('wind-offshore', 'DK', 'generation', source, url)
     }
-
-    tuples = [colmap[col] if col in colmap else (col, '', 'x', source, web) for col in df.columns]
     
-    # Create the MultiIndex.  
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
-    df.drop(['x'], axis=1, level=2, inplace=True)
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+    
+    # Create the MultiIndex. 
+    tuples = [colmap[col] for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    # Drop any other columns that might have been included in download
+    df.drop(['drop_me'], axis=1, level=2, inplace=True)
         
     return df
 
 
-def read_entso(filepath, web, headers):
+def read_entso(filepath, url, headers):
     """
     Read a .xls file with hourly load data from the ENTSO Data Portal
     into a dataframe. Returns a pandas.DataFrame.
@@ -151,7 +158,7 @@ def read_entso(filepath, web, headers):
     ----------
     filepath : str
         Directory path of file to be read.
-    web : str
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -163,8 +170,8 @@ def read_entso(filepath, web, headers):
         header=9, # 0 indexed, so the column names are actually in the 10th row
         skiprows=None,
         index_col=[0, 1], # create MultiIndex from first 2 columns ['Country', 'Day']
-        parse_cols = None, # None means: parse all columns
-        na_values = ['n.a.']
+        parse_cols=None, # None means: parse all columns
+        na_values=['n.a.']
     )
         
     df.columns.names = ['raw_hour']
@@ -174,10 +181,11 @@ def read_entso(filepath, web, headers):
     # countries on the columns.  
     df = df.stack(level='raw_hour').unstack(level='Country').reset_index()    
     
-    # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc. during the year, 
-    # but 3A:00:00, 3B:00:00 for the (possibely DST-transgressing) 3rd hour of every day in October
-    # We truncate the hours column after 2 characters and replace letters 
-    # which are there to indicate the order during fall DST-transition.      
+    # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc. 
+    # during the year, but 3A:00:00, 3B:00:00 for the (possibely 
+    # DST-transgressing) 3rd hour of every day in October, we truncate the 
+    # hours column after 2 characters and replace letters which are there to 
+    # indicate the order during fall DST-transition.      
     df['hour'] = df['raw_hour'].str[:2].str.replace('A','').str.replace('B','')
     # Hours are indexed 1-24 by ENTSO-E, but pandas requires 0-23, so we deduct 1,
     # i.e. the 3rd hour will be indicated by "2:00" rather than "3:00"
@@ -189,10 +197,8 @@ def read_entso(filepath, web, headers):
     # Create a list of daylight savings time (DST)-transitions 
     dst_transitions = [
         d.replace(hour=2)
-        for d
-        in pytz.timezone('Europe/Berlin')._utc_transition_times
-        if d.year >= 2000
-    ]
+        for d in pytz.timezone('Europe/Berlin')._utc_transition_times
+        if d.year >= 2000]
     
     # Drop 2nd occurence of 3rd hour appearing in October file 
     # except for the day of the actual autumn DST-transition.  
@@ -209,14 +215,13 @@ def read_entso(filepath, web, headers):
     df.rename(columns={'DK_W': 'DKw', 'UA_W': 'UAw'}, inplace=True)
     
     # Create the MultiIndex.  
-    tuples = [('load', country, 'load', 'ENTSO-E', web) for country in df.columns]
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
+    tuples = [('load', country, 'load', 'ENTSO-E', url) for country in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
 
 
-def read_hertz(filepath, tech_attribute, web, headers):
+def read_hertz(filepath, variable_name, url, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
     50Hertz into a dataframe. Returns a pandas.DataFrame.
@@ -227,23 +232,33 @@ def read_hertz(filepath, tech_attribute, web, headers):
         Directory path of file to be read.
     tech_attribute: str
         Technology_attribute of the data, e.g. ``wind_forecast`` 
-    web : str
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe.
 
     """
-    tech = tech_attribute.split('_')[0]
-    attribute = tech_attribute.split('_')[1]
+    #since 2016, wind data has an aditional column for offshore
+    if variable_name.split('_')[0] == 'wind': 
+        tech, attribute, phase = variable_name.split('_')
+        cols = ['date', 'time', attribute]
+        tuples = [('wind-onshore', 'DE-50Hertz', attribute, '50Hertz', url)]
+        if phase == 'with_offshore':
+            cols.append('wind-offshore')
+            tuples.append(('wind-offshore', 'DE-50Hertz', attribute, '50Hertz', url))
+    
+    elif variable_name.split('_')[0] == 'solar':
+        tech, attribute = variable_name.split('_')
+        cols = ['date', 'time', attribute]
+        tuples = [('solar', 'DE-50Hertz', attribute, '50Hertz', url)]
+        
     df = pd.read_csv(
         filepath,
         sep=';',
         header=3,
         index_col='timestamp',
-        names=['date',
-               'time',
-               attribute],
+        names=cols,
         parse_dates={'timestamp': ['date', 'time']},
         date_parser=None,
         dayfirst=True,
@@ -267,14 +282,12 @@ def read_hertz(filepath, tech_attribute, web, headers):
     df.index = df.index.tz_convert(None)
     
     # Create the MultiIndex
-    tuples = [(tech, 'DE50hertz', attribute, '50Hertz', web)]
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
 
 
-def read_amprion(filepath, variable_name, web, headers):
+def read_amprion(filepath, variable_name, url, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
     Amprion into a dataframe. Returns a pandas.DataFrame.
@@ -284,8 +297,8 @@ def read_amprion(filepath, variable_name, web, headers):
     filepath : str
         Directory path of file to be read.
     variable_name : str
-        Name of variable, e.g. ``solar`
-    web : str
+        Name of variable, e.g. ``solar``
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -297,10 +310,7 @@ def read_amprion(filepath, variable_name, web, headers):
         sep=';',
         header=0,
         index_col='timestamp',
-        names=['date',
-               'time',
-               'forecast',
-               'generation'],
+        names=['date', 'time', 'forecast', 'generation'],
         parse_dates={'timestamp' : ['date', 'time']},
         date_parser=None,
         dayfirst=True,
@@ -323,20 +333,16 @@ def read_amprion(filepath, variable_name, web, headers):
     index2 = index2.tz_localize('Europe/Berlin', ambiguous=dst_arr)        
     df.index = index1.append(index2)
     df.index = df.index.tz_convert(None)
-    
+
     # Create the MultiIndex
-    tuples = [
-        (variable_name, 'DEamprion', attribute, 'Amprion', web)
-        for attribute
-        in df.columns
-    ]
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns    
+    tuples = [(variable_name, 'DE-Amprion', attribute, 'Amprion', url)
+              for attribute in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
 
 
-def read_tennet(filepath, variable_name, web, headers):
+def read_tennet(filepath, variable_name, url, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
     TenneT DE into a dataframe. Returns a pandas.DataFrame.
@@ -346,8 +352,8 @@ def read_tennet(filepath, variable_name, web, headers):
     filepath : str
         Directory path of file to be read.
     variable_name : str
-        Name of variable, e.g. ``solar`
-    web : str
+        Name of variable, e.g. ``solar``
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -359,7 +365,7 @@ def read_tennet(filepath, variable_name, web, headers):
         colnames = ['date', 'pos', 'forecast', 'generation']
     if variable_name == 'wind':
         cols = [0, 1, 2, 3, 4]
-        colnames = ['date', 'pos', 'forecast', 'generation', 'offshore']
+        colnames = ['date', 'pos', 'forecast', 'wind-total', 'wind-offshore']
         
     df = pd.read_csv(
         filepath,
@@ -378,12 +384,12 @@ def read_tennet(filepath, variable_name, web, headers):
 
     df['date'].fillna(method='ffill', limit = 100, inplace=True)
 
+    # Check the rows for irregularities
     for i in range(len(df.index)):
         # On the day in March when summertime begins, shift the data forward by
         # 1 hour, beginning with the 9th quarter-hour, so the index runs again
         # up to 96
-        if (df['pos'][i] == 92 and
-            ((i == len(df.index)-1) or (df['pos'][i + 1] == 1))):
+        if (df['pos'][i] == 92 and ((i == len(df.index)-1) or (df['pos'][i + 1] == 1))):
             slicer = df[(df['date'] == df['date'][i]) & (df['pos'] >= 9)].index
             df.loc[slicer, 'pos'] = df['pos'] + 4
 
@@ -394,11 +400,11 @@ def read_tennet(filepath, variable_name, web, headers):
             # Instead of having the quarter-hours' index run up to 100, we want 
             # to have it set back by 1 hour beginning from the 13th
             # quarter-hour, ending at 96
-            if (df['pos'][i] == 100 and not (df['pos'] == 101).any()):                    
+            if df['pos'][i] == 100 and not (df['pos'] == 101).any():                  
                 slicer = df[(df['date'] == df['date'][i]) & (df['pos'] >= 13)].index
                 df.loc[slicer, 'pos'] = df['pos'] - 4                     
 
-            # In 2011 and 2012, there are 101 qaurter hours on the day the 
+            # In 2011 and 2012, there are 101 quarter hours on the day the 
             # summertime ends, so 1 too many.  From looking at the data, we
             # inferred that the 13'th quarter hour is the culprit, so we drop
             # that.  The following entries for that day need to be shifted.
@@ -430,33 +436,31 @@ def read_tennet(filepath, variable_name, web, headers):
     # In the years 2006, 2008, and 2009, the dst-transition hour in March
     # appears as empty rows in the data.  We delete it from the set in order to
     # make the timezone localization work.  
-    for crucial_date in pd.to_datetime(['2006-03-26', '2008-03-30',
-                                        '2009-03-29']).date:
+    for crucial_date in pd.to_datetime(
+        ['2006-03-26', '2008-03-30', '2009-03-29']).date:
         if df.index[0].year == crucial_date.year:
             df = df[~((df.index.date == crucial_date) &
-                          (df.index.hour == 2))]
+                      (df.index.hour == 2))]
 
     df.drop(['pos', 'date', 'hour', 'minute'], axis=1, inplace=True)
 
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
-    
+
     # Create the MultiIndex
-    tuples = [
-        (variable_name, 'DEtennet', attribute, 'TenneT', web)
-        for attribute
-        in df.columns[0:1]
-    ]
-    if variable_name == 'wind': # offshore data becomes available 2009-09-20
-        tuples.append(('wind-offshore', 'DEtennet', 'generation', 'TenneT', web))
-        
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
+    if variable_name == 'solar':
+        tuples = [('solar', 'DE-Tennet', 'forecast', 'TenneT', url),
+                  ('solar', 'DE-Tennet', 'generation', 'TenneT', url)]
+    if variable_name == 'wind': # offshore generation starts 2009-09-20
+        tuples = [('wind-total', 'DE-Tennet', 'forecast', 'TenneT', url),
+                  ('wind-total', 'DE-Tennet', 'generation', 'TenneT', url),                
+                  ('wind-offshore', 'DE-Tennet', 'generation', 'TenneT', url)]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
 
 
-def read_transnetbw(filepath, variable_name, web, headers):
+def read_transnetbw(filepath, variable_name, url, headers):
     """
     Read a .csv file with wind or solar power timeseries data from 
     TransnetBW into a dataframe. Returns a pandas.DataFrame.
@@ -467,7 +471,7 @@ def read_transnetbw(filepath, variable_name, web, headers):
         Directory path of file to be read.
     variable_name : str
         Name of variable, e.g. ``solar`
-    web : str
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -479,17 +483,14 @@ def read_transnetbw(filepath, variable_name, web, headers):
         sep=';',
         header=0,
         index_col='timestamp',
-        names=['date',
-               'time',
-               'forecast',
-               'generation'],
+        names=['date', 'time', 'forecast', 'generation'],
         parse_dates={'timestamp': ['date', 'time']},
         date_parser=None,         
         dayfirst=True,
         decimal=',',
         thousands=None,
         converters=None,
-        usecols=[2, 3, 4, 5],
+        usecols=[2, 3, 4, 5],  # 0-indexed, i.e. "2" refers to the 3rd column
     )
     
     # 'ambigous' refers to how the October dst-transition hour is handled.  
@@ -497,24 +498,20 @@ def read_transnetbw(filepath, variable_name, web, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
     
-    # The time taken from column 3 indicates the end of the respective period.
-    # to construct the index, however, we need the beginning, so we shift the 
-    # data back by 1 period.  
+    # The 2nd column represents the start and the 4th the end of the respective 
+    # period. The former has some errors, so we use the latter to construct the 
+    # index and shift the data back by 1 period.  
     df = df.shift(periods=-1, freq='15min', axis='index')
     
     # Create the MultiIndex
-    tuples = [
-        (variable_name, 'DEtransnetbw', attribute, 'TransnetBW', web)
-        for attribute
-        in df.columns
-    ]
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
+    tuples = [(variable_name, 'DE-TransnetBW', attribute, 'TransnetBW', url)
+              for attribute in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
 
 
-def read_capacities(filepath, web, headers):
+def read_capacities(filepath, url, headers):
     """
     Read a .csv file with capacity timeseries data from the OPSD renewables
     datapacke into a dataframe. Returns a pandas.DataFrame.
@@ -523,7 +520,7 @@ def read_capacities(filepath, web, headers):
     ----------
     filepath : str
         Directory path of file to be read.
-    web : str
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -535,9 +532,7 @@ def read_capacities(filepath, web, headers):
         sep=',',
         header=0,
         index_col='timestamp',
-        names=['timestamp',
-               'wind',
-               'solar'],
+        names=['timestamp', 'wind-total', 'solar'],
         parse_dates=True,
         date_parser=None,         
         dayfirst=True,
@@ -558,19 +553,16 @@ def read_capacities(filepath, web, headers):
     df.index = df.index.tz_localize('Europe/Berlin')
     df.index = df.index.tz_convert(None)
     df = df.resample('15min').ffill()
-    
+
     # Create the MultiIndex
-    tuples = [
-        (tech, 'DE', 'capacity', 'own calculation', web)
-        for tech
-        in df.columns
-    ]
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
+    tuples = [(tech, 'DE', 'capacity', 'OPSD datapackage_renewables', url)
+              for tech in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
 
-def read_svenska_kraftnaet(filePath, variable_name, web, headers):
+
+def read_svenska_kraftnaet(filePath, variable_name, url, headers):
     """
     Read a .xls file with wind and solar power timeseries data from 
     Svenska Kraftnaet into a dataframe. Returns a pandas.DataFrame.
@@ -581,7 +573,7 @@ def read_svenska_kraftnaet(filePath, variable_name, web, headers):
         Directory path of file to be read.
     variable_name : str
         Name of variable, e.g. ``solar`
-    web : str
+    url : str
         URL linking to the source website where this data comes from.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -589,26 +581,26 @@ def read_svenska_kraftnaet(filePath, variable_name, web, headers):
 
     """
     if variable_name in ['wind_solar_1', 'wind_solar_2']:
-        skipper = 4
+        skip = 4
         cols = [0,1,3]
-        colnames = ['date', 'hour', 'wind']
+        colnames = ['date', 'hour', 'wind-total']
     else:
         if variable_name == 'wind_solar_4':
-            skipper = 5
+            skip = 5
         else:
-            skipper = 7
+            skip = 7
         cols = [0,2,8]
-        colnames = ['timestamp', 'wind', 'solar']
+        colnames = ['timestamp', 'wind-total', 'solar']
         
     df = pd.read_excel(
         io = filePath,
-        #read the last sheet (in some years,
+        # read the last sheet (in some years,
         # there are hidden sheets that would cause errors)
-        sheetname = -1, 
-        header = None,
-        skiprows = skipper,
-        index_col = None,
-        parse_cols = cols
+        sheetname=-1,
+        header=None,
+        skiprows=skip,
+        index_col=None,
+        parse_cols=cols
     )
 
     df.columns = colnames
@@ -620,37 +612,32 @@ def read_svenska_kraftnaet(filePath, variable_name, web, headers):
             df['date'].astype(int).astype(str) + ' ' +
             df['hour'].astype(int).astype(str).str.replace('00','') + ':00',
             dayfirst = False,
-            infer_datetime_format = True
-        )
+            infer_datetime_format = True)
         df.drop(['date','hour'], axis=1, inplace = True)
     else:
         #in 2011 there is a row below the table for the sums that we don't want to read in
-        df = df[((df['timestamp'].notnull()) & (df['timestamp'].astype(str) != 'Tot summa GWh'))] 
+        df = df[((df['timestamp'].notnull()) &
+                 (df['timestamp'].astype(str) != 'Tot summa GWh'))] 
         df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst = True) 
         
     df.set_index('timestamp', inplace=True)
     # The timestamp ("Tid" in the original) gives the time without 
-    # dayligt savings time adjustments (normaltid). To convert to UTC,
+    # daylight savings time adjustments (normaltid). To convert to UTC,
     # one hour has to be deducted
     df.index = df.index + pd.offsets.Hour(-1)   
     
     # Create the MultiIndex
-    tuples = [
-        (tech, 'SE', 'generation', 'Svenska Kraftnaet', web)
-        for tech
-        in df.columns
-    ]
-    columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    df.columns = columns
+    tuples = [(tech, 'SE', 'generation', 'Svenska Kraftnaet', url)
+              for tech in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
 
 
 def read(sources_yaml_path, out_path, headers, subset=None):
     """
-    Read a .xls file with hourly load data from the Energinet DK Data Portal
-    into a dataframe. Returns a pandas.DataFrame.
-
+    For the sources specified in the sources.yml file, pass each downloaded
+    file to the correct read function.
     Parameters
     ----------
     sources_yaml_path : str
@@ -691,47 +678,49 @@ def read(sources_yaml_path, out_path, headers, subset=None):
                         logger.info('error: found more than one file in %s %s %s',
                                     source_name, variable_name, container)
                     else:                        
-                        logger.info(
-                            'reading data:\n         '
-                            'Source:   %s\n         '
-                            'Variable: %s\n         '
-                            'Filename: %s',
-                            source_name, variable_name, files[0]
-                        )
+                        logger.info('reading data:\n\t '
+                                    'Source:   %s\n\t '
+                                    'Variable: %s\n\t '
+                                    'Filename: %s',
+                                    source_name, variable_name, files[0])
+                        
                         filepath = os.path.join(variable_dir, container, files[0])
+                        
                         # Check if file is not empty
                         if os.path.getsize(filepath) < 128:
                             logger.info(
                                 'file is smaller than 128 Byte, which means it is probably empty'
                             )
                         else:
-                            if source_name == 'ENTSO-E':
-                                data_to_add = read_entso(filepath, param_dict['web'], headers)
-                            if source_name == 'Energinet.dk':
-                                data_to_add = read_energinet_dk(filepath, param_dict['web'], headers)
+                            url = param_dict['web']
+                            if source_name == 'OPSD':
+                                data_to_add = read_capacities(filepath, url, headers)
+                            elif source_name == 'ENTSO-E':
+                                data_to_add = read_entso(filepath, url, headers)
+                            elif source_name == 'Energinet.dk':
+                                data_to_add = read_energinet_dk(filepath, url, headers)
                             elif source_name == 'Svenska Kraftnaet':
-                                data_to_add = read_svenska_kraftnaet(filepath, variable_name, param_dict['web'], headers)
-                            elif source_name == '50Hertz':
-                                data_to_add = read_hertz(filepath, variable_name, param_dict['web'], headers)
-                            elif source_name == 'Amprion':
-                                data_to_add = read_amprion(filepath, variable_name, param_dict['web'], headers)
-                            elif source_name == 'TenneT':
-                                data_to_add = read_tennet(filepath, variable_name, param_dict['web'], headers)
-                            elif source_name == 'TransnetBW':
-                                data_to_add = read_transnetbw(filepath, variable_name, param_dict['web'], headers)
-                            elif source_name == 'OPSD':
-                                data_to_add = read_capacities(filepath, param_dict['web'], headers)
+                                data_to_add = read_svenska_kraftnaet(filepath, variable_name, url, headers)
                             elif source_name == 'Elia':
-                                data_to_add = read_elia(filepath, variable_name, param_dict['web'], headers)
+                                data_to_add = read_elia(filepath, variable_name, url, headers)
+                            elif source_name == '50Hertz':
+                                data_to_add = read_hertz(filepath, variable_name, url, headers)
+                            elif source_name == 'Amprion':
+                                data_to_add = read_amprion(filepath, variable_name, url, headers)
+                            elif source_name == 'TenneT':
+                                data_to_add = read_tennet(filepath, variable_name, url, headers)
+                            elif source_name == 'TransnetBW':
+                                data_to_add = read_transnetbw(filepath, variable_name, url, headers)
 
-                            # cut off data_to_add at end of year:
-                                data_to_add = data_to_add[:'2015-12-31 22:45:00']
+                            # cut off data_to_add at end of year (I fogot why I would want that):
+                            # data_to_add = data_to_add[:'2015-12-31 22:45:00']
 
-                            if len(data_sets[param_dict['resolution']]) == 0:
-                                data_sets[param_dict['resolution']] = data_to_add
+                            key = param_dict['resolution']
+                            if len(data_sets[key]) == 0:
+                                data_sets[key] = data_to_add
                             else:
-                                data_sets[param_dict['resolution']] = \
-                                data_sets[param_dict['resolution']].combine_first(data_to_add)
+                                data_sets[key] = data_sets[key].combine_first(data_to_add)
+
             
             #reindex with a synthetic index that is sure to be continous in order to expose gaps in the data
             no_gaps = pd.DatetimeIndex(start=data_sets[param_dict['resolution']].index[0],

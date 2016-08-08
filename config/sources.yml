@@ -1,3 +1,11 @@
+#
+# Open Power System Data
+#
+# Timeseries Datapackage
+#
+# sources.yml : Parameters required for downloading and parsing data from sources
+#
+
 OPSD:
     capacities:
         url_template: http://data.open-power-system-data.org/datapackage_renewables/2016-03-09/renewable_capacity_germany_timeseries.csv
@@ -26,27 +34,55 @@ ENTSO-E:
         end: 2015-12-31
         filetype: xls
         resolution: 60min
-        web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx #Hourly load values of all countries for a specific month
-
-
-##
-# German transmission system operators: 50Hertz, Amprion, TenneT, TransnetBW
-##
+        web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx  # Hourly load values of all countries for a specific month
 
 50Hertz:
-    wind_generation:
-        url_template: http://ws.50hertz.com/web01/api/WindPowerActual/DownloadFile
+    wind_generation_pre-offshore:
+        url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
         frequency: A
         start: 2005-01-01
+        end: 2015-12-31
+        filetype: csv
+        resolution: 15min
+        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
+    wind_forecast_pre-offshore:
+        url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
+        url_params_template:
+            callback: '?'
+            fileName: '{u_start:%Y}.csv'
+        frequency: A
+        start: 2005-01-01
+        end: 2015-12-31
+        filetype: csv
+        resolution: 15min
+        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
+    wind_generation_with-offshore:
+        url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
+        url_params_template:
+            callback: '?'
+            fileName: '{u_start:%Y}.csv'
+        frequency: A
+        start: 2016-01-01
+        end: recent
+        filetype: csv
+        resolution: 15min
+        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
+    wind_forecast_with-offshore:
+        url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
+        url_params_template:
+            callback: '?'
+            fileName: '{u_start:%Y}.csv'
+        frequency: A
+        start: 2016-01-01
         end: recent
         filetype: csv
         resolution: 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     solar_generation:
-        url_template: http://ws.50hertz.com/web01/api/PhotovoltaicActual/DownloadFile
+        url_template: http://ws.50hertz.com/web02/api/PhotovoltaicActual/DownloadFile
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
@@ -56,19 +92,8 @@ ENTSO-E:
         filetype: csv
         resolution: 15min
         web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
-    wind_forecast:
-        url_template: http://ws.50hertz.com/web01/api/WindPowerForecast/DownloadFile
-        url_params_template:
-            callback: '?'
-            fileName: '{u_start:%Y}.csv'
-        frequency: A
-        start: 2005-01-01
-        end: recent
-        filetype: csv
-        resolution: 15min
-        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     solar_forecast:
-        url_template: http://ws.50hertz.com/web01/api/PhotovoltaicForecast/DownloadFile
+        url_template: http://ws.50hertz.com/web02/api/PhotovoltaicForecast/DownloadFile
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
@@ -80,7 +105,7 @@ ENTSO-E:
         web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
 
 Amprion:
-    wind:
+    wind-onshore:
         url_template: http://amprion.de/applications/applicationfiles/winddaten2.php
         url_params_template:
             mode: download
@@ -135,7 +160,7 @@ TenneT:
         web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-photovoltaic-energy-feed-in
 
 TransnetBW:
-    wind:
+    wind-onshore:
         url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/windenergie
         url_params_template:
             app: wind
@@ -236,14 +261,14 @@ Svenska Kraftnaet:
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls        
 Elia: 
-    wind: 
+    wind-onshore: 
         url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
         url_params_template:
             beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
             endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
-            isOffshore: ''
+            isOffshore: 'false'
             isEliaConnected: ''
-        frequency: M #the frequency could in principle be chosen arbitrarily, even complete, but in practise the server often times out if too much data is requested at once, i.e. monthly
+        frequency: M #the frequency could in principle be chosen arbitrarily, even complete the complete dataset, but in practise the server often times out if too much data is requested at once 
         start: 2012-01-01  #the data starts from 2012-01-19
         end: recent
         filetype: xls
@@ -256,21 +281,6 @@ Elia:
             endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
             isOffshore: 'true'
             isEliaConnected: ''
-        frequency: Q
-        start: 2012-01-01  #the data starts from 2012-01-19
-        end: recent
-        filetype: xls
-        resolution: 15min
-        web: http://www.elia.be/en/grid-data/power-generation/wind-power
-
-Elia2:
-    wind-dsos: 
-        url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
-        url_params_template:
-            beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
-            endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
-            isOffshore: ''
-            isEliaConnected: 'false'
         frequency: Q
         start: 2012-01-01  #the data starts from 2012-01-19
         end: recent
