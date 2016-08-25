@@ -239,19 +239,31 @@ def read_hertz(filepath, variable_name, url, headers):
         for the columns of the dataframe.
 
     """
-    #since 2016, wind data has an aditional column for offshore
+        
+    # Since 2016, wind data has an aditional column for offshore
+    
+    # JONATHAN: Better change the variable-names for 50Hertz to 
+    # thios order: 'wind-with-onshore_generation' (?)
+    # JONATHAN: Baltic 1 has been producing since 2011-05-02 and Baltic2 since
+    # early 2015 (source: Wikipedia) so it is probably not correct that 50Hertz-Wind
+    # data pre-2016 is only onshore. Maybe we can ask at 50Hertz directly.
     if variable_name.split('_')[0] == 'wind': 
+        #import pdb; pdb.set_trace()
         tech, attribute, phase = variable_name.split('_')
-        cols = ['date', 'time', attribute]
+        cols = ['date', 'time', attribute + '_wind-onshore']
         tuples = [('wind-onshore', 'DE-50Hertz', attribute, '50Hertz', url)]
-        if phase == 'with_offshore':
-            cols.append('wind-offshore')
+        usecols=[0, 1, 3]
+        
+        if phase == 'with-offshore':
+            cols.append(attribute + '_wind-offshore')
             tuples.append(('wind-offshore', 'DE-50Hertz', attribute, '50Hertz', url))
+            usecols=[0, 1, 4, 5]
     
     elif variable_name.split('_')[0] == 'solar':
         tech, attribute = variable_name.split('_')
         cols = ['date', 'time', attribute]
         tuples = [('solar', 'DE-50Hertz', attribute, '50Hertz', url)]
+        usecols=[0, 1, 3]
         
     df = pd.read_csv(
         filepath,
@@ -266,7 +278,7 @@ def read_hertz(filepath, variable_name, url, headers):
         thousands='.',
         # truncate values in 'time' column after 5th character
         converters={'time': lambda x: x[:5]},
-        usecols=[0, 1, 3],
+        usecols=usecols,
     )
     
     # Until 2006 as well as  in 2015, during the fall dst-transistion, only the 
@@ -449,12 +461,12 @@ def read_tennet(filepath, variable_name, url, headers):
 
     # Create the MultiIndex
     if variable_name == 'solar':
-        tuples = [('solar', 'DE-Tennet', 'forecast', 'TenneT', url),
-                  ('solar', 'DE-Tennet', 'generation', 'TenneT', url)]
+        tuples = [('solar', 'DE-TenneT', 'forecast', 'TenneT', url),
+                  ('solar', 'DE-TenneT', 'generation', 'TenneT', url)]
     if variable_name == 'wind': # offshore generation starts 2009-09-20
-        tuples = [('wind-total', 'DE-Tennet', 'forecast', 'TenneT', url),
-                  ('wind-total', 'DE-Tennet', 'generation', 'TenneT', url),                
-                  ('wind-offshore', 'DE-Tennet', 'generation', 'TenneT', url)]
+        tuples = [('wind-total', 'DE-TenneT', 'forecast', 'TenneT', url),
+                  ('wind-total', 'DE-TenneT', 'generation', 'TenneT', url),                
+                  ('wind-offshore', 'DE-TenneT', 'generation', 'TenneT', url)]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     
     return df
@@ -675,7 +687,7 @@ def read(sources_yaml_path, out_path, headers, subset=None):
                     files = os.listdir(os.path.join(variable_dir, container))
                     # Check if there is only one file per folder
                     if not len(files) == 1:
-                        logger.info('error: found more than one file in %s %s %s',
+                        logger.info('error: found more than one file in %s %s %s', # JONATHAN Or less?
                                     source_name, variable_name, container)
                     else:                        
                         logger.info('reading data:\n\t '
