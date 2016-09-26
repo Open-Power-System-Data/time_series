@@ -12,10 +12,87 @@ import os
 import numpy as np
 import pandas as pd
 import logging
+import zipfile
 
 logger = logging.getLogger('log')
 logger.setLevel('INFO')
 
+def read_rte(filepath, variable_name, url, headers):
+    pass
+    return
+
+def read_pse(filepath, variable_name, url, headers):
+    """
+    Read a .csv file with wind or solar power timeseries data from 
+    TransnetBW into a dataframe. Returns a pandas.DataFrame.
+
+    Parameters
+    ----------
+    filepath : str
+        Directory path of file to be read.
+    variable_name : str
+        Name of variable, e.g. ``solar`
+    url : str
+        URL linking to the source website where this data comes from.
+    headers : list
+        List of strings indicating the level names of the pandas.MultiIndex
+        for the columns of the dataframe.
+
+    """
+    df = pd.read_csv(
+        filepath,
+        sep=';',
+        encoding='cp1250',
+        header=0,
+        index_col='timestamp',
+        names=None, #['date', 'time', 'forecast', 'generation'],
+        parse_dates={'timestamp': ['Data', 'Godzina']},
+        date_parser=None,         
+        dayfirst=False,
+        decimal=',',
+        thousands=None,
+        converters={'Godzina': lambda x: str(int(x[:2]) - 1) + ':00'},
+        usecols=None, 
+        infer_datetime_format=True
+    )
+    
+    # 'ambigous' refers to how the October dst-transition hour is handled.  
+    # ‘infer’ will attempt to infer dst-transition hours based on order.
+    df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+    
+    # Translate columns
+    colmap = {'Sumaryczna generacja źródeł wiatrowych': ('wind', 'PL', 'generation', 'PSE', url)}
+        
+    # Create the MultiIndex. 
+    tuples = [colmap[col] for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    
+    return df
+
+def read_ceps(filepath, variable_name, url, headers):
+    df = pd.read_excel(
+        io=filepath,
+        header=2,
+        skiprows=None,
+        index_col=0,
+        parse_cols=[0, 1, 2]
+    )
+    
+    df.index = pd.to_datetime(df.index.rename('timestamp'))
+    
+    df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+    
+    # Translate columns
+    colmap = {'WPP [MW]': ('wind-onshore', 'CZ', 'generation', 'CEPS', url),
+              'PVPP [MW]': ('solar', 'CZ', 'generation', 'CEPS', url),}
+        
+    # Create the MultiIndex. 
+    tuples = [colmap[col] for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    
+    return df
 
 def read_elia(filepath, variable_name, url, headers):
     """
@@ -86,7 +163,7 @@ def read_energinet_dk(filepath, url, headers):
         parse_cols=None # None means: parse all columns
     )
     
-    df.index.rename(['date', 'hour'], inplace=True)
+    df.index.rename(['date', 'hour'], inplace=True)  # JONATHAN Wieso hier eine Liste?
     df.reset_index(inplace=True)
     df['timestamp'] = pd.to_datetime(
         df['date'].astype(str) + ' ' +
@@ -664,7 +741,7 @@ def read(sources_yaml_path, out_path, headers, subset=None):
         e.g.: ['TenneT', '50Hertz'].
         
     """
-    data_sets = {'15min': pd.DataFrame(), '60min': pd.DataFrame()}
+#    data_sets = {'15min': pd.DataFrame(), '60min': pd.DataFrame()}
 
     with open(sources_yaml_path, 'r') as f:
         sources = yaml.load(f.read())
@@ -707,14 +784,20 @@ def read(sources_yaml_path, out_path, headers, subset=None):
                             url = param_dict['web']
                             if source_name == 'OPSD':
                                 data_to_add = read_capacities(filepath, url, headers)
+                            elif source_name == 'CEPS':
+                                data_to_add = read_ceps(filepath, variable_name, url, headers)
                             elif source_name == 'ENTSO-E':
                                 data_to_add = read_entso(filepath, url, headers)
                             elif source_name == 'Energinet.dk':
                                 data_to_add = read_energinet_dk(filepath, url, headers)
-                            elif source_name == 'Svenska Kraftnaet':
-                                data_to_add = read_svenska_kraftnaet(filepath, variable_name, url, headers)
                             elif source_name == 'Elia':
                                 data_to_add = read_elia(filepath, variable_name, url, headers)
+                            elif source_name == 'PSE':
+                                data_to_add = read_pse(filepath, variable_name, url, headers)                            
+                            elif source_name == 'RTE':
+                                data_to_add = read_rte(filepath, variable_name, url, headers)
+                            elif source_name == 'Svenska Kraftnaet':
+                                data_to_add = read_svenska_kraftnaet(filepath, variable_name, url, headers)
                             elif source_name == '50Hertz':
                                 data_to_add = read_hertz(filepath, variable_name, url, headers)
                             elif source_name == 'Amprion':
@@ -727,17 +810,19 @@ def read(sources_yaml_path, out_path, headers, subset=None):
                             # cut off data_to_add at end of year (I fogot why I would want that):
                             # data_to_add = data_to_add[:'2015-12-31 22:45:00']
 
-                            key = param_dict['resolution']
-                            if len(data_sets[key]) == 0:
-                                data_sets[key] = data_to_add
-                            else:
-                                data_sets[key] = data_sets[key].combine_first(data_to_add)
+                            yield param_dict['resolution'], data_to_add
+                            
+#                            key = param_dict['resolution']
+#                            if len(data_sets[key]) == 0:
+#                                data_sets[key] = data_to_add
+#                            else:
+#                                data_sets[key] = data_sets[key].combine_first(data_to_add)
 
             
-            #reindex with a synthetic index that is sure to be continous in order to expose gaps in the data
-            no_gaps = pd.DatetimeIndex(start=data_sets[param_dict['resolution']].index[0],
-                                       end=data_sets[param_dict['resolution']].index[-1],
-                                       freq=param_dict['resolution'])
-            data_sets[param_dict['resolution']] = data_sets[param_dict['resolution']].reindex(index=no_gaps)
-            
-    return data_sets
+#            #reindex with a synthetic index that is sure to be continous in order to expose gaps in the data
+#            no_gaps = pd.DatetimeIndex(start=data_sets[param_dict['resolution']].index[0],
+#                                       end=data_sets[param_dict['resolution']].index[-1],
+#                                       freq=param_dict['resolution'])
+#            data_sets[param_dict['resolution']] = data_sets[param_dict['resolution']].reindex(index=no_gaps)
+#            
+#    return data_sets
