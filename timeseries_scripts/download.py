@@ -91,6 +91,11 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
         start_server = param_dict['start']
         end_server = param_dict['end']
         
+        if 'filename' in param_dict:
+            filename = param_dict['filename']
+        else:
+            filename = None
+            
         if end_server == 'recent':
             end_server = datetime.now().date()        
 
@@ -115,11 +120,18 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
                 
         if param_dict['frequency'] in ['complete', 'irregular']:
             download_file(
-                source_name, variable_name, out_path, param_dict,
-                start=start_server, end=end_server,
-                session=session
+                source_name,
+                variable_name,
+                out_path,
+                #param_dict,
+                start=start_server,
+                end=end_server,
+                url_template=param_dict['url_template'],
+                url_params_template=param_dict['url_params_template'],
+                filename=filename,
+                session=session,
             )
-        
+
         else:
             # The files on the servers usually contain the data for subperiods
             # of some regular length (i.e. months or yearsavailable
@@ -141,7 +153,20 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
 
             if len(ends) == 0:
                 ends = pd.DatetimeIndex([end_server])
-    
+            
+            if 'deviant_urls' in param_dict:
+                for deviating in param_dict['deviant_urls']:
+                    download_file(
+                        source_name,
+                        variable_name,
+                        out_path,
+                        #param_dict,
+                        start=deviating['start'],
+                        end=deviating['end'],
+                        url_template=deviating['url'],
+                        session=session,
+                    )
+                    
             for s, e in zip(starts, ends):
                 
                 # The Polish TSO PSE has daily files that are usually uploaded
@@ -158,15 +183,47 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
                         if not downloaded:
                             logger.info('test %s', second)
                             downloaded = download_file_pse(
-                                source_name, variable_name, out_path, param_dict,
-                                start=s, end=e, session=session, second=second)
+                                source_name,
+                                variable_name,
+                                out_path,
+                                #param_dict,
+                                start=s,
+                                end=e,
+                                url_template=param_dict['url_template'],
+                                url_params_template=param_dict['url_params_template'],
+                                session=session,
+                                second=second
+                            )
                 
                 else:
-                    download_file(source_name, variable_name, out_path, param_dict,
-                                  start=s, end=e, session=session, second=None)
+                    download_file(
+                        source_name,
+                        variable_name,
+                        out_path,
+                        #param_dict,
+                        start=s,
+                        end=e,
+                        url_template=param_dict['url_template'],
+                        url_params_template=param_dict['url_params_template'],
+                        filename=filename,
+                        session=session,
+                    )
 
-def download_file_pse(source_name, variable_name, out_path,
-                      param_dict, start, end, session=None, second=None):
+    return
+
+
+def download_file_pse(
+    source_name,
+    variable_name,
+    out_path,
+    #param_dict,
+    start,
+    end,
+    url_template,
+    url_params_template=None,
+    filename=None,
+    session=None,
+    second=None):
     """
     Download a single file specified by ``param_dict``, ``start``, ``end``,
     and save it to a directory constructed by combining ``source_name``,
@@ -202,14 +259,14 @@ def download_file_pse(source_name, variable_name, out_path,
     
     url_params = {}  # A dict for URL-parameters
     # For most sources, we can use HTTP get method with parameters-dict
-    if param_dict['url_params_template']: 
-        for key, value in param_dict['url_params_template'].items():
+    if url_params_template: 
+        for key, value in url_params_template.items():
             url_params[key] = value.format(
                 u_start=start,
                 u_end=end,
                 u_second=second
             )
-        url = param_dict['url_template']
+        url = url_template
 
     # Attempt the download if there is no file yet.
     count_files = len(os.listdir(container))
@@ -256,10 +313,19 @@ def download_file_pse(source_name, variable_name, out_path,
 
     return downloaded                    
                     
-                    
                 
-def download_file(source_name, variable_name, out_path,
-                  param_dict, start, end, session=None, second=None):
+def download_file(
+    source_name,
+    variable_name,
+    out_path,
+    #param_dict,
+    start,
+    end,
+    url_template,
+    url_params_template=None,
+    filename=None,
+    session=None,
+    second=None):
     """
     Download a single file specified by ``param_dict``, ``start``, ``end``,
     and save it to a directory constructed by combining ``source_name``,
@@ -318,19 +384,21 @@ def download_file(source_name, variable_name, out_path,
                .astimezone(pytz.timezone('UTC')))
         
     url_params = {}  # A dict for URL-parameters
+    
     # For most sources, we can use HTTP get method with parameters-dict
-    if param_dict['url_params_template']: 
-        for key, value in param_dict['url_params_template'].items():
+    if url_params_template: 
+        for key, value in url_params_template.items():
             url_params[key] = value.format(
                 u_start=start,
                 u_end=end,
                 u_transnetbw=count,
                 u_second=second
             )
-        url = param_dict['url_template']
+        url = url_template
+    
     # For other sources that use urls without parameters (e.g. Svenska Kraftnaet)
     else: 
-        url = param_dict['url_template'].format(
+        url = url_template.format(
             u_start=start,
             u_end=end,
             u_transnetbw=count,
@@ -356,14 +424,14 @@ def download_file(source_name, variable_name, out_path,
         # For cases where the original filename can not be retrieved,
         # I put the filename in the param_dict
         except KeyError:
-            if 'filename' in param_dict:
-                original_filename = param_dict['filename'].format(u_start=start, u_end=end)  
+            if filename:
+                original_filename = filename.format(u_start=start, u_end=end)  
             else:
                 logger.info(
                     'original filename could neither be retrieved from server '
                     'nor sources.yml'
                 )
-                original_filename = 'data'
+                original_filename = 'unknown_filename'
 
             logger.info('Downloaded from URL: %s', resp.url)
         
