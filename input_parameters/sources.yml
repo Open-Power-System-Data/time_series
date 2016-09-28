@@ -29,7 +29,7 @@ ENTSO-E:
             dataindx: '0'
             opt_Month: '{u_start.month}'
             opt_Year: '{u_start.year}'
-        frequency: M
+        frequency: monthly
         start: 2006-01-01
         end: 2015-12-31
         filetype: xls
@@ -42,7 +42,7 @@ ENTSO-E:
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
-        frequency: A
+        frequency: yearly
         start: 2005-01-01
         end: 2015-12-31
         filetype: csv
@@ -53,7 +53,7 @@ ENTSO-E:
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
-        frequency: A
+        frequency: yearly
         start: 2005-01-01
         end: 2015-12-31
         filetype: csv
@@ -64,7 +64,7 @@ ENTSO-E:
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
-        frequency: A
+        frequency: yearly
         start: 2016-01-01
         end: recent
         filetype: csv
@@ -75,7 +75,7 @@ ENTSO-E:
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
-        frequency: A
+        frequency: yearly
         start: 2016-01-01
         end: recent
         filetype: csv
@@ -86,7 +86,7 @@ ENTSO-E:
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
-        frequency: A
+        frequency: yearly
         start: 2012-01-01
         end: recent
         filetype: csv
@@ -97,7 +97,7 @@ ENTSO-E:
         url_params_template:
             callback: '?'
             fileName: '{u_start:%Y}.csv'
-        frequency: A
+        frequency: yearly
         start: 2012-01-01
         end: recent
         filetype: csv
@@ -139,7 +139,7 @@ TenneT:
             commandpath: Tatsaechliche_und_prognostizierte_Windenergieeinspeisung/monthDataSheetCsv.php
             contenttype: text/x-csv
             querystring: monat={u_start:%Y-%m}
-        frequency: M
+        frequency: monthly
         start: 2006-01-01
         end: recent
         filetype: csv
@@ -152,7 +152,7 @@ TenneT:
             sub: total
             contenttype: text/x-csv
             querystring: monat={u_start:%Y-%m}
-        frequency: M
+        frequency: monthly
         start: 2010-01-01
         end: recent
         filetype: csv
@@ -168,7 +168,7 @@ TransnetBW:
             view: '1'
             download: 'true'
             selectMonatDownload: '{u_transnetbw}'
-        frequency: M
+        frequency: monthly
         start: 2010-01-01
         end: recent
         filetype: csv
@@ -182,7 +182,7 @@ TransnetBW:
             view: '1'
             download: 'true'
             selectMonatDownload: '{u_transnetbw}'
-        frequency: M
+        frequency: monthly
         start: 2011-01-01
         end: recent
         filetype: csv
@@ -193,7 +193,7 @@ Svenska Kraftnaet:
     wind_solar_1: 
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}.xls
         url_params_template:
-        frequency: A
+        frequency: yearly
         start: 2002-01-01
         end: 2009-12-31
         filetype: xls
@@ -223,7 +223,7 @@ Svenska Kraftnaet:
     wind_solar_4: 
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n-fot2011-01-12.xls
         url_params_template:
-        frequency: A
+        frequency: yearly
         start: 2011-01-01
         end: 2011-12-31
         filetype: xls
@@ -233,7 +233,7 @@ Svenska Kraftnaet:
     wind_solar_5: 
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}-01-12.xls
         url_params_template:
-        frequency: A
+        frequency: yearly
         start: 2012-01-01
         end: 2014-12-31
         filetype: xls
@@ -243,7 +243,7 @@ Svenska Kraftnaet:
     wind_solar_6: 
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
         url_params_template:
-        frequency: A
+        frequency: yearly
         start: 2015-01-01
         end: 2015-12-31
         filetype: xls
@@ -253,13 +253,14 @@ Svenska Kraftnaet:
     wind_solar_7: 
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls
         url_params_template:
-        frequency: A
+        frequency: yearly
         start: 2016-01-01
         end: 2016-12-31
         filetype: xls
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls        
+
 Elia: 
     wind-onshore: 
         url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
@@ -268,7 +269,7 @@ Elia:
             endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
             isOffshore: 'false'
             isEliaConnected: ''
-        frequency: M #the frequency could in principle be chosen arbitrarily, even complete the complete dataset, but in practise the server often times out if too much data is requested at once 
+        frequency: monthly #the frequency could in principle be chosen arbitrarily, even complete the complete dataset, but in practise the server often times out if too much data is requested at once 
         start: 2012-01-01  #the data starts from 2012-01-19
         end: recent
         filetype: xls
@@ -293,7 +294,7 @@ Elia:
             dateFrom: '{u_start:%Y-%m-%d}T23:00:00.000Z'
             dateTo: '{u_end:%Y-%m-%d}T23:00:00.000Z'
             sourceId: '1'
-        frequency: M
+        frequency: monthly
         start: 2012-11-01 #the data starts from 2012-11-14
         end: recent
         filetype: xls
@@ -315,12 +316,12 @@ RTE:
         url_template: http://clients.rte-france.com/servlets/RealProdServlet
         url_params_template:
             annee: '{u_start:%Y}'
-        frequency: A
+        frequency: yearly
         start: 2014-01-01
         end: recent 
         filetype: zip #xls 
         resolution: 60min
-        web: http://www.elia.be/en/grid-data/power-generation/Solar-power-generation-data/Graph
+        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
         
 Fingrid: 
     wind: 
@@ -338,21 +339,14 @@ Fingrid:
 
 CEPS: 
     wind_pv: 
-        url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx
+        url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx&from={u_start:%m/%d/%Y}%2012:00:00%20AM&to={u_end:%m/%d/%Y}%2011:59:59%20PM&hasinterval=True&sol=26&lang=ENG&agr=QH&fnc=AVG&ver=RT&para1=all& 
         url_params_template:
-            from: '{u_start:%m.%d.%Y}%2012:00:00%20AM'
-            to: '{u_end:%m/%d/%Y}%2011:59:59%20PM'
-            hasinterval: False
-            sol: 26
-            lang: ENG
-            agr: QH
-            fnc: SUM
-            ver: RT
-            para1: all
-        bundle: complete
-        start: 2012-01-01
+        frequency: complete
+        start: 2012-01-02
         end: recent
         filetype: xlsx
+        resolution: 15min
+        web: http://www.ceps.cz/ENG/Data/Vsechna-data/Pages/odhad-vyroby-obnovitelnych-zdroju.aspx
 
 OeMag: 
     wind_1: 
@@ -373,3 +367,51 @@ OeMag:
         start: 2013-01-01
         end: 2013-12-31
         filetype: xlsx
+
+PSE:
+    wind:
+        url_template: http://www.pse.pl/get_csv.php
+        url_params_template:
+            rap: GEN_WIATR_{u_start:%Y%m%d}_{u_second:%Y%m%d%H%M%S} 
+        frequency: daily
+        start:  2012-05-26
+        end: recent
+        filetype: csv
+        resolution: 60min
+        web: http://www.pse.pl/index.php?modul=21&id_rap=24
+        deviant_urls:
+            - start: 2016-02-19
+              end: 2016-02-19
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160219_20160224170055
+            - start: 2016-02-20
+              end: 2016-02-20
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160220_20160224170055
+            - start: 2016-02-21
+              end: 2016-02-21
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160221_20160224170055
+            - start: 2016-02-22
+              end: 2016-02-22
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160222_20160224170055
+            - start: 2016-02-23
+              end: 2016-02-23
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160223_20160224170055
+            - start: 2016-07-22
+              end: 2016-07-22
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160722_20160728171233
+            - start: 2016-04-21
+              end: 2016-04-21
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160421_20160428170059
+            - start: 2013-03-14
+              end: 2013-03-14
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20130314_20130320170505
+source:
+    variable:
+        url_template: 
+        url_params_template:
+
+        frequency: 
+        start: 
+        end: recent
+        filetype: 
+        resolution: 
+        web: 
