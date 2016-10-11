@@ -1,0 +1,10 @@
+term,meaning
+load,Consumption in MW
+price,day-ahead price
+generation,electricity produced
+forecast,day-ahead forecast
+capacity,installed capacity
+solar,photovoltaics
+wind-onshore,wind-onshore
+wind-offshore,wind-offshore
+BE,ISO-2 digit country code for Belgium
