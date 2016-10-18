@@ -6,4 +6,4 @@ See the [main Jupter notebook](main.ipynb) for further details.
 
 ## License
 
-This notebook as well as all other documents in this repository is published under the [MIT License](https://opensource.org/licenses/MIT).
+This notebook as well as all other documents in this repository is published under the [MIT License](LICENSE.md).
