@@ -1,20 +1,20 @@
 name: datapackage_timeseries
 
 channels:
- - conda-forge
+  - conda-forge
+  - anaconda
 
 dependencies:
-- python=3.5
-- bottleneck  # accelerates some pandas operations
-- jupyter
-- notebook
-- numexpr  # accelerates some pandas operations
-- numpy
-- openpyxl  # pandas: excel i/o
-- pandas=0.18.1
-- pytz
-- pyyaml
-- requests
-- xlrd  # pandas: excel i/o
-- pip:
-    - pycountry==1.20
+  - python=3.5
+  - bottleneck  # accelerates some pandas operations
+  - notebook  # jupyter notebook
+  - numexpr  # accelerates some pandas operations
+  - numpy=1.11.1
+  - openpyxl  # pandas: excel i/o
+  - pandas=0.18.1
+  - pytz
+  - pyyaml=3.12
+  - requests
+  - xlrd  # pandas: excel i/o
+  - pip:
+      - pycountry==1.20

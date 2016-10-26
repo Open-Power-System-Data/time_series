@@ -188,9 +188,9 @@ TransnetBW:
         filetype: csv
         resolution: 15min
         web: https://www.transnetbw.com/en/key-figures/renewable-energies/photovoltaic
-        
-Svenska Kraftnaet: 
-    wind_solar_1: 
+
+Svenska Kraftnaet:
+    wind_solar_1:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}.xls
         url_params_template:
         frequency: yearly
@@ -200,7 +200,7 @@ Svenska Kraftnaet:
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot{u_start:%Y}.xls
-    wind_solar_2: 
+    wind_solar_2:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot201001-06.xls
         url_params_template:
         frequency: irregular
@@ -210,7 +210,7 @@ Svenska Kraftnaet:
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot201001-06.xls
-    wind_solar_3: 
+    wind_solar_3:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot2010-07-12.xls
         url_params_template:
         frequency: irregular
@@ -220,7 +220,7 @@ Svenska Kraftnaet:
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot2010-07-12.xls
-    wind_solar_4: 
+    wind_solar_4:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n-fot2011-01-12.xls
         url_params_template:
         frequency: yearly
@@ -230,7 +230,7 @@ Svenska Kraftnaet:
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n-fot2011-01-12.xls
-    wind_solar_5: 
+    wind_solar_5:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}-01-12.xls
         url_params_template:
         frequency: yearly
@@ -240,7 +240,7 @@ Svenska Kraftnaet:
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot{u_start:%Y}-01-12.xls
-    wind_solar_6: 
+    wind_solar_6:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
         url_params_template:
         frequency: yearly
@@ -250,7 +250,7 @@ Svenska Kraftnaet:
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
-    wind_solar_7: 
+    wind_solar_7:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls
         url_params_template:
         frequency: yearly
@@ -259,23 +259,23 @@ Svenska Kraftnaet:
         filetype: xls
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
-        filename: forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls        
+        filename: forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls
 
-Elia: 
-    wind-onshore: 
+Elia:
+    wind-onshore:
         url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
         url_params_template:
             beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
             endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
             isOffshore: 'false'
             isEliaConnected: ''
-        frequency: monthly #the frequency could in principle be chosen arbitrarily, even complete the complete dataset, but in practise the server often times out if too much data is requested at once 
+        frequency: monthly #the frequency could in principle be chosen arbitrarily, even complete the complete dataset, but in practise the server often times out if too much data is requested at once
         start: 2012-01-01  #the data starts from 2012-01-19
         end: recent
         filetype: xls
         resolution: 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
-    wind-offshore: 
+    wind-offshore:
         url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
         url_params_template:
             beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
@@ -288,7 +288,7 @@ Elia:
         filetype: xls
         resolution: 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
-    solar: 
+    solar:
         url_template: http://publications.elia.be/Publications/Publications/SolarForecasting.v3.svc/ExportSolarForecastGraph
         url_params_template:
             dateFrom: '{u_start:%Y-%m-%d}T23:00:00.000Z'
@@ -305,26 +305,26 @@ Energinet.dk:
     prices_wind_solar:
         frequency: complete
         start: 2000-01-01 # or even earlier for some data, but not useful as other sources don't go as far back
-        end: recent 
+        end: recent
         filetype: xls
         resolution: 60min
         web: http://www.energinet.dk/en/el/engrosmarked/udtraek-af-markedsdata/Sider/default.aspx
 
 # For the Following sources, the download/read has not yet been implemented
-RTE: 
-    wind_solar: 
+RTE:
+    wind_solar:
         url_template: http://clients.rte-france.com/servlets/RealProdServlet
         url_params_template:
             annee: '{u_start:%Y}'
         frequency: yearly
         start: 2014-01-01
-        end: recent 
-        filetype: zip #xls 
+        end: recent
+        filetype: zip #xls
         resolution: 60min
         web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
-        
-Fingrid: 
-    wind: 
+
+Fingrid:
+    wind:
         url_template: http://www.fingrid.fi/en/electricity-market/load-and-generation/windpower/Pages/default.aspx/Excel/TimeSeries.xls?
         url_params_template:
             beginDate: '{u_start:%Y%m%d}'
@@ -337,9 +337,9 @@ Fingrid:
         end: recent
         filetype: xls
 
-CEPS: 
-    wind_pv: 
-        url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx&from={u_start:%m/%d/%Y}%2012:00:00%20AM&to={u_end:%m/%d/%Y}%2011:59:59%20PM&hasinterval=True&sol=26&lang=ENG&agr=QH&fnc=AVG&ver=RT&para1=all& 
+CEPS:
+    wind_pv:
+        url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx&from={u_start:%m/%d/%Y}%2012:00:00%20AM&to={u_end:%m/%d/%Y}%2011:59:59%20PM&hasinterval=True&sol=26&lang=ENG&agr=QH&fnc=AVG&ver=RT&para1=all&
         url_params_template:
         frequency: complete
         start: 2012-01-02
@@ -348,20 +348,20 @@ CEPS:
         resolution: 15min
         web: http://www.ceps.cz/ENG/Data/Vsechna-data/Pages/odhad-vyroby-obnovitelnych-zdroju.aspx
 
-OeMag: 
-    wind_1: 
+OeMag:
+    wind_1:
         url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xls
         bundle: YEARLY
         start: 2003-01-01
         end: 2011-01-01
-        filetype: xls        
-    wind_2: 
+        filetype: xls
+    wind_2:
         url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xlsx
         bundle: YEARLY
         start: 2012-01-01
         end: 2013-12-31
         filetype: xlsx
-    wind_3: 
+    wind_3:
         url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/Winderzeugung_{u_start:%Y}.xlsx
         bundle: YEARLY
         start: 2013-01-01
@@ -372,7 +372,7 @@ PSE:
     wind:
         url_template: http://www.pse.pl/get_csv.php
         url_params_template:
-            rap: GEN_WIATR_{u_start:%Y%m%d}_{u_second:%Y%m%d%H%M%S} 
+            rap: GEN_WIATR_{u_start:%Y%m%d}_{u_second:%Y%m%d%H%M%S}
         frequency: daily
         start:  2012-05-26
         end: recent
@@ -406,12 +406,12 @@ PSE:
               url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20130314_20130320170505
 source:
     variable:
-        url_template: 
+        url_template:
         url_params_template:
 
-        frequency: 
-        start: 
+        frequency:
+        start:
         end: recent
-        filetype: 
-        resolution: 
-        web: 
+        filetype:
+        resolution:
+        web:
