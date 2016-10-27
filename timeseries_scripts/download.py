@@ -12,57 +12,98 @@ from datetime import datetime, date, time, timedelta
 import pytz
 import logging
 import os
-
+import zipfile
 import pandas as pd
 import requests
 import yaml
 
 logger = logging.getLogger('log')
-logger.setLevel('INFO')
+logger.setLevel('DEBUG')
 
 
-def download(sources_yaml_path, out_path, start_from_user=None, end_from_user=None, subset=None):
+def download(sources, out_path, archive_version=None,
+             start_from_user=None, end_from_user=None):
     """
     Load YAML file with sources from disk, and download all files for each
-    source into the given out_path. Returns None.
+    source into the given out_path.
 
     Parameters
     ----------
-    sources_yaml_path : str
-        Filepath of sources.yml
+    sources : dict
+        Dict of download parameters specific to each source.
     out_path : str
         Base download directory in which to save all downloaded files.
-    start_from_user : datetime.date, optional
+    archive_version: str, default None
+        OPSD Data Package Version to download original data from.
+    start_from_user : datetime.date, default None
         Start of period for which to download the data.
-    end_from_user : datetime.date, optional
-        End of period for which to download the data
-    subset : list or iterable, optional
-        If given, specifies a subset of data sources to download,
-        e.g.: ['TenneT', '50Hertz'].
+    end_from_user : datetime.date, default None
+        End of period for which to download the data.
+
+    Returns
+    ----------
+    None
 
     """
-    for name, date in {'end_from_user': end_from_user, 'start_from_user': start_from_user}.items():
+
+    for name, date in {'end_from_user': end_from_user,
+                       'start_from_user': start_from_user}.items():
         if date and date > datetime.now().date():
             logger.info('%s given was %s, must be smaller than %s, '
                         'we have no data for the future!',
                         name, date, datetime.today().date())
             return
 
-    with open(sources_yaml_path, 'r') as f:
-        sources = yaml.load(f.read())
+    if archive_version:
+        download_archive(archive_version)
 
-    # If subset is given, only keep source_name keys in subset
-    if subset is not None:
-        sources = {k: v for k, v in sources.items() if k in subset}
+    else:
+        for source_name, source_dict in sources.items():
+            if not source_name == "Energinet.dk":
+                download_source(source_name, source_dict, out_path,
+                                start_from_user, end_from_user)
 
-    for source_name, source_dict in sources.items():
-        download_source(source_name, source_dict, out_path, start_from_user, end_from_user)
+    return
 
 
-def download_source(source_name, source_dict, out_path, start_from_user=None, end_from_user=None):
+def download_archive(archive_version):
+    """
+    Download archived data from the OPSD server. See download()
+    for info on parameter.
+
+    """
+
+    filepath = 'original_data.zip'
+
+    if not os.path.exists(filepath):
+        url = ('http://data.open-power-system-data.org/time_series/'
+               '{}/original_data/{}'.format(archive_version, filepath))
+        logger.info('Downloading and extracting archived data from %s', url)
+        resp = requests.get(url)
+        with open(filepath, 'wb') as output_file:
+            for chunk in resp.iter_content(1024):
+                output_file.write(chunk)
+
+        myzipfile = zipfile.ZipFile(filepath)
+        if myzipfile.namelist()[0] == 'original_data/':
+            myzipfile.extractall()
+            logger.info('Extracted data to /original_data.')
+        else:
+            logger.warning('%s has unexpected content. Please check manually',
+                           filepath)
+
+    else:
+        logger.info('%s already exists. Delete it if you want to download again',
+                    filepath)
+
+    return
+
+
+def download_source(source_name, source_dict, out_path,
+                    start_from_user=None, end_from_user=None):
     """
     Download all files for source_name as specified by the given
-    source_dict into out_path. Returns None.
+    source_dict into out_path.
 
     Parameters
     ----------
@@ -72,12 +113,18 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
         Dictionary of variables and their parameters for the given source.
     out_path : str
         Base download directory in which to save all downloaded files.
-    start_from_user : datetime.date, optional
+    start_from_user : datetime.date, default None
         Start of period for which to download the data.
-    end_from_user : datetime.date, optional
+    end_from_user : datetime.date, default None
         End of period for which to download the data
 
+    Returns
+    ----------
+    None
+
     """
+
+    session = None
 
     for variable_name, param_dict in source_dict.items():
         start_server = param_dict['start']
@@ -94,7 +141,6 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
         if start_from_user:
             if start_from_user <= start_server:
                 pass  # do nothing
-            # elif start_from_user > param_dict['start'] and start_from_user < param_dict['end']:
             elif start_server < start_from_user < end_server:
                 start_server = start_from_user  # replace start_server
             else:
@@ -103,23 +149,23 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
         if end_from_user:
             if end_from_user <= start_server:
                 continue  # skip this variable from the source dict, relevant e.g. in Sweden
-            # elif end_from_user > param_dict['start'] and end_from_user < param_dict['end']:
             elif start_server < end_from_user < end_server:
                 end_server = end_from_user  # replace  end_server
             else:
                 pass  # do nothing
 
         if param_dict['frequency'] in ['complete', 'irregular']:
-            download_file(
+            downloaded, session = download_file(
                 source_name,
                 variable_name,
                 out_path,
-                #param_dict,
+                # param_dict,
                 start=start_server,
                 end=end_server,
                 url_template=param_dict['url_template'],
                 url_params_template=param_dict['url_params_template'],
-                filename=filename
+                filename=filename,
+                session=session,
             )
 
         else:
@@ -129,8 +175,10 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
             # individual files to be downloaded.
 
             # tranlate frequency to argument for pd.date_range()
-            freq_start = {'yearly': 'AS', 'monthly': 'MS', 'daily': 'D'}
-            freq_end = {'yearly': 'A', 'monthly': 'M', 'daily': 'D'}
+            freq_start = {'yearly': 'AS', 'quarterly': 'QS',
+                          'monthly': 'MS', 'daily': 'D'}
+            freq_end = {'yearly': 'A', 'quarterly': 'Q',
+                        'monthly': 'M', 'daily': 'D'}
 
             starts = pd.date_range(
                 start=start_server, end=end_server,
@@ -146,32 +194,35 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
 
             if 'deviant_urls' in param_dict:
                 for deviating in param_dict['deviant_urls']:
-                    download_file(
+                    downloaded, session = download_file(
                         source_name,
                         variable_name,
                         out_path,
                         # param_dict,
                         start=deviating['start'],
                         end=deviating['end'],
-                        url_template=deviating['url']
+                        url_template=deviating['url'],
+                        session=session,
                     )
 
             for s, e in zip(starts, ends):
 
                 # The Polish TSO PSE has daily files that are usually uploaded
                 # 6 days later somtime between 17:00:10 and 17:01:30. As the exact
-                # second needs is unknown ex-ante, but needs to be included in the URL,
+                # second is unknown ex-ante, but needs to be included in the URL,
                 # we need to try out every second in that period until the file is
                 # found.
                 if source_name == 'PSE':
                     downloaded = False
                     for second in pd.date_range(
-                            start=datetime.combine(s + timedelta(days=6), time(17, 0, 10)),
-                            end=datetime.combine(s + timedelta(days=6), time(17, 2, 0)),
+                            start=datetime.combine(
+                                s + timedelta(days=6), time(17, 0, 10)),
+                            end=datetime.combine(
+                                s + timedelta(days=6), time(17, 2, 0)),
                             freq='S'):
                         if not downloaded:
-                            logger.info('test %s', second)
-                            downloaded = download_file_pse(
+                            logger.debug('attempt %s', second)
+                            downloaded, session = download_file_pse(
                                 source_name,
                                 variable_name,
                                 out_path,
@@ -179,12 +230,14 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
                                 start=s,
                                 end=e,
                                 url_template=param_dict['url_template'],
-                                url_params_template=param_dict['url_params_template'],
+                                url_params_template=param_dict[
+                                    'url_params_template'],
+                                # session=session,
                                 second=second
                             )
 
                 else:
-                    download_file(
+                    downloaded, session = download_file(
                         source_name,
                         variable_name,
                         out_path,
@@ -193,28 +246,29 @@ def download_source(source_name, source_dict, out_path, start_from_user=None, en
                         end=e,
                         url_template=param_dict['url_template'],
                         url_params_template=param_dict['url_params_template'],
-                        filename=filename
+                        filename=filename,
+                        session=session,
                     )
 
     return
 
 
 def download_file_pse(
-    source_name,
-    variable_name,
-    out_path,
-     #param_dict,
-    start,
-    end,
-    url_template,
-    url_params_template=None,
-    filename=None,
-    session=None,
-    second=None):
+        source_name,
+        variable_name,
+        out_path,
+        # param_dict,
+        start,
+        end,
+        url_template,
+        url_params_template=None,
+        filename=None,
+        session=None,
+        second=None):
     """
     Download a single file specified by ``param_dict``, ``start``, ``end``,
     and save it to a directory constructed by combining ``source_name``,
-    ``variable_name`` and ``out_path``. Returns None.
+    ``variable_name`` and ``out_path``.
 
     Parameters
     ----------
@@ -225,7 +279,7 @@ def download_file_pse(
     out_path : str
         Base download directory in which to save all downloaded files
     param_dict : dict
-        Info required for download, e.g. url, url-parameter, filename.
+        Info required for download, e.g. url, url-parameter, filename. 
     start : datetime.date
         start of data in the file
     end : datetime.date
@@ -233,7 +287,13 @@ def download_file_pse(
     session : requests.session, optional
         If not given, a new session is created.
 
+    Returns
+    ----------
+    downloaded : bool
+        True if download successful, False otherwise.
+
     """
+
     if session is None:
         session = requests.session()
 
@@ -296,28 +356,28 @@ def download_file_pse(
     else:
         downloaded = True
         logger.info('There must not be more '
-                    'than one file in: %s. Please check.', container)
+                    'than one file in: %s. Please check ', container)
 
-    return downloaded
+    return downloaded, session
 
 
 def download_file(
-    source_name,
-    variable_name,
-    out_path,
-    # param_dict,
-    start,
-    end,
-    url_template,
-    url_params_template=None,
-    filename=None,
-    session=None,
-    second=None
-    ):
+        source_name,
+        variable_name,
+        out_path,
+        # param_dict,
+        start,
+        end,
+        url_template,
+        url_params_template=None,
+        filename=None,
+        session=None,
+        second=None):
     """
     Download a single file specified by ``param_dict``, ``start``, ``end``,
     and save it to a directory constructed by combining ``source_name``,
-    ``variable_name`` and ``out_path``. Returns None.
+    ``variable_name`` and ``out_path``. 
+    Returns True if download successful, False otherwise.
 
     Parameters
     ----------
@@ -328,7 +388,7 @@ def download_file(
     out_path : str
         Base download directory in which to save all downloaded files
     param_dict : dict
-        Info required for download, e.g. url, url-parameter, filename.
+        Info required for download, e.g. url, url-parameter, filename. 
     start : datetime.date
         start of data in the file
     end : datetime.date
@@ -368,7 +428,7 @@ def download_file(
                  .astimezone(pytz.timezone('UTC')))
 
         end = (pytz.timezone('Europe/Brussels')
-               .localize(datetime.combine(end+timedelta(days=1), time()))
+               .localize(datetime.combine(end + timedelta(days=1), time()))
                .astimezone(pytz.timezone('UTC')))
 
     url_params = {}  # A dict for URL-parameters
@@ -384,7 +444,8 @@ def download_file(
             )
         url = url_template
 
-    # For other sources that use urls without parameters (e.g. Svenska Kraftnaet)
+    # For other sources that use urls without parameters (e.g. Svenska
+    # Kraftnaet)
     else:
         url = url_template.format(
             u_start=start,
@@ -441,9 +502,9 @@ def download_file(
     else:
         downloaded = True
         logger.info('There must not be more '
-                    'than one file in: %s. Please check.', container)
+                    'than one file in: %s. Please check ', container)
 
-    return downloaded
+    return downloaded, session
 
 
 if __name__ == '__main__':

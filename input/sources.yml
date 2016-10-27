@@ -8,17 +8,17 @@
 
 OPSD:
     capacities:
-        url_template: http://data.open-power-system-data.org/datapackage_renewables/2016-03-09/renewable_capacity_germany_timeseries.csv
-        filename: renewable_capacity_germany_timeseries.csv
+        url_template: http://data.open-power-system-data.org/renewable_power_plants/2016-09-30/renewable_capacity_timeseries_DE.csv
+        filename: renewable_capacity_timeseries_DE.csv
         url_params_template:
         frequency: complete
         start: 2005-01-01
-        end: recent
+        end: 2016-05-31
         filetype: csv
         resolution: 15min
-        web: http://data.open-power-system-data.org/datapackage_renewables/
+        web: http://data.open-power-system-data.org/renewable_power_plants/
 
-ENTSO-E:
+ENTSO-E Data Portal:
     load:
         url_template: https://www.entsoe.eu/fileadmin/template/other/statistical_database/excel.php
         url_params_template:
@@ -105,7 +105,7 @@ ENTSO-E:
         web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
 
 Amprion:
-    wind-onshore:
+    wind:
         url_template: http://amprion.de/applications/applicationfiles/winddaten2.php
         url_params_template:
             mode: download
@@ -160,7 +160,7 @@ TenneT:
         web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-photovoltaic-energy-feed-in
 
 TransnetBW:
-    wind-onshore:
+    wind:
         url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/windenergie
         url_params_template:
             app: wind
@@ -251,7 +251,7 @@ Svenska Kraftnaet:
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
     wind_solar_7:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
         url_params_template:
         frequency: yearly
         start: 2016-01-01
@@ -259,7 +259,7 @@ Svenska Kraftnaet:
         filetype: xls
         resolution: 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
-        filename: forbrukning-och-tillforsel-per-timme--i-normaltid-{u_start:%Y}.xls
+        filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
 
 Elia:
     wind-onshore:
@@ -282,7 +282,7 @@ Elia:
             endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
             isOffshore: 'true'
             isEliaConnected: ''
-        frequency: Q
+        frequency: quarterly
         start: 2012-01-01  #the data starts from 2012-01-19
         end: recent
         filetype: xls
@@ -310,33 +310,6 @@ Energinet.dk:
         resolution: 60min
         web: http://www.energinet.dk/en/el/engrosmarked/udtraek-af-markedsdata/Sider/default.aspx
 
-# For the Following sources, the download/read has not yet been implemented
-RTE:
-    wind_solar:
-        url_template: http://clients.rte-france.com/servlets/RealProdServlet
-        url_params_template:
-            annee: '{u_start:%Y}'
-        frequency: yearly
-        start: 2014-01-01
-        end: recent
-        filetype: zip #xls
-        resolution: 60min
-        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
-
-Fingrid:
-    wind:
-        url_template: http://www.fingrid.fi/en/electricity-market/load-and-generation/windpower/Pages/default.aspx/Excel/TimeSeries.xls?
-        url_params_template:
-            beginDate: '{u_start:%Y%m%d}'
-            endDate: '{u_start:%Y%m%d}'
-            variables: H4sIAAAAAAAEAO29B2AcSZYlJi9tynt_SvVK1-B0oQiAYBMk2JBAEOzBiM3mkuwdaUcjKasqgcplVmVdZhZAzO2dvPfee--999577733ujudTif33_8_XGZkAWz2zkrayZ4hgKrIHz9-fB8_Ih7_ZFYX2aTMmyP769nyvDp6_CJb5EfPzn7_N1999fzsJ788--L49_99vv3m8V3-_PHZ8jKv25_MynV-dJ6VTf74rv_RY_7xrKoXWfu6rYvlxdGPj378x3ce3-1_8firZdG-yd-1R198d353_viu_fvxm6It86PvFstZuqqu8jq9yJd5nbVFtUy3uPWdx3el0ePnxTI_qcqqTu96f3y7XZRHP_7k5MnDHeo8_Pjx63l19eWyvH62btd1_jRrMzOWyDdA3aeP_bM5-n8AhQmq0kUBAAA1
-            cultureId: en-US
-            dataTimePrecision: 5
-        bundle: MONTHLY ???
-        start: 2014-11-28
-        end: recent
-        filetype: xls
-
 CEPS:
     wind_pv:
         url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx&from={u_start:%m/%d/%Y}%2012:00:00%20AM&to={u_end:%m/%d/%Y}%2011:59:59%20PM&hasinterval=True&sol=26&lang=ENG&agr=QH&fnc=AVG&ver=RT&para1=all&
@@ -347,26 +320,6 @@ CEPS:
         filetype: xlsx
         resolution: 15min
         web: http://www.ceps.cz/ENG/Data/Vsechna-data/Pages/odhad-vyroby-obnovitelnych-zdroju.aspx
-
-OeMag:
-    wind_1:
-        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xls
-        bundle: YEARLY
-        start: 2003-01-01
-        end: 2011-01-01
-        filetype: xls
-    wind_2:
-        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xlsx
-        bundle: YEARLY
-        start: 2012-01-01
-        end: 2013-12-31
-        filetype: xlsx
-    wind_3:
-        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/Winderzeugung_{u_start:%Y}.xlsx
-        bundle: YEARLY
-        start: 2013-01-01
-        end: 2013-12-31
-        filetype: xlsx
 
 PSE:
     wind:
@@ -404,14 +357,94 @@ PSE:
             - start: 2013-03-14
               end: 2013-03-14
               url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20130314_20130320170505
-source:
-    variable:
-        url_template:
-        url_params_template:
+            - start: 2016-09-08
+              end: 2016-09-08
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160908_20160914172604
+            - start: 2016-09-09
+              end: 2016-09-09
+              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160909_20160915171359
 
-        frequency:
-        start:
-        end: recent
-        filetype:
-        resolution:
-        web:
+# For the Following sources, the download/read has not yet been implemented
+#RTE:
+#    generation_by_source:
+#        url_template: http://clients.rte-france.com/servlets/RealProdServlet
+#        url_params_template:
+#            annee: '{u_start:%Y}'
+#        frequency: yearly
+#        start: 2014-01-01
+#        end: recent
+#        filetype: zip #xls
+#        resolution: 60min
+#        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
+#
+#Fingrid:
+#    wind:
+#        url_template: http://www.fingrid.fi/en/electricity-market/load-and-generation/windpower/Pages/default.aspx/Excel/TimeSeries.xls?
+#        url_params_template:
+#            beginDate: '{u_start:%Y%m%d}'
+#            endDate: '{u_start:%Y%m%d}'
+#            variables: H4sIAAAAAAAEAO29B2AcSZYlJi9tynt_SvVK1-B0oQiAYBMk2JBAEOzBiM3mkuwdaUcjKasqgcplVmVdZhZAzO2dvPfee--999577733ujudTif33_8_XGZkAWz2zkrayZ4hgKrIHz9-fB8_Ih7_ZFYX2aTMmyP769nyvDp6_CJb5EfPzn7_N1999fzsJ788--L49_99vv3m8V3-_PHZ8jKv25_MynV-dJ6VTf74rv_RY_7xrKoXWfu6rYvlxdGPj378x3ce3-1_8firZdG-yd-1R198d353_viu_fvxm6It86PvFstZuqqu8jq9yJd5nbVFtUy3uPWdx3el0ePnxTI_qcqqTu96f3y7XZRHP_7k5MnDHeo8_Pjx63l19eWyvH62btd1_jRrMzOWyDdA3aeP_bM5-n8AhQmq0kUBAAA1
+#            cultureId: en-US
+#            dataTimePrecision: 5
+#        frequency: monthly # ???
+#        start: 2014-11-28
+#        end: recent
+#        filetype: xls
+#        resolution: 60min
+#        web:
+#
+#OeMag:
+#    wind_1:
+#        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xls
+#        bundle: YEARLY
+#        start: 2003-01-01
+#        end: 2011-01-01
+#        filetype: xls
+#        resolution: 15min
+#    wind_2:
+#        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xlsx
+#        bundle: YEARLY
+#        start: 2012-01-01
+#        end: 2013-12-31
+#        filetype: xlsx
+#        resolution: 15min
+#    wind_3:
+#        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/Winderzeugung_{u_start:%Y}.xlsx
+#        bundle: YEARLY
+#        start: 2013-01-01
+#        end: 2013-12-31
+#        filetype: xlsx
+#        resolution: 15min
+#
+#APG:
+#    generation_by_source:
+#        url_template: https://www.apg.at/transparency/Download.aspx
+#        url_params_template:
+#            LANGUAGE: de
+#            PID: AGPT
+#            Format: csv
+#            Resolution: 15M
+#            DateFromLocal: '{u_start:%Y%m%dZ}'
+#            DateToLocal: '{u_end:%Y%m%dZ}'
+#            CacheDir: 20160929235917_d48a7721c39e488f8aa5a94c646a4595
+#            CacheFileName: export_awg_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
+#        frequency: quarterly
+#        start: 2010-01-01
+#        end: recent
+#        filetype: csv
+#        resolution: 15min
+#        web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
+#
+#TEMPLATE
+#
+#source:
+#    variable:
+#        url_template:
+#        url_params_template:
+#
+#        frequency:
+#        start:
+#        end: recent
+#        filetype:
+#        resolution:
+#        web:

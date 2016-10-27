@@ -1,4 +1,4 @@
-name: datapackage_timeseries
+name: opsd_time_series
 
 channels:
   - conda-forge
@@ -6,15 +6,18 @@ channels:
 
 dependencies:
   - python=3.5
+  - pandas=0.19.0
+  - numpy=1.11.2
+  - pytables=3.2.2
+  - xlrd=1.0.0  # pandas: excel i/o
+  - openpyxl=2.4.0  # pandas: excel i/o
   - bottleneck  # accelerates some pandas operations
+  - numexpr=2.6.1  # accelerates some pandas operations
   - notebook  # jupyter notebook
-  - numexpr  # accelerates some pandas operations
-  - numpy=1.11.1
-  - openpyxl  # pandas: excel i/o
-  - pandas=0.18.1
-  - pytz
+  - ipykernel=4.2.2 # older version of ipykernel to maek logging print to notebook instead of console
+  - pytz=2016.7
   - pyyaml=3.12
-  - requests
-  - xlrd  # pandas: excel i/o
+  - requests=2.11.1
+
   - pip:
       - pycountry==1.20
