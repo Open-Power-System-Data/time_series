@@ -33,9 +33,9 @@ long_description: This data package contains different kinds of timeseries
     minutes) is provided in a separate file. All data processing is
     conducted in python and pandas and has been documented in the
     Jupyter notebooks linked below.
-documentation: https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/2016-10-27/main.ipynb
+documentation: https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/{version}/main.ipynb
 
-version: '2016-10-27'
+version: '{version}'
 
 last_changes: Included data from CEPS and PSE
 
@@ -79,7 +79,7 @@ resource_template = '''
           - path: time_series_{res_key}_singleindex.csv
             stacking: Singleindex
             format: csv
-          - path: time_series_{res_key}.xlsx
+          - path: time_series.xlsx
             stacking: Multiindex
             format: xlsx
           - path: time_series_{res_key}_multiindex.csv
@@ -89,22 +89,22 @@ resource_template = '''
             stacking: Stacked
             format: csv
       schema:
-          primaryKey: timestamp
+          primaryKey: {utc}
           missingValue: ""
           fields:
 '''
 
 indexfield = '''
-            - name: utc-timestamp
-              description: Start of timeperiod in UTC
+            - name: {utc}
+              description: Start of timeperiod in Coordinated Universal Time
               type: datetime
               format: fmt:%Y-%m-%dT%H%M%SZ
               opsd-contentfilter: true
-            - name: ce(s)t-timestamp
-              description: Start of timeperiod in CE(S)T
+            - name: {cet}
+              description: Start of timeperiod in Central European (Summer-) Time
               type: datetime
               format: fmt:%Y-%m-%dT%H%M%S%z
-            - name: comment
+            - name: {marker}
               description: marker to indicate which columns are missing data in source data and has been interpolated (e.g. solar_DE-transnetbw_generation;)
               type: string
 '''
@@ -129,9 +129,8 @@ actual: Actual {tech} generation in {geo} in MW
 forecast: Forecasted {tech} generation forecast in {geo} in MW
 capacity: Electrical capacity of {tech} in {geo} in MW
 profile: Share of {tech} capacity producing in {geo}
-offshoreshare: {tech} actual offshore generation in {geo} in MW 
-EPEX: lalala
-Elspot: dududu
+epex: Day-ahead spot price for {geo}
+elspot: Day-ahead spot price for {geo}
 '''
 
 # Columns-specific metadata
@@ -145,7 +144,7 @@ Elspot: dududu
 # metadata.
 
 
-def make_json(data_sets, headers):
+def make_json(data_sets, info_cols, version, headers):
     '''
     Create a datapackage.json file that complies with the Frictionless
     data JSON Table Schema from the information in the column-MultiIndex.
@@ -155,6 +154,11 @@ def make_json(data_sets, headers):
     data_sets: dict of pandas.DataFrames
         A dict with keys '15min' and '60min' and values the respective
         DataFrames
+    info_cols : dict of strings
+        Names for non-data columns such as for the index, for additional 
+        timestamps or the marker column
+    version: str
+        Version tag of the Data Package
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe.
@@ -168,13 +172,14 @@ def make_json(data_sets, headers):
     resource_list = ''  # list of files included in the datapackage
     source_list = ''  # list of sources were data comes from
     for res_key, df in data_sets.items():
-        field_list = indexfield  # list of of columns in a file, starting with the index field
+        # Create the list of of columns in a file, starting with the index field
+        field_list = indexfield.format(**info_cols)
         for col in df.columns:
-            if col[0] in ['ce(s)t-timestamp', 'comment']:
+            if col[0] in info_cols.values():
                 continue
             h = {k: v for k, v in zip(headers, col)}
             if len(h['region']) > 2:
-                geo = h['region'] + ' control area'
+                geo = h['region'] + ' balancing area'
             elif h['region'] == 'NI':
                 geo = 'Northern Ireland'
             elif h['region'] == 'CS':
@@ -189,16 +194,16 @@ def make_json(data_sets, headers):
             field_list = field_list + field_template.format(**h)
             source_list = source_list + source_template.format(**h)
         resource_list = resource_list + \
-            resource_template.format(res_key=res_key) + field_list
+            resource_template.format(res_key=res_key, **info_cols) + field_list
 
     # Remove duplicates from sources_list. set() returns unique values from a
-    # collection, butit cannot compare dicts. Since source_list is a list of of
+    # collection, but it cannot compare dicts. Since source_list is a list of of
     # dicts, this requires some juggling with data types
     source_list = [dict(tupleized)
                    for tupleized in set(tuple(entry.items())
                                         for entry in yaml.load(source_list))]
 
-    metadata = yaml.load(metadata_head)
+    metadata = yaml.load(metadata_head.format(version=version))
     metadata['sources'] = source_list
     metadata['resources'] = yaml.load(resource_list)
     for resource in metadata['resources']:

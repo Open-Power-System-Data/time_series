@@ -207,11 +207,11 @@ def read_energinet_dk(filepath, url, headers):
         'DE European Power Exchange':
             ('price', 'DE', 'epex', source, url),
         'DK-West: Wind power production':
-            ('wind-total', 'DK-west', 'generation', source, url),
+            ('wind', 'DK-west', 'generation', source, url),
         'DK-West: Solar cell production (estimated)':
             ('solar', 'DK-west', 'generation', source, url),
         'DK-East: Wind power production':
-            ('wind-total', 'DK-east', 'generation', source, url),
+            ('wind', 'DK-east', 'generation', source, url),
         'DK-East: Solar cell production (estimated)':
             ('solar', 'DK-east', 'generation', source, url),
         'DK: Wind power production (onshore)':
@@ -560,14 +560,14 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
     if variable_name in ['wind_solar_1', 'wind_solar_2']:
         skip = 4
         cols = [0, 1, 3]
-        colnames = ['date', 'hour', 'wind-total']
+        colnames = ['date', 'hour', 'wind']
     else:
         if variable_name == 'wind_solar_4':
             skip = 5
         else:
             skip = 7
         cols = [0, 2, 8]
-        colnames = ['timestamp', 'wind-total', 'solar']
+        colnames = ['timestamp', 'wind', 'solar']
 
     df = pd.read_excel(
         io=filePath,
