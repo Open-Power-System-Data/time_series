@@ -193,19 +193,19 @@ def read_energinet_dk(filepath, url, headers):
     source = 'Energinet.dk'
     colmap = {
         'DK-West':
-            ('price', 'DK-west', 'Elspot', source, url),
+            ('price', 'DK-west', 'elspot', source, url),
         'DK-East':
-            ('price', 'DK-east', 'Elspot', source, url),
+            ('price', 'DK-east', 'elspot', source, url),
         'Norway':
-            ('price', 'NO', 'Elspot', source, url),
+            ('price', 'NO', 'elspot', source, url),
         'Sweden (SE)':
-            ('price', 'SE', 'Elspot', source, url),
+            ('price', 'SE', 'elspot', source, url),
         'Sweden (SE3)':
-            ('price', 'SE-3', 'Elspot', source, url),
+            ('price', 'SE-3', 'elspot', source, url),
         'Sweden (SE4)':
-            ('price', 'SE-4', 'Elspot', source, url),
+            ('price', 'SE-4', 'elspot', source, url),
         'DE European Power Exchange':
-            ('price', 'DE', 'EPEX', source, url),
+            ('price', 'DE', 'epex', source, url),
         'DK-West: Wind power production':
             ('wind-total', 'DK-west', 'generation', source, url),
         'DK-West: Solar cell production (estimated)':

@@ -33,9 +33,9 @@ long_description: This data package contains different kinds of timeseries
     minutes) is provided in a separate file. All data processing is
     conducted in python and pandas and has been documented in the
     Jupyter notebooks linked below.
-documentation: https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/2016-10-28/main.ipynb
+documentation: https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/2016-10-27/main.ipynb
 
-version: '2016-10-28'
+version: '2016-10-27'
 
 last_changes: Included data from CEPS and PSE
 
@@ -66,7 +66,7 @@ source_template = '''
 '''
 
 resource_template = '''
-    - path: time_series{res_key}.csv
+    - path: time_series_{res_key}_singleindex.csv
       format: csv
       mediatype: text/csv
       encoding: UTF8
@@ -76,19 +76,16 @@ resource_template = '''
           lineTerminator: "\\n" 
           header: true
       alternative_formats:
-          - path: timeseries{res_key}.csv
+          - path: time_series_{res_key}_singleindex.csv
             stacking: Singleindex
             format: csv
-          - path: timeseries{res_key}.xlsx
-            stacking: Singleindex
-            format: xlsx
-          - path: timeseries{res_key}_multiindex.xlsx
+          - path: time_series_{res_key}.xlsx
             stacking: Multiindex
             format: xlsx
-          - path: timeseries{res_key}_multiindex.csv
+          - path: time_series_{res_key}_multiindex.csv
             stacking: Multiindex
             format: csv
-          - path: timeseries{res_key}_stacked.csv
+          - path: time_series_{res_key}_stacked.csv
             stacking: Stacked
             format: csv
       schema:

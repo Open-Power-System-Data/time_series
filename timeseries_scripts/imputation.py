@@ -35,19 +35,21 @@ def find_nan(frame, headers, patch=False):
     Returns
     ----------    
     patched: pandas.DataFrame
-        original frame or frame with gaps patched
+        original frame or frame with gaps patched and marker column appended
     nan_table: pandas.DataFrame
-        contains information about missing data
+        Contains detailed information about missing data
 
     '''
     nan_table = pd.DataFrame()
     patched = pd.DataFrame()
     marker_col = pd.DataFrame('', index=frame.index, columns=['comment'])
+    tuples = [('comment', '', '', '', '')]
+    marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     # Get the frequency/length of one period offrame
     one_period = frame.index[1] - frame.index[0]
     for col_name, col in frame.iteritems():
-        col = col.to_frame()  # kann man colname wieder an col drankleben?
+        col = col.to_frame()
 
         # tag all occurences of NaN in the data
         # (but not before first or after last actual entry)
@@ -110,11 +112,11 @@ def find_nan(frame, headers, patch=False):
         else:
             nan_table = nan_table.combine_first(nan_list)
 
-    # append the marker to the DataFrame
+
+    # replace empty strings with NaN
     marker_col.replace(to_replace='', value=np.nan, inplace=True)
-    tuples = [('marker', '', '', '', '')]
-    marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    # patched = patched.combine_first(marker_col)#.to_frame())
+    
+    # append the marker to the DataFrame
     patched = pd.concat([patched, marker_col], axis=1)  # .to_frame())
 
     # set the level names for the output
