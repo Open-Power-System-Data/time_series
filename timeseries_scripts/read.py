@@ -623,7 +623,6 @@ def read_transnetbw(filepath, variable_name, url, headers):
                                     end=df.index[-1],
                                     freq='15min',
                                     tz = pytz.timezone('Europe/Berlin'))
-        import pdb; pdb.set_trace()
     else:
         # 'ambigous' refers to how the October dst-transition hour is handled.
         # ‘infer’ will attempt to infer dst-transition hours based on order.
