@@ -42,7 +42,7 @@ def read_pse(filepath, variable_name, url, headers):
         The content of one file from PSE
 
     """
-    
+
     df = pd.read_csv(
         filepath,
         sep=';',
@@ -91,14 +91,26 @@ def read_pse(filepath, variable_name, url, headers):
     df.index = df.index.tz_convert(None)
 
     # Translate columns
-    colmap = {'Sumaryczna generacja źródeł wiatrowych': (
-        'wind', 'PL', 'generation', 'PSE', url)}
+#    colmap = {'Sumaryczna generacja źródeł wiatrowych': (
+#        'wind', 'PL', 'generation', 'PSE', url)}
+
+    colmap = {
+        'Sumaryczna generacja źródeł wiatrowych': {
+            'region': 'PL',
+            'variable': 'wind',
+            'attribute': 'generation',
+            'source': 'PSE',
+            'web': url
+        }
+    }
 
     # Drop any column not in colmap
     df = df[list(colmap.keys())]
 
-    # Create the MultiIndex.
-    tuples = [colmap[col] for col in df.columns]
+    # Create the MultiIndex
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    #tuples = [colmap[col] for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -120,11 +132,26 @@ def read_ceps(filepath, variable_name, url, headers):
     df.index = df.index.tz_convert(None)
 
     # Translate columns
-    colmap = {'WPP [MW]': ('wind-onshore', 'CZ', 'generation', 'CEPS', url),
-              'PVPP [MW]': ('solar', 'CZ', 'generation', 'CEPS', url), }
+    colmap = {
+        'WPP [MW]': {
+            'region': 'CZ',
+            'variable': 'wind',
+            'attribute': 'generation',
+            'source': 'CEPS',
+            'web': url
+        },
+        'PVPP [MW]': {
+            'region': 'CZ',
+            'variable': 'solar',
+            'attribute': 'generation',
+            'source': 'CEPS',
+            'web': url
+        }
+    }
 
-    # Create the MultiIndex.
-    tuples = [colmap[col] for col in df.columns]
+    # Create the MultiIndex
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -137,10 +164,35 @@ def read_elia(filepath, variable_name, url, headers):
         header=None,
         skiprows=4,
         index_col=0,
-        parse_cols=[0, 2, 4, 5]
+        parse_cols=None
     )
 
-    df.columns = ['forecast', 'generation', 'capacity']
+    colmap = {
+        'Day-Ahead forecast [MW]': {
+            'region': 'BE',
+            'variable': variable,
+            'attribute': 'forecast',
+            'source': 'Elia',
+            'web': url
+        },
+        'Corrected Upscaled Measurement [MW]': {
+            'region': 'BE',
+            'variable': variable,
+            'attribute': 'generation',
+            'source': 'Elia',
+            'web': url
+        },
+        'Monitored Capacity [MWp]': {
+            'region': 'BE',
+            'variable': variable,
+            'attribute': 'capacity',
+            'source': 'Elia',
+            'web': url
+        }
+    }
+
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
 
     df.index = pd.to_datetime(df.index.rename('timestamp'))
 
@@ -148,8 +200,8 @@ def read_elia(filepath, variable_name, url, headers):
     df.index = df.index.tz_convert(None)
 
     # Create the MultiIndex
-    tuples = [(variable_name, 'BE', attribute, 'Elia', url)
-              for attribute in df.columns]
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -192,39 +244,105 @@ def read_energinet_dk(filepath, url, headers):
 
     source = 'Energinet.dk'
     colmap = {
-        'DK-West':
-            ('price', 'DK-west', 'elspot', source, url),
-        'DK-East':
-            ('price', 'DK-east', 'elspot', source, url),
-        'Norway':
-            ('price', 'NO', 'elspot', source, url),
-        'Sweden (SE)':
-            ('price', 'SE', 'elspot', source, url),
-        'Sweden (SE3)':
-            ('price', 'SE-3', 'elspot', source, url),
-        'Sweden (SE4)':
-            ('price', 'SE-4', 'elspot', source, url),
-        'DE European Power Exchange':
-            ('price', 'DE', 'epex', source, url),
-        'DK-West: Wind power production':
-            ('wind', 'DK-west', 'generation', source, url),
-        'DK-West: Solar cell production (estimated)':
-            ('solar', 'DK-west', 'generation', source, url),
-        'DK-East: Wind power production':
-            ('wind', 'DK-east', 'generation', source, url),
-        'DK-East: Solar cell production (estimated)':
-            ('solar', 'DK-east', 'generation', source, url),
-        'DK: Wind power production (onshore)':
-            ('wind-onshore', 'DK', 'generation', source, url),
-        'DK: Wind power production (offshore)':
-            ('wind-offshore', 'DK', 'generation', source, url)
+        'DK-West': {
+            'variable': 'price',
+            'region': 'DK-west',
+            'attribute': 'day-ahead',
+            'source': source,
+            'web': url
+        },
+        'DK-East': {
+            'variable': 'price',
+            'region': 'DK-east',
+            'attribute': 'day-ahead',
+            'source': source,
+            'web': url
+        },
+        'Norway': {
+            'variable': 'price',
+            'region': 'NO',
+            'attribute': 'day-ahead',
+            'source': source,
+            'web': url
+        },
+        'Sweden (SE)': {
+            'variable': 'price',
+            'region': 'SE',
+            'attribute': 'day-ahead',
+            'source': source,
+            'web': url
+        },
+        'Sweden (SE3)': {
+            'variable': 'price',
+            'region': 'SE-3',
+            'attribute': 'day-ahead',
+            'source': source,
+            'web': url
+        },
+        'Sweden (SE4)': {
+            'variable': 'price',
+            'region': 'SE-4',
+            'attribute': 'day-ahead',
+            'source': source,
+            'web': url
+        },
+        'DE European Power Exchange': {
+            'variable': 'price',
+            'region': 'DE',
+            'attribute': 'day-ahead',
+            'source': source,
+            'web': url
+        },
+        'DK-West: Wind power production': {
+            'variable': 'wind',
+            'region': 'DK-west',
+            'attribute': 'generation',
+            'source': source,
+            'web': url
+        },
+        'DK-West: Solar cell production (estimated)': {
+            'variable': 'solar',
+            'region': 'DK-west',
+            'attribute': 'generation',
+            'source': source,
+            'web': url
+        },
+        'DK-East: Wind power production': {
+            'variable': 'wind',
+            'region': 'DK-east',
+            'attribute': 'generation',
+            'source': source,
+            'web': url
+        },
+        'DK-East: Solar cell production (estimated)': {
+            'variable': 'solar',
+            'region': 'DK-east',
+            'attribute': 'generation',
+            'source': source,
+            'web': url
+        },
+        'DK: Wind power production (onshore)': {
+            'variable': 'wind_onshore',
+            'region': 'DK',
+            'attribute': 'generation',
+            'source': source,
+            'web': url
+        },
+        'DK: Wind power production (offshore)': {
+            'variable': 'wind_offshore',
+            'region': 'DK',
+            'attribute': 'generation',
+            'source': source,
+            'web': url
+        },
     }
 
     # Drop any column not in colmap
     df = df[list(colmap.keys())]
 
-    # Create the MultiIndex.
-    tuples = [colmap[col] for col in df.columns]
+    # Create the MultiIndex
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     # Drop any other columns that might have been included in download
@@ -288,9 +406,17 @@ def read_entso_e_portal(filepath, url, headers):
 
     df.rename(columns={'DK_W': 'DK-west', 'UA_W': 'UA-west'}, inplace=True)
 
-    # Create the MultiIndex.
-    tuples = [('load', country, 'load', 'ENTSO-E Data Portal', url)
-              for country in df.columns]
+    colmap = {
+        'variable': 'load',
+        'region': '{country}',
+        'attribute': '',
+        'source': 'ENTSO-E Data Portal',
+        'web': url
+    }
+
+    # Create the MultiIndex
+    tuples = [tuple(colmap[level].format(country=col)
+                    for level in headers) for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -490,9 +616,18 @@ def read_transnetbw(filepath, variable_name, url, headers):
         usecols=[2, 3, 4, 5],  # 0-indexed, i.e. "2" refers to the 3rd column
     )
 
-    # 'ambigous' refers to how the October dst-transition hour is handled.
-    # ‘infer’ will attempt to infer dst-transition hours based on order.
-    df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
+    # in 2016-10, DST-transistion is conducted 2 hours too late in the data
+    # (hour 4:00-5:00 is repeated instead of 2:00-3:00)
+    if df.index[0].date() == date(2016,10,1):
+        df.index = pd.DatetimeIndex(start=df.index[0],
+                                    end=df.index[-1],
+                                    freq='15min',
+                                    tz = pytz.timezone('Europe/Berlin'))
+        import pdb; pdb.set_trace()
+    else:
+        # 'ambigous' refers to how the October dst-transition hour is handled.
+        # ‘infer’ will attempt to infer dst-transition hours based on order.
+        df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
     # The 2nd column represents the start and the 4th the end of the respective
@@ -690,7 +825,8 @@ def read(source_name, variable_name, url, res_key, headers,
 
         # Check if file is not empty
         if os.path.getsize(filepath) < 128:
-            logger.warning('%s \n file is smaller than 128 Byte, which means it is probably empty',
+            logger.warning('%s \n file is smaller than 128 Byte. It is probably'
+                           ' empty and will thus be skipped from reading',
                            filepath)
         else:
             logger.debug('reading data:\n\t '
