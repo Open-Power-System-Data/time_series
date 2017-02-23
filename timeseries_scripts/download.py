@@ -127,17 +127,19 @@ def download_source(source_name, source_dict, out_path,
     session = None
 
     for variable_name, param_dict in source_dict.items():
-        start_server = param_dict['start']
-        end_server = param_dict['end']
-
+        # Set up the filename
         if 'filename' in param_dict:
             filename = param_dict['filename']
         else:
             filename = None
 
+        # Determine time range to be downloaded.
+        # Start with everything from first to last datapoint on server
+        start_server = param_dict['start']
+        end_server = param_dict['end']
         if end_server == 'recent':
             end_server = datetime.now().date()
-
+        # narrow down the time range if specified by user
         if start_from_user:
             if start_from_user <= start_server:
                 pass  # do nothing
@@ -170,7 +172,7 @@ def download_source(source_name, source_dict, out_path,
 
         else:
             # The files on the servers usually contain the data for subperiods
-            # of some regular length (i.e. months or yearsavailable
+            # of some regular length (i.e. months or years available
             # Create lists of start- and enddates of periods represented in
             # individual files to be downloaded.
 
@@ -194,16 +196,17 @@ def download_source(source_name, source_dict, out_path,
 
             if 'deviant_urls' in param_dict:
                 for deviating in param_dict['deviant_urls']:
-                    downloaded, session = download_file(
-                        source_name,
-                        variable_name,
-                        out_path,
-                        # param_dict,
-                        start=deviating['start'],
-                        end=deviating['end'],
-                        url_template=deviating['url'],
-                        session=session,
-                    )
+                    if start_from_user <= deviating['start'] <= end_from_user:
+                        downloaded, session = download_file(
+                            source_name,
+                            variable_name,
+                            out_path,
+                            # param_dict,
+                            start=deviating['start'],
+                            end=deviating['end'],
+                            url_template=deviating['url'],
+                            session=session,
+                        )
 
             for s, e in zip(starts, ends):
 
@@ -222,7 +225,7 @@ def download_source(source_name, source_dict, out_path,
                             freq='S'):
                         if not downloaded:
                             logger.debug('attempt %s', second)
-                            downloaded, session = download_file_pse(
+                            downloaded, session = download_file(
                                 source_name,
                                 variable_name,
                                 out_path,
@@ -253,7 +256,7 @@ def download_source(source_name, source_dict, out_path,
     return
 
 
-def download_file_pse(
+def download_file(
         source_name,
         variable_name,
         out_path,
@@ -291,110 +294,6 @@ def download_file_pse(
     ----------
     downloaded : bool
         True if download successful, False otherwise.
-
-    """
-
-    if session is None:
-        session = requests.session()
-
-    # Each file will be saved in a folder of its own, this allows us to preserve
-    # the original filename when saving to disk.
-    container = os.path.join(out_path, source_name, variable_name,
-                             start.strftime('%Y-%m-%d') + '_' +
-                             end.strftime('%Y-%m-%d'))
-    os.makedirs(container, exist_ok=True)
-
-    url_params = {}  # A dict for URL-parameters
-    # For most sources, we can use HTTP get method with parameters-dict
-    if url_params_template:
-        for key, value in url_params_template.items():
-            url_params[key] = value.format(
-                u_start=start,
-                u_end=end,
-                u_second=second
-            )
-        url = url_template
-
-    # Attempt the download if there is no file yet.
-    count_files = len(os.listdir(container))
-    if count_files == 0:
-        resp = session.get(url, params=url_params)
-        if not resp.text == 'Brak uprawnieñ':
-            logger.info(
-                'Downloaded data:\n\t '
-                'Source:      {}\n\t '
-                'Variable:    {}\n\t '
-                'Data starts: {:%Y-%m-%d}\n\t '
-                'Data ends:   {:%Y-%m-%d}'
-                .format(source_name, variable_name, start, end)
-            )
-
-            # Get the original filename
-            original_filename = (
-                resp.headers['content-disposition']
-                .split('filename=')[-1]
-                .replace('"', '')
-                .replace(';', '')
-            )
-            logger.info('Downloaded from URL: %s\n\t Original filename: %s',
-                        resp.url, original_filename)
-
-            # Save file to disk
-            filepath = os.path.join(container, original_filename)
-            with open(filepath, 'wb') as output_file:
-                for chunk in resp.iter_content(1024):
-                    output_file.write(chunk)
-            downloaded = True
-
-        else:
-            downloaded = False
-
-    elif count_files == 1:
-        downloaded = True
-        logger.info('Found local file: %s', os.listdir(container)[0])
-
-    else:
-        downloaded = True
-        logger.info('There must not be more '
-                    'than one file in: %s. Please check ', container)
-
-    return downloaded, session
-
-
-def download_file(
-        source_name,
-        variable_name,
-        out_path,
-        # param_dict,
-        start,
-        end,
-        url_template,
-        url_params_template=None,
-        filename=None,
-        session=None,
-        second=None):
-    """
-    Download a single file specified by ``param_dict``, ``start``, ``end``,
-    and save it to a directory constructed by combining ``source_name``,
-    ``variable_name`` and ``out_path``. 
-    Returns True if download successful, False otherwise.
-
-    Parameters
-    ----------
-    source_name : str
-        Name of source dataset, e.g. ``TenneT``
-    variable_name : str
-        Name of variable, e.g. ``solar``
-    out_path : str
-        Base download directory in which to save all downloaded files
-    param_dict : dict
-        Info required for download, e.g. url, url-parameter, filename. 
-    start : datetime.date
-        start of data in the file
-    end : datetime.date
-        end of data in the file
-    session : requests.session, optional
-        If not given, a new session is created.
 
     """
     if session is None:
@@ -458,6 +357,20 @@ def download_file(
     count_files = len(os.listdir(container))
     if count_files == 0:
         resp = session.get(url, params=url_params)
+        # For polish TSO PSE, URLs have been guessed. Don't proceed for wrong guesses
+        if source_name == 'PSE' and resp.text in ['Brak uprawnieñ',
+                                                  'Brak uprawnień']:
+            downloaded = False
+            return downloaded, session
+
+#        logger.info(
+#            'Downloaded data:\n\t '
+#            'Source:      {}\n\t '
+#            'Variable:    {}\n\t '
+#            'Data starts: {:%Y-%m-%d}\n\t '
+#            'Data ends:   {:%Y-%m-%d}'
+#            .format(source_name, variable_name, start, end)
+#        )
 
         # Get the original filename
         try:
