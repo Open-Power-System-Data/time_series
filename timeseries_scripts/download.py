@@ -18,7 +18,7 @@ import requests
 import yaml
 
 logger = logging.getLogger('log')
-logger.setLevel('DEBUG')
+logger.setLevel('INFO')
 
 
 def download(sources, out_path, archive_version=None,
@@ -196,7 +196,7 @@ def download_source(source_name, source_dict, out_path,
 
             if 'deviant_urls' in param_dict:
                 for deviating in param_dict['deviant_urls']:
-                    if start_from_user <= deviating['start'] <= end_from_user:
+                    if start_server <= deviating['start'] <= end_server:
                         downloaded, session = download_file(
                             source_name,
                             variable_name,
@@ -299,14 +299,14 @@ def download_file(
     if session is None:
         session = requests.session()
 
-    logger.info(
+    log_text = (
         'Downloading data:\n\t '
         'Source:      {}\n\t '
         'Variable:    {}\n\t '
         'Data starts: {:%Y-%m-%d}\n\t '
         'Data ends:   {:%Y-%m-%d}'
         .format(source_name, variable_name, start, end)
-    )
+        )
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
@@ -314,11 +314,6 @@ def download_file(
                              start.strftime('%Y-%m-%d') + '_' +
                              end.strftime('%Y-%m-%d'))
     os.makedirs(container, exist_ok=True)
-
-    # Get number of months between now and start (required for TransnetBW).
-    count = (datetime.now().month
-             - start.month
-             + (datetime.now().year - start.year) * 12)
 
     # Belgian TSO Elia requires start/end with time in UTC format
     if source_name == 'Elia':
@@ -338,7 +333,6 @@ def download_file(
             url_params[key] = value.format(
                 u_start=start,
                 u_end=end,
-                u_transnetbw=count,
                 u_second=second
             )
         url = url_template
@@ -349,7 +343,6 @@ def download_file(
         url = url_template.format(
             u_start=start,
             u_end=end,
-            u_transnetbw=count,
             u_second=second
         )
 
@@ -357,20 +350,14 @@ def download_file(
     count_files = len(os.listdir(container))
     if count_files == 0:
         resp = session.get(url, params=url_params)
-        # For polish TSO PSE, URLs have been guessed. Don't proceed for wrong guesses
-        if source_name == 'PSE' and resp.text in ['Brak uprawnieñ',
-                                                  'Brak uprawnień']:
-            downloaded = False
-            return downloaded, session
-
-#        logger.info(
-#            'Downloaded data:\n\t '
-#            'Source:      {}\n\t '
-#            'Variable:    {}\n\t '
-#            'Data starts: {:%Y-%m-%d}\n\t '
-#            'Data ends:   {:%Y-%m-%d}'
-#            .format(source_name, variable_name, start, end)
-#        )
+        # For polish TSO PSE, URLs have been guessed.
+        # Don't proceed for wrong guesses
+        if source_name == 'PSE':
+            if resp.text in ['Brak uprawnieñ', 'Brak uprawnień']:
+                logger.debug(log_text)
+                downloaded = False
+                return downloaded, session
+        logger.info(log_text)
 
         # Get the original filename
         try:
@@ -398,22 +385,20 @@ def download_file(
             logger.info('Downloaded from URL: %s', resp.url)
 
         # Save file to disk
-        if not resp.text == 'Brak uprawnieñ':
-            filepath = os.path.join(container, original_filename)
-            with open(filepath, 'wb') as output_file:
-                for chunk in resp.iter_content(1024):
-                    output_file.write(chunk)
-            downloaded = True
-
-        else:
-            downloaded = False
+        filepath = os.path.join(container, original_filename)
+        with open(filepath, 'wb') as output_file:
+            for chunk in resp.iter_content(1024):
+                output_file.write(chunk)
+        downloaded = True
 
     elif count_files == 1:
         downloaded = True
+        logger.info(log_text)
         logger.info('Found local file: %s', os.listdir(container)[0])
 
     else:
         downloaded = True
+        logger.info(log_text)
         logger.info('There must not be more '
                     'than one file in: %s. Please check ', container)
 

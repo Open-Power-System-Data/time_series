@@ -8,12 +8,12 @@
 
 OPSD:
     capacities:
-        url_template: http://data.open-power-system-data.org/renewable_power_plants/2016-09-30/renewable_capacity_timeseries_DE.csv
+        url_template: http://data.open-power-system-data.org/renewable_power_plants/2017-02-16/renewable_capacity_timeseries_DE.csv
         filename: renewable_capacity_timeseries_DE.csv
         url_params_template:
         frequency: complete
         start: 2005-01-01
-        end: 2016-05-31
+        end: 2016-12-31
         filetype: csv
         resolution: 15min
         web: http://data.open-power-system-data.org/renewable_power_plants/
@@ -161,33 +161,25 @@ TenneT:
 
 TransnetBW:
     wind:
-        url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/windenergie
+        url_template: https://api.transnetbw.de/wind/csv
         url_params_template:
-            app: wind
-            activeTab: csv
-            view: '1'
-            download: 'true'
-            selectMonatDownload: '{u_transnetbw}'
+            date: '{u_start:%Y-%m}'
         frequency: monthly
         start: 2010-01-01
         end: recent
         filetype: csv
         resolution: 15min
-        web: https://www.transnetbw.com/en/key-figures/renewable-energies/wind-infeed
+        web: https://www.transnetbw.com/en/transparency/market-data/key-figures
     solar:
-        url_template: https://www.transnetbw.de/de/kennzahlen/erneuerbare-energien/fotovoltaik
+        url_template: https://api.transnetbw.de/photovoltaics/csv
         url_params_template:
-            app: wind
-            activeTab: csv
-            view: '1'
-            download: 'true'
-            selectMonatDownload: '{u_transnetbw}'
+            date: '{u_start:%Y-%m}'
         frequency: monthly
         start: 2011-01-01
         end: recent
         filetype: csv
         resolution: 15min
-        web: https://www.transnetbw.com/en/key-figures/renewable-energies/photovoltaic
+        web: https://www.transnetbw.com/en/transparency/market-data/key-figures
 
 Svenska Kraftnaet:
     wind_solar_1:
@@ -251,7 +243,7 @@ Svenska Kraftnaet:
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
     wind_solar_7:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}..xls
         url_params_template:
         frequency: yearly
         start: 2016-01-01

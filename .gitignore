@@ -6,10 +6,10 @@ original_data
 *.xlsx
 *.sqlite
 *.sql
+*.pickle
 
 # Generated files
 datapackage.json
 .idea/
-.ipynb_checkpoints/main-checkpoint.ipynb
+.ipynb_checkpoints/
 timeseries_scripts/__pycache__/
-*.pickle
