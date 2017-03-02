@@ -17,7 +17,7 @@ import zipfile
 from datetime import datetime, date, time, timedelta
 
 logger = logging.getLogger('log')
-logger.setLevel('DEBUG')
+logger.setLevel('INFO')
 
 
 def read_pse(filepath, variable_name, url, headers):
@@ -49,7 +49,6 @@ def read_pse(filepath, variable_name, url, headers):
         encoding='cp1250',
         header=0,
         index_col=None,  # 'timestamp',
-        names=None,
         parse_dates=None,  # {'timestamp': ['Data', 'Godzina']},
         date_parser=None,
         dayfirst=False,
@@ -62,7 +61,6 @@ def read_pse(filepath, variable_name, url, headers):
         # regular hours require backshifting by 1 period
         converters={'Godzina': lambda x: '2:00' if x ==
                     '02A' else str(int(x) - 1) + ':00'},
-        usecols=None,
     )
     # Create a list of spring-daylight savings time (DST)-transitions
     dst_transitions_spring = [
@@ -72,7 +70,6 @@ def read_pse(filepath, variable_name, url, headers):
 
     # The hour from 01:00 - 02:00 is indexed by "03:00",
     # requiring backshifting by another period
-
     df['timestamp'] = pd.to_datetime(
         df['Data'].astype(str) + ' ' +
         df['Godzina'])
@@ -89,10 +86,6 @@ def read_pse(filepath, variable_name, url, headers):
     # ‘infer’ will attempt to infer dst-transition hours based on order.
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
-
-    # Translate columns
-#    colmap = {'Sumaryczna generacja źródeł wiatrowych': (
-#        'wind', 'PL', 'generation', 'PSE', url)}
 
     colmap = {
         'Sumaryczna generacja źródeł wiatrowych': {
@@ -246,77 +239,77 @@ def read_energinet_dk(filepath, url, headers):
     colmap = {
         'DK-West': {
             'variable': 'price',
-            'region': 'DK-west',
-            'attribute': 'day-ahead',
+            'region': 'DK_west',
+            'attribute': 'day_ahead',
             'source': source,
             'web': url
         },
         'DK-East': {
             'variable': 'price',
-            'region': 'DK-east',
-            'attribute': 'day-ahead',
+            'region': 'DK_east',
+            'attribute': 'day_ahead',
             'source': source,
             'web': url
         },
         'Norway': {
             'variable': 'price',
             'region': 'NO',
-            'attribute': 'day-ahead',
+            'attribute': 'day_ahead',
             'source': source,
             'web': url
         },
         'Sweden (SE)': {
             'variable': 'price',
             'region': 'SE',
-            'attribute': 'day-ahead',
+            'attribute': 'day_ahead',
             'source': source,
             'web': url
         },
         'Sweden (SE3)': {
             'variable': 'price',
-            'region': 'SE-3',
-            'attribute': 'day-ahead',
+            'region': 'SE_3',
+            'attribute': 'day_ahead',
             'source': source,
             'web': url
         },
         'Sweden (SE4)': {
             'variable': 'price',
-            'region': 'SE-4',
-            'attribute': 'day-ahead',
+            'region': 'SE_4',
+            'attribute': 'day_ahead',
             'source': source,
             'web': url
         },
         'DE European Power Exchange': {
             'variable': 'price',
             'region': 'DE',
-            'attribute': 'day-ahead',
+            'attribute': 'day_ahead',
             'source': source,
             'web': url
         },
         'DK-West: Wind power production': {
             'variable': 'wind',
-            'region': 'DK-west',
+            'region': 'DK_west',
             'attribute': 'generation',
             'source': source,
             'web': url
         },
         'DK-West: Solar cell production (estimated)': {
             'variable': 'solar',
-            'region': 'DK-west',
+            'region': 'DK_west',
             'attribute': 'generation',
             'source': source,
             'web': url
         },
         'DK-East: Wind power production': {
             'variable': 'wind',
-            'region': 'DK-east',
+            'region': 'DK_east',
             'attribute': 'generation',
             'source': source,
             'web': url
         },
         'DK-East: Solar cell production (estimated)': {
             'variable': 'solar',
-            'region': 'DK-east',
+            'region': 'DK_east',
             'attribute': 'generation',
             'source': source,
             'web': url
@@ -344,9 +337,6 @@ def read_energinet_dk(filepath, url, headers):
     tuples = [tuple(colmap[col][level] for level in headers)
               for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-
-    # Drop any other columns that might have been included in download
-    df.drop(['drop_me'], axis=1, level=2, inplace=True)
 
     return df
 
@@ -404,7 +394,7 @@ def read_entso_e_portal(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    df.rename(columns={'DK_W': 'DK-west', 'UA_W': 'UA-west'}, inplace=True)
+    df.rename(columns={'DK_W': 'DK_west', 'UA_W': 'UA_west'}, inplace=True)
 
     colmap = {
         'variable': 'load',
@@ -424,33 +414,11 @@ def read_entso_e_portal(filepath, url, headers):
 
 def read_hertz(filepath, variable_name, url, headers):
     '''Read a file from 50Hertz into a DataFrame'''
-    # Since 2016, wind data has an aditional column for offshore.
-    # Baltic 1 has been producing since 2011-05-02 and Baltic2 since
-    # early 2015 (source: Wikipedia) so it is probably not correct that 50Hertz-Wind
-    # data pre-2016 is only onshore. Maybe we can ask at 50Hertz directly.
-    if variable_name.split('_')[0] == 'wind':
-        tech, attribute, phase = variable_name.split('_')
-        tuples = [('wind', 'DE-50hertz', attribute, '50Hertz', url)]
-        usecols = [0, 1, 3]
-
-        if phase == 'with-offshore':
-            tuples = [('wind', 'DE-50hertz', attribute, '50Hertz', url),
-                      ('wind-onshore', 'DE-50hertz', attribute, '50Hertz', url),
-                      ('wind-offshore', 'DE-50hertz', attribute, '50Hertz', url)]
-            usecols = [0, 1, 3, 4, 5]
-
-    elif variable_name.split('_')[0] == 'solar':
-        tech, attribute = variable_name.split('_')
-        cols = ['date', 'time', attribute]
-        tuples = [('solar', 'DE-50hertz', attribute, '50Hertz', url)]
-        usecols = [0, 1, 3]
-
     df = pd.read_csv(
         filepath,
         sep=';',
         header=3,
         index_col='timestamp',
-        names=None,
         parse_dates={'timestamp': ['Datum', 'Von']},
         date_parser=None,
         dayfirst=True,
@@ -458,7 +426,6 @@ def read_hertz(filepath, variable_name, url, headers):
         thousands='.',
         # truncate values in 'time' column after 5th character
         converters={'Von': lambda x: x[:5]},
-        usecols=usecols,
     )
 
     # Until 2006, and in 2015 (except for wind_generation_pre-offshore),
@@ -467,7 +434,7 @@ def read_hertz(filepath, variable_name, url, headers):
     # hour, (marked by an A) is missing in the data.
     # dst_arr is a boolean array consisting only of "False" entries, telling
     # python to treat the hour from 2:00 to 2:59 as wintertime.
-    if (2006 < pd.to_datetime(df.index.values[0]).year < 2015 or
+    if (pd.to_datetime(df.index.values[0]).year not in [2005, 2006, 2015] or
             (variable_name == 'wind_generation_pre-offshore' and
              pd.to_datetime(df.index.values[0]).year == 2015)):
         df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
@@ -477,7 +444,43 @@ def read_hertz(filepath, variable_name, url, headers):
 
     df.index = df.index.tz_convert(None)
 
+    tech, attribute = variable_name.split('_')[:2]
+
+    colmap = {
+        'MW': {
+            'variable': '{tech}',
+            'region': 'DE_50hertz',
+            'attribute': '{attribute}',
+            'source': '50Hertz',
+            'web': url
+        },
+        'Onshore MW': {
+            'variable': 'wind_onshore',
+            'region': 'DE_50hertz',
+            'attribute': '{attribute}',
+            'source': '50Hertz',
+            'web': url
+        },
+        'Offshore MW': {
+            'variable': 'wind_offshore',
+            'region': 'DE_50hertz',
+            'attribute': '{attribute}',
+            'source': '50Hertz',
+            'web': url
+        }
+    }
+    # Since 2016, wind data has an aditional column for offshore.
+    # Baltic 1 has been producing since 2011-05-02 and Baltic2 since
+    # early 2015 (source: Wikipedia) so it is probably not correct that 50Hertz-Wind
+    # data pre-2016 is only onshore. Maybe we can ask at 50Hertz directly.
+
+
+    # Drop any column not in colmap
+    df = df[[key for key in colmap.keys() if key in df.columns]]
+
     # Create the MultiIndex
+    tuples = [tuple(colmap[col][level].format(tech=tech, attribute=attribute)
+              for level in headers) for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -490,15 +493,13 @@ def read_amprion(filepath, variable_name, url, headers):
         sep=';',
         header=0,
         index_col='timestamp',
-        names=['date', 'time', 'forecast', 'generation'],
-        parse_dates={'timestamp': ['date', 'time']},
+        parse_dates={'timestamp': ['Datum', 'Uhrzeit']},
         date_parser=None,
         dayfirst=True,
         decimal=',',
         thousands=None,
         # Truncate values in 'time' column after 5th character.
-        converters={'time': lambda x: x[:5]},
-        usecols=[0, 1, 2, 3],
+        converters={'Uhrzeit': lambda x: x[:5]},
     )
 
     index1 = df.index[df.index.year <= 2009]
@@ -514,9 +515,30 @@ def read_amprion(filepath, variable_name, url, headers):
     df.index = index1.append(index2)
     df.index = df.index.tz_convert(None)
 
+    tech = variable_name
+    colmap = {
+        '8:00 Uhr Prognose [MW]': {
+            'variable': '{tech}',
+            'region': 'DE_amprion',
+            'attribute': 'forecast',
+            'source': 'Amprion',
+            'web': url
+        },
+        'Online Hochrechnung [MW]': {
+            'variable': '{tech}',
+            'region': 'DE_amprion',
+            'attribute': 'generation',
+            'source': 'Amprion',
+            'web': url
+        }
+    }
+    
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+
     # Create the MultiIndex
-    tuples = [(variable_name, 'DE-amprion', attribute, 'Amprion', url)
-              for attribute in df.columns]
+    tuples = [tuple(colmap[col][level].format(tech=tech) for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -524,32 +546,21 @@ def read_amprion(filepath, variable_name, url, headers):
 
 def read_tennet(filepath, variable_name, url, headers):
     '''Read a file from TenneT into a DataFrame'''
-    if variable_name == 'solar':
-        cols = [0, 1, 2, 3]
-        colmap = {'Datum': 'date', 'Position': 'pos', 'prognostiziert [MW]': 'forecast',
-                  'tatsächlich [MW]': 'solar'}
-
-    if variable_name == 'wind':
-        cols = [0, 1, 2, 3, 4]
-        colmap = {'Datum': 'date', 'Position': 'pos', 'prognostiziert [MW]': 'forecast',
-                  'tatsächlich [MW]': 'wind', 'Anteil Offshore [MW]': 'wind-offshore'}
-
     df = pd.read_csv(
         filepath,
         sep=';',
         encoding='latin_1',
         header=3,
         index_col=False,
-        names=None,
         parse_dates=False,
         date_parser=None,
         dayfirst=True,
         thousands=None,
         converters=None,
-        usecols=cols,
     )
 
-    df = df.rename(columns=colmap)
+    renamer = {'Datum': 'date', 'Position': 'pos'}
+    df = df.rename(columns=renamer)
 
     df['date'].fillna(method='ffill', limit=100, inplace=True)
 
@@ -562,7 +573,7 @@ def read_tennet(filepath, variable_name, url, headers):
             slicer = df[(df['date'] == df['date'][i]) & (df['pos'] >= 9)].index
             df.loc[slicer, 'pos'] = df['pos'] + 4
 
-        if df['pos'][i] > 96:  # True when summertime ends in October
+        elif df['pos'][i] > 96:  # True when summertime ends in October
             logger.debug('%s th quarter-hour at %s, position %s',
                          df['pos'][i], df.ix[i, 'date'], (i))
 
@@ -586,14 +597,37 @@ def read_tennet(filepath, variable_name, url, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
+    tech = variable_name
+    colmap = {
+        'prognostiziert [MW]': {
+            'variable': '{tech}',
+            'region': 'DE_tennet',
+            'attribute': 'forecast',
+            'source': 'TenneT',
+            'web': url
+        },
+        'tatsächlich [MW]': {
+            'variable': '{tech}',
+            'region': 'DE_tennet',
+            'attribute': 'generation',
+            'source': 'TenneT',
+            'web': url
+        },
+        'Anteil Offshore [MW]': {
+            'variable': 'wind_offshore',
+            'region': 'DE_tennet',
+            'attribute': 'generation',
+            'source': 'TenneT',
+            'web': url
+        }
+    }
+
+    # Drop any column not in colmap
+    df = df[[key for key in colmap.keys() if key in df.columns]]
+
     # Create the MultiIndex
-    if variable_name == 'solar':
-        tuples = [('solar', 'DE-tennet', 'forecast', 'TenneT', url),
-                  ('solar', 'DE-tennet', 'generation', 'TenneT', url)]
-    if variable_name == 'wind':  # offshore generation starts 2009-09-20
-        tuples = [('wind', 'DE-tennet', 'forecast', 'TenneT', url),
-                  ('wind', 'DE-tennet', 'generation', 'TenneT', url),
-                  ('wind-offshore', 'DE-tennet', 'generation', 'TenneT', url)]
+    tuples = [tuple(colmap[col][level].format(tech=tech) for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -606,27 +640,23 @@ def read_transnetbw(filepath, variable_name, url, headers):
         sep=';',
         header=0,
         index_col='timestamp',
-        names=['date', 'time', 'forecast', 'generation'],
-        parse_dates={'timestamp': ['date', 'time']},
+        parse_dates={'timestamp': ['Datum bis', 'Uhrzeit bis']},
         date_parser=None,
         dayfirst=True,
         decimal=',',
         thousands=None,
         converters=None,
-        usecols=[2, 3, 4, 5],  # 0-indexed, i.e. "2" refers to the 3rd column
     )
 
-    # in 2016-10, DST-transistion is conducted 2 hours too late in the data
+    # DST-transistion is conducted 2 hours too late in the data
     # (hour 4:00-5:00 is repeated instead of 2:00-3:00)
-    if df.index[0].date() == date(2016,10,1):
+    if df.index[0].date().month == 10:
         df.index = pd.DatetimeIndex(start=df.index[0],
                                     end=df.index[-1],
                                     freq='15min',
                                     tz = pytz.timezone('Europe/Berlin'))
     else:
-        # 'ambigous' refers to how the October dst-transition hour is handled.
-        # ‘infer’ will attempt to infer dst-transition hours based on order.
-        df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
+        df.index = df.index.tz_localize('Europe/Berlin')
     df.index = df.index.tz_convert(None)
 
     # The 2nd column represents the start and the 4th the end of the respective
@@ -634,9 +664,30 @@ def read_transnetbw(filepath, variable_name, url, headers):
     # index and shift the data back by 1 period.
     df = df.shift(periods=-1, freq='15min', axis='index')
 
+    tech = variable_name
+    colmap = {
+        'Prognose (MW)': {
+            'variable': '{tech}',
+            'region': 'DE_transnetbw',
+            'attribute': 'forecast',
+            'source': 'TransnetBW',
+            'web': url
+        },
+        'Ist-Wert (MW)': {
+            'variable': '{tech}',
+            'region': 'DE_transnetbw',
+            'attribute': 'generation',
+            'source': 'TransnetBW',
+            'web': url
+        }
+    }
+    
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+
     # Create the MultiIndex
-    tuples = [(variable_name, 'DE-transnetbw', attribute, 'TransnetBW', url)
-              for attribute in df.columns]
+    tuples = [tuple(colmap[col][level].format(tech=tech) for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -649,26 +700,13 @@ def read_opsd(filepath, url, headers):
         sep=',',
         header=0,
         index_col='timestamp',
-        names=None,
         parse_dates={'timestamp': ['day']},
         date_parser=None,
         dayfirst=False,
         decimal='.',
         thousands=None,
         converters=None,
-        usecols=None
     )
-
-    # Translate columns
-    cap_DE = 'BNetzA and Netztransparenz.de'
-    colmap = {
-        'Solar': ('solar', 'DE', 'capacity', cap_DE, url),
-        'Onshore': ('wind-onshore', 'DE', 'capacity', cap_DE, url),
-        'Offshore': ('wind-offshore', 'DE', 'capacity', cap_DE, url)
-    }
-
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
 
     # The capacities data only has one entry per day, which pandas
     # interprets as 00:00h. We will broadcast the dayly data for
@@ -682,8 +720,36 @@ def read_opsd(filepath, url, headers):
     df.index = df.index.tz_convert(None)
     df = df.resample('15min').ffill()
 
+    colmap = {
+        'Solar': {
+            'variable': 'solar',
+            'region': 'DE',
+            'attribute': 'capacity',
+            'source': 'BNetzA and Netztransparenz.de',
+            'web': url
+        },
+        'Onshore': {
+            'variable': 'wind_onshore',
+            'region': 'DE',
+            'attribute': 'capacity',
+            'source': 'BNetzA and Netztransparenz.de',
+            'web': url
+        },
+        'Offshore': {
+            'variable': 'wind_offshore',
+            'region': 'DE',
+            'attribute': 'capacity',
+            'source': 'BNetzA and Netztransparenz.de',
+            'web': url
+        }
+    }
+
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+
     # Create the MultiIndex
-    tuples = [colmap[col] for col in df.columns]
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -714,6 +780,7 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
         parse_cols=cols
     )
 
+    # renamer = {'Tid': 'timestamp', 'DATUM': 'date', 'TID': 'hour'}
     df.columns = colnames
 
     if variable_name in ['wind_solar_1', 'wind_solar_2']:
@@ -739,9 +806,26 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
     # one hour has to be deducted
     df.index = df.index + pd.offsets.Hour(-1)
 
+    colmap = {
+        'wind': {
+            'variable': 'wind',
+            'region': 'SE',
+            'attribute': 'generation',
+            'source': 'Svenska Kraftnaet',
+            'web': url
+        },
+        'solar': {
+            'variable': 'solar',
+            'region': 'SE',
+            'attribute': 'generation',
+            'source': 'Svenska Kraftnaet',
+            'web': url
+        }
+    }
+
     # Create the MultiIndex
-    tuples = [(tech, 'SE', 'generation', 'Svenska Kraftnaet', url)
-              for tech in df.columns]
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
