@@ -103,7 +103,6 @@ def read_pse(filepath, variable_name, url, headers):
     # Create the MultiIndex
     tuples = [tuple(colmap[col][level] for level in headers)
               for col in df.columns]
-    #tuples = [colmap[col] for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -973,19 +972,19 @@ def read(source_name, variable_name, url, res_key, headers,
     data_set = data_set.reindex(index=no_gaps)
 
     # Cut off the data outside of [start_from_user:end_from_user]
-    # First, convert userinout to UTC time
+    # First, convert userinput to UTC time to conform with data_set.index
     if start_from_user:
         start_from_user = (
             pytz.timezone('Europe/Brussels')
             .localize(datetime.combine(start_from_user, time()))
             .astimezone(pytz.timezone('UTC')))
-
     if end_from_user:
         end_from_user = (
             pytz.timezone('Europe/Brussels')
             .localize(datetime.combine(end_from_user, time()))
-            .astimezone(pytz.timezone('UTC'))) - timedelta(minutes=int(res_key[:2]))
-
+            .astimezone(pytz.timezone('UTC'))
+            # appropriate offset to inlude the end of period
+            + timedelta(days=1, minutes=-int(res_key[:2])))
     # Then cut off the data_set
     data_set = data_set.loc[start_from_user:end_from_user, :]
 
