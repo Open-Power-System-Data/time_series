@@ -16,14 +16,14 @@ logger = logging.getLogger('log')
 logger.setLevel('DEBUG')
 
 
-def find_nan(frame, headers, patch=False):
+def find_nan(df, headers, patch=False):
     '''
     Search for missing values in a DataFrame and optionally apply further 
     functions on each column.
 
     Parameters
     ----------    
-    frame : pandas.DataFrame
+    df : pandas.DataFrame
         DataFrame to inspect and possibly patch
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
@@ -35,29 +35,28 @@ def find_nan(frame, headers, patch=False):
     Returns
     ----------    
     patched: pandas.DataFrame
-        original frame or frame with gaps patched and marker column appended
+        original df or df with gaps patched and marker column appended
     nan_table: pandas.DataFrame
         Contains detailed information about missing data
 
     '''
     nan_table = pd.DataFrame()
     patched = pd.DataFrame()
-    marker_col = pd.DataFrame('', index=frame.index, columns=['comment'])
-    tuples = [('comment', '', '', '', '')]
+    marker_col = pd.DataFrame('', index=df.index, columns=['interpolated_values'])
+    tuples = [('interpolated_values', '', '', '', '')]
     marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
-    # Get the frequency/length of one period offrame
-    one_period = frame.index[1] - frame.index[0]
-    for col_name, col in frame.iteritems():
+    # Get the frequency/length of one period of df
+    one_period = df.index[1] - df.index[0]
+    for col_name, col in df.iteritems():
         col = col.to_frame()
-
-        # tag all occurences of NaN in the data
-        # (but not before first or after last actual entry)
 
         # skip this column if it has no entries at all
         if col.empty:
             continue
 
+        # tag all occurences of NaN in the data with True
+        # (but not before first or after last actual entry)
         col['tag'] = (
             (col.index >= col.first_valid_index()) &
             (col.index <= col.last_valid_index()) &
@@ -68,8 +67,7 @@ def find_nan(frame, headers, patch=False):
         nan_regs = pd.DataFrame()
 
         # first row of consecutive region is a True preceded by a False in tags
-        nan_regs['start_idx'] = col.index[
-            col['tag'] & ~
+        nan_regs['start_idx'] = col.index[col['tag'] & ~
             col['tag'].shift(1).fillna(False)]
 
         # last row of consecutive region is a False preceded by a True
@@ -100,7 +98,7 @@ def find_nan(frame, headers, patch=False):
 
             if patch:
                 col, marker_col = choose_fill_method(
-                    col, col_name, nan_regs, frame, marker_col, one_period)
+                    col, col_name, nan_regs, df, marker_col, one_period)
 
         if patched.empty:
             patched = col
@@ -126,7 +124,7 @@ def find_nan(frame, headers, patch=False):
     return patched, nan_table
 
 
-def choose_fill_method(col, col_name, nan_regs, frame, marker_col, one_period):
+def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
     '''
     Choose the appropriate function for filling a region of missing values
 
@@ -138,7 +136,7 @@ def choose_fill_method(col, col_name, nan_regs, frame, marker_col, one_period):
         Name of DataFrame to inspect
     nan_regs : : pandas.DataFrame
         DataFrame with each row representing a region of missing data in col
-    frame : pandas.DataFrame
+    df : pandas.DataFrame
         DataFrame to patch with n rows
     marker_col: pandas.DataFrame
         An n*1 DataFrame specifying for each row which of the previously treated 
@@ -167,7 +165,7 @@ def choose_fill_method(col, col_name, nan_regs, frame, marker_col, one_period):
             j += 1
 
             # NOT IMPLEMENTED
-            # col = impute(nan_region, col, col_name, nan_regs, frame, one_period)
+            # col = impute(nan_region, col, col_name, nan_regs, df, one_period)
 
     return col, marker_col
 
@@ -209,7 +207,7 @@ def my_interpolate(i, j, nan_region, col, col_name, marker_col, nan_regs, one_pe
     col.iloc[:, 0].loc[to_fill] = col.iloc[:, 0].loc[to_fill].interpolate()
 
     # Create a marker column to mark where data has been interpolated
-    marker_col.loc[to_comment] = marker_col + '_'.join(col_name[0:3]) + '; '
+    marker_col.loc[to_comment] = marker_col + '_'.join(col_name[0:3]) + '| '
 
     return col, marker_col
 
@@ -219,7 +217,7 @@ def my_interpolate(i, j, nan_region, col, col_name, marker_col, nan_regs, one_pe
 # expected magnitude of the missing data.
 
 
-def impute(nan_region, col, col_name, nan_regs, frame, one_period):
+def impute(nan_region, col, col_name, nan_regs, df, one_period):
     '''
     Impute missing value spans longer than one hour based on other TSOs.
 
@@ -228,15 +226,15 @@ def impute(nan_region, col, col_name, nan_regs, frame, one_period):
     nan_region : pandas.Series
         Contains information on one region of missing data in col
     col : pandas.DataFrame
-        A column from frame as a separate DataFrame 
+        A column from df as a separate DataFrame 
     col_name : str
         DataFrame to inspect
     nan_regs : : pandas.DataFrame
         DataFrame with each row representing a region of missing data in col
-    frame : pandas.DataFrame
+    df : pandas.DataFrame
         DataFrame to patch
     one_period : pandas.Timedelta
-        Time resolution of frame and col (15/60 minutes)
+        Time resolution of df and col (15/60 minutes)
 
     '''
     #logger.info('guessed %s entries after %s', row['count'], row['start_idx'])
@@ -257,7 +255,7 @@ def impute(nan_region, col, col_name, nan_regs, frame, one_period):
 
     # select columns with data for same technology (wind/solar) but from other
     # TSOs
-    similar = frame.loc[:, (col_name[0], other_tsos, col_name[2])]
+    similar = df.loc[:, (col_name[0], other_tsos, col_name[2])]
     # calculate the sum using columns without NaNs the day
     # before or during the period to be guessed
     similar = similar.dropna(
