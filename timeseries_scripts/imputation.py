@@ -3,7 +3,7 @@ Open Power System Data
 
 Timeseries Datapackage
 
-imputation.py : fill functions for imoutation of missing data (Not used yet)
+imputation.py : fill functions for imputation of missing data.
 
 """
 
@@ -42,14 +42,15 @@ def find_nan(df, headers, patch=False):
     '''
     nan_table = pd.DataFrame()
     patched = pd.DataFrame()
-    marker_col = pd.DataFrame('', index=df.index, columns=['interpolated_values'])
-    tuples = [('interpolated_values', '', '', '', '')]
-    marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    marker_col = pd.Series(np.nan, index=df.index)
 
     # Get the frequency/length of one period of df
     one_period = df.index[1] - df.index[0]
     for col_name, col in df.iteritems():
         col = col.to_frame()
+
+        col_name_str = '_'.join(
+            [level for level in col_name[0:3] if not level == ''])
 
         # skip this column if it has no entries at all
         if col.empty:
@@ -68,7 +69,7 @@ def find_nan(df, headers, patch=False):
 
         # first row of consecutive region is a True preceded by a False in tags
         nan_regs['start_idx'] = col.index[col['tag'] & ~
-            col['tag'].shift(1).fillna(False)]
+                                          col['tag'].shift(1).fillna(False)]
 
         # last row of consecutive region is a False preceded by a True
         nan_regs['till_idx'] = col.index[
@@ -76,7 +77,7 @@ def find_nan(df, headers, patch=False):
             col['tag'].shift(-1).fillna(False)]
 
         if not col['tag'].any():
-            logger.info('%s : nothing to patch in this column', col_name[0:3])
+            logger.info('%s : nothing to patch in this column', col_name_str)
             col.drop('tag', axis=1, inplace=True)
             nan_idx = pd.MultiIndex.from_arrays([
                 [0, 0, 0, 0],
@@ -110,12 +111,11 @@ def find_nan(df, headers, patch=False):
         else:
             nan_table = nan_table.combine_first(nan_list)
 
-
-    # replace empty strings with NaN
-    marker_col.replace(to_replace='', value=np.nan, inplace=True)
-    
     # append the marker to the DataFrame
-    patched = pd.concat([patched, marker_col], axis=1)  # .to_frame())
+    marker_col = marker_col.to_frame()
+    tuples = [('interpolated_values', '', '', '', '')]
+    marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    patched = pd.concat([patched, marker_col], axis=1)
 
     # set the level names for the output
     nan_table.columns.names = headers
@@ -126,19 +126,19 @@ def find_nan(df, headers, patch=False):
 
 def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
     '''
-    Choose the appropriate function for filling a region of missing values
+    Choose the appropriate function for filling a region of missing values.
 
     Parameters
     ----------  
     col : pandas.DataFrame
         A column from frame as a separate DataFrame 
-    col_name : str
-        Name of DataFrame to inspect
-    nan_regs : : pandas.DataFrame
+    col_name : tuple
+        tuple of header levels of column to inspect
+    nan_regs : pandas.DataFrame
         DataFrame with each row representing a region of missing data in col
     df : pandas.DataFrame
         DataFrame to patch with n rows
-    marker_col: pandas.DataFrame
+    marker_col : pandas.DataFrame
         An n*1 DataFrame specifying for each row which of the previously treated 
         columns have been patched
     one_period : pandas.Timedelta
@@ -173,7 +173,12 @@ def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
 def my_interpolate(i, j, nan_region, col, col_name, marker_col, nan_regs, one_period):
     '''
     Interpolate one missing value region in one column as described by 
-    nan_region. See choose_fill_method() for info on other parameters.
+    nan_region.
+
+    The default pd.Series.interpolate() function does not work if
+    interpolation is to be restricted to periods of a certain length.
+    (A limit-argument can be specified, but it results in longer periods 
+    of missing data to be filled parcially) 
 
     Parameters
     ----------
@@ -188,6 +193,7 @@ def my_interpolate(i, j, nan_region, col, col_name, marker_col, nan_regs, one_pe
         span:
         start_idx:
         till_idx:
+    See choose_fill_method() for info on other parameters.
 
     Returns
     ----------
@@ -195,19 +201,27 @@ def my_interpolate(i, j, nan_region, col, col_name, marker_col, nan_regs, one_pe
         The column with all nan_regs treated for periods shorter than 1:15.
 
     '''
+    col_name_str = '_'.join(
+        [level for level in col_name[0:3] if not level == ''])
     if i + 1 == len(nan_regs):
         logger.info('%s : \n\t '
-                    'interpolated %s up-to-2-hour-spans of NaNs',
-                    col_name[0:3], i + 1 - j)
+                    'interpolated %s up-to-2-hour-span(s) of NaNs',
+                    col_name_str, i + 1 - j)
 
     to_fill = slice(nan_region['start_idx'] - one_period,
                     nan_region['till_idx'] + one_period)
-    to_comment = slice(nan_region['start_idx'], nan_region['till_idx'])
+    comment_now = slice(nan_region['start_idx'], nan_region['till_idx'])
 
     col.iloc[:, 0].loc[to_fill] = col.iloc[:, 0].loc[to_fill].interpolate()
 
     # Create a marker column to mark where data has been interpolated
-    marker_col.loc[to_comment] = marker_col + '_'.join(col_name[0:3]) + '| '
+    comment_before = marker_col.notnull()
+    comment_again = comment_before.loc[comment_now]
+    if comment_again.any():
+        marker_col[comment_before & comment_again] = marker_col + \
+            ' | ' + col_name_str
+    else:
+        marker_col.loc[comment_now] = col_name_str
 
     return col, marker_col
 
@@ -227,8 +241,8 @@ def impute(nan_region, col, col_name, nan_regs, df, one_period):
         Contains information on one region of missing data in col
     col : pandas.DataFrame
         A column from df as a separate DataFrame 
-    col_name : str
-        DataFrame to inspect
+    col_name : tuple
+        tuple of header levels of column to inspect
     nan_regs : : pandas.DataFrame
         DataFrame with each row representing a region of missing data in col
     df : pandas.DataFrame
@@ -286,3 +300,33 @@ def impute(nan_region, col, col_name, nan_regs, df, one_period):
     )
 
     return col
+
+
+def resample_markers(group):
+    '''Resample marker column from 15 to 60 min
+
+    Parameters
+    ----------
+    group: pd.Series
+        Series of 4 succeeding quarter-hourly values from the marker column
+        that have to be combined into one.
+
+    Returns
+    ----------
+    aggregated_marker : str or np.nan
+        If there were any markers in group: the unique values from the marker
+        column group joined together in one string, np.nan otherwise
+
+    '''
+
+    if group.notnull().values.any():
+        # unpack string of marker s into a list
+        unpacked = [mark for line in group if type(line) is str
+                    for mark in line.split(' | ')]  # [:-1]]
+        # keep only unique values from the list
+        aggregated_marker = ' | '.join(set(unpacked))  # + ' | '
+
+    else:
+        aggregated_marker = np.nan
+
+    return aggregated_marker
