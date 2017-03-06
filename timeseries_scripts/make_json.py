@@ -33,11 +33,13 @@ long_description: This data package contains different kinds of timeseries
     minutes) is provided in a separate file. All data processing is
     conducted in python and pandas and has been documented in the
     Jupyter notebooks linked below.
-documentation: https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/{version}/main.ipynb
+
+documentation:
+    https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/{version}/main.ipynb
 
 version: '{version}'
 
-last_changes: Included data from CEPS and PSE
+last_changes: '{changes}'
 
 keywords:
     - Open Power System Data
@@ -56,99 +58,102 @@ contributors:
     - web: http://neon-energie.de/en/team/
       name: Jonathan Muehlenpfordt
       email: muehlenpfordt@neon-energie.de
-
-resources:
 '''
 
 source_template = '''
-    - name: {source}
-#      web: {web}
+- name: {source}
+#  web: {web}
 '''
 
 resource_template = '''
-    - path: time_series_{res_key}_singleindex.csv
-      format: csv
-      mediatype: text/csv
-      encoding: UTF8
-      dialect: 
-          csvddfVersion: 1.0
-          delimiter: ","
-          lineTerminator: "\\n" 
-          header: true
-      alternative_formats:
-          - path: time_series_{res_key}_singleindex.csv
-            stacking: Singleindex
-            format: csv
-          - path: time_series.xlsx
-            stacking: Multiindex
-            format: xlsx
-          - path: time_series_{res_key}_multiindex.csv
-            stacking: Multiindex
-            format: csv
-          - path: time_series_{res_key}_stacked.csv
-            stacking: Stacked
-            format: csv
-      schema:
-          primaryKey: {utc}
-          missingValue: ""
-          fields:
+- path: time_series_{res_key}_singleindex.csv
+  format: csv
+  mediatype: text/csv
+  encoding: UTF8
+  schema: {res_key}
+  dialect: 
+      csvddfVersion: 1.0
+      delimiter: ","
+      lineTerminator: "\\n" 
+      header: true
+  alternative_formats:
+      - path: time_series_{res_key}_singleindex.csv
+        stacking: Singleindex
+        format: csv
+      - path: time_series.xlsx
+        stacking: Multiindex
+        format: xlsx
+      - path: time_series_{res_key}_multiindex.csv
+        stacking: Multiindex
+        format: csv
+      - path: time_series_{res_key}_stacked.csv
+        stacking: Stacked
+        format: csv
 '''
 
-indexfield = '''
-            - name: {utc}
-              description: Start of timeperiod in Coordinated Universal Time
-              type: datetime
-              format: fmt:%Y-%m-%dT%H%M%SZ
-              opsd-contentfilter: true
-            - name: {cet}
-              description: Start of timeperiod in Central European (Summer-) Time
-              type: datetime
-              format: fmt:%Y-%m-%dT%H%M%S%z
-            - name: {marker}
-              description: marker to indicate which columns are missing data in source data and has been interpolated (e.g. solar_DE-transnetbw_generation;)
-              type: string
+schemas_template = '''
+{res_key}:
+    primaryKey: {utc}
+    missingValue: ""
+    fields:
+      - name: {utc}
+        description: Start of timeperiod in Coordinated Universal Time
+        type: datetime
+        format: fmt:%Y-%m-%dT%H%M%SZ
+        opsd-contentfilter: true
+      - name: {cet}
+        description: Start of timeperiod in Central European (Summer-) Time
+        type: datetime
+        format: fmt:%Y-%m-%dT%H%M%S%z
+      - name: {marker}
+        description: marker to indicate which columns are missing data in source data
+            and has been interpolated (e.g. DE_transnetbw_solar_generation;)
+        type: string
 '''
 
 field_template = '''
-            - name: {variable}_{region}_{attribute}
-              description: {description}
-              type: number (float)
-              source:
-                  name: {source}
-                  web: {web}
-              opsd-properties: 
-                  Region: {region}
-                  Variable: {variable}
-                  Attribute: {attribute}
+      - name: {region}_{variable}_{attribute}
+        description: {description}
+        type: number (float)
+        source:
+            name: {source}
+            web: {web}
+        opsd-properties: 
+            Region: "{region}"
+            Variable: {variable}
+            Attribute: {attribute}
 '''
 
 descriptions_template = '''
 load: Consumption in {geo} in MW
 generation: Actual {tech} generation in {geo} in MW
 actual: Actual {tech} generation in {geo} in MW
-forecast: Forecasted {tech} generation forecast in {geo} in MW
+forecast: Forecasted {tech} generation in {geo} in MW
 capacity: Electrical capacity of {tech} in {geo} in MW
 profile: Share of {tech} capacity producing in {geo}
 epex: Day-ahead spot price for {geo}
 elspot: Day-ahead spot price for {geo}
+day_ahead: Day-ahead spot price for {geo}
 '''
 
-# Columns-specific metadata
+# Dataset-specific metadata
 
 # For each dataset/outputfile, the metadata has an entry in the
-# "resources" list that describes the file/dataset. The main part of each
-# entry is the "schema" dictionary, consisting of a list of "fields",
-# meaning the columns in the dataset. The first field is the timestamp
-# index of the dataset. For the other fields, we iterate over the columns
+# "resources" list and another in the "schemas" dictionary.
+# A "schema" consits of a list of "fields", meaning the columns in the dataset.
+# The first 2 fields are the timestamps (UTC and CE(S)T).
+# For the other fields, we iterate over the columns
 # of the MultiIndex index of the datasets to contruct the corresponding
 # metadata.
+# The file is constructed from different buildings blocks made up of YAML-strings
+# as this makes for  more readable code.
 
 
-def make_json(data_sets, info_cols, version, headers):
+def make_json(data_sets, info_cols, version, changes, headers):
     '''
     Create a datapackage.json file that complies with the Frictionless
     data JSON Table Schema from the information in the column-MultiIndex.
-    
+
     Parameters
     ----------
     data_sets: dict of pandas.DataFrames
@@ -159,21 +164,36 @@ def make_json(data_sets, info_cols, version, headers):
         timestamps or the marker column
     version: str
         Version tag of the Data Package
+    changes : str
+        Desription of the changes from the last version to this one.
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe.
-    
+
     Returns
     ----------
     None
-    
+
     '''
 
-    resource_list = ''  # list of files included in the datapackage
-    source_list = ''  # list of sources were data comes from
+    # list of files included in the datapackage in YAML-format
+    resource_list = '''
+- mediatype: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+  format: xlsx
+  path: time_series.xlsx
+'''
+    source_list = ''  # list of sources were data comes from in YAML-format
+    schemas_dict = ''  # dictionary of schemas in YAML-format
+
     for res_key, df in data_sets.items():
-        # Create the list of of columns in a file, starting with the index field
-        field_list = indexfield.format(**info_cols)
+        field_list = ''  # list of columns in a file in YAML-format
+
+        # Both datasets (15min and 60min) get an antry in the resource list
+        resource_list = resource_list + resource_template.format(
+            res_key=res_key)
+
+        # Create the list of of columns in a file, starting with the index
+        # field
         for col in df.columns:
             if col[0] in info_cols.values():
                 continue
@@ -185,16 +205,19 @@ def make_json(data_sets, info_cols, version, headers):
             elif h['region'] == 'CS':
                 geo = 'Serbia and Montenegro'
             else:
-                geo = pycountry.countries.get(alpha2=h['region']).name
+                geo = pycountry.countries.get(alpha_2=h['region']).name
 
             descriptions = yaml.load(
                 descriptions_template.format(tech=h['variable'], geo=geo)
             )
-            h['description'] = descriptions[h['attribute']]
+            try:
+                h['description'] = descriptions[h['attribute']]
+            except KeyError:
+                h['description'] = descriptions[h['variable']]
             field_list = field_list + field_template.format(**h)
             source_list = source_list + source_template.format(**h)
-        resource_list = resource_list + \
-            resource_template.format(res_key=res_key, **info_cols) + field_list
+        schemas_dict = schemas_dict + schemas_template.format(
+            res_key=res_key, **info_cols) + field_list
 
     # Remove duplicates from sources_list. set() returns unique values from a
     # collection, but it cannot compare dicts. Since source_list is a list of of
@@ -203,11 +226,16 @@ def make_json(data_sets, info_cols, version, headers):
                    for tupleized in set(tuple(entry.items())
                                         for entry in yaml.load(source_list))]
 
-    metadata = yaml.load(metadata_head.format(version=version))
+    # Parse the YAML-Strings and stitch the building blocks together
+    metadata = yaml.load(metadata_head.format(
+        version=version, changes=changes))
     metadata['sources'] = source_list
     metadata['resources'] = yaml.load(resource_list)
-    for resource in metadata['resources']:
-        for field in resource['schema']['fields']:
+    metadata['schemas'] = yaml.load(schemas_dict)
+
+    # Remove URL for source if a column is based on own calculations
+    for schema in metadata['schemas'].values():
+        for field in schema['fields']:
             if 'source' in field.keys() and field['source']['name'] == 'own calculation':
                 del field['source']['web']
 
@@ -215,6 +243,5 @@ def make_json(data_sets, info_cols, version, headers):
     datapackage_json = json.dumps(metadata, indent=4, separators=(',', ': '))
     with open('datapackage.json', 'w') as f:
         f.write(datapackage_json)
-        
-    return
 
+    return
