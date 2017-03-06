@@ -170,7 +170,8 @@ def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
     return col, marker_col
 
 
-def my_interpolate(i, j, nan_region, col, col_name, marker_col, nan_regs, one_period):
+def my_interpolate(
+    i, j, nan_region, col, col_name, marker_col, nan_regs, one_period):
     '''
     Interpolate one missing value region in one column as described by 
     nan_region.
@@ -262,9 +263,10 @@ def impute(nan_region, col, col_name, nan_regs, df, one_period):
         start=nan_region['start_idx'],
         end=nan_region['till_idx'])
 
-    # other_tsos = [c[1] for c in compact.drop(col_name, axis=1).loc[:,(col_name[0],slice(None),col_name[2])].columns.tolist()]
-    other_tsos = [
-        tso for tso in ['DE-50Hertz', 'DE-Amprion', 'DE-TenneT', 'DE-TransnetBW']
+    # other_tsos = [c[1] for c in compact.drop(col_name, axis=1)
+    #.loc[:,(col_name[0],slice(None),col_name[2])].columns.tolist()]
+    other_tsos = [tso
+        for tso in ['DE-50Hertz', 'DE-Amprion', 'DE-TenneT', 'DE-TransnetBW']
         if tso != col_name[1]]
 
     # select columns with data for same technology (wind/solar) but from other

@@ -366,8 +366,8 @@ def read_entso_e_portal(filepath, url, headers):
     # indicate the order during fall DST-transition.
     df['hour'] = df['raw_hour'].str[:2].str.replace(
         'A', '').str.replace('B', '')
-    # Hours are indexed 1-24 by ENTSO-E, but pandas requires 0-23, so we deduct 1,
-    # i.e. the 3rd hour will be indicated by "2:00" rather than "3:00"
+    # Hours are indexed 1-24 by ENTSO-E, but pandas requires 0-23, so we
+    # deduct 1, i.e. the 3rd hour will be indicated by "2:00" rather than "3:00"
     df['hour'] = (df['hour'].astype(int) - 1).astype(str)
 
     df['timestamp'] = pd.to_datetime(df['Day'] + ' ' + df['hour'] + ':00')
@@ -470,8 +470,9 @@ def read_hertz(filepath, variable_name, url, headers):
     }
     # Since 2016, wind data has an aditional column for offshore.
     # Baltic 1 has been producing since 2011-05-02 and Baltic2 since
-    # early 2015 (source: Wikipedia) so it is probably not correct that 50Hertz-Wind
-    # data pre-2016 is only onshore. Maybe we can ask at 50Hertz directly.
+    # early 2015 (source: Wikipedia) so it is probably not correct that
+    # 50Hertz-Wind data pre-2016 is only onshore. Maybe we can ask at
+    # 50Hertz directly.
 
     # Drop any column not in colmap
     df = df[[key for key in colmap.keys() if key in df.columns]]
@@ -567,7 +568,8 @@ def read_tennet(filepath, variable_name, url, headers):
         # On the day in March when summertime begins, shift the data forward by
         # 1 hour, beginning with the 9th quarter-hour, so the index runs again
         # up to 96
-        if (df['pos'][i] == 92 and ((i == len(df.index) - 1) or (df['pos'][i + 1] == 1))):
+        if (df['pos'][i] == 92 and ((i == len(df.index) - 1) or
+                                    (df['pos'][i + 1] == 1))):
             slicer = df[(df['date'] == df['date'][i]) & (df['pos'] >= 9)].index
             df.loc[slicer, 'pos'] = df['pos'] + 4
 
