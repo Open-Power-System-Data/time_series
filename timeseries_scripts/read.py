@@ -473,13 +473,12 @@ def read_hertz(filepath, variable_name, url, headers):
     # early 2015 (source: Wikipedia) so it is probably not correct that 50Hertz-Wind
     # data pre-2016 is only onshore. Maybe we can ask at 50Hertz directly.
 
-
     # Drop any column not in colmap
     df = df[[key for key in colmap.keys() if key in df.columns]]
 
     # Create the MultiIndex
     tuples = [tuple(colmap[col][level].format(tech=tech, attribute=attribute)
-              for level in headers) for col in df.columns]
+                    for level in headers) for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
@@ -531,7 +530,7 @@ def read_amprion(filepath, variable_name, url, headers):
             'web': url
         }
     }
-    
+
     # Drop any column not in colmap
     df = df[list(colmap.keys())]
 
@@ -653,7 +652,7 @@ def read_transnetbw(filepath, variable_name, url, headers):
         df.index = pd.DatetimeIndex(start=df.index[0],
                                     end=df.index[-1],
                                     freq='15min',
-                                    tz = pytz.timezone('Europe/Berlin'))
+                                    tz=pytz.timezone('Europe/Berlin'))
     else:
         df.index = df.index.tz_localize('Europe/Berlin')
     df.index = df.index.tz_convert(None)
@@ -680,7 +679,7 @@ def read_transnetbw(filepath, variable_name, url, headers):
             'web': url
         }
     }
-    
+
     # Drop any column not in colmap
     df = df[list(colmap.keys())]
 

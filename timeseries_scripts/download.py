@@ -306,7 +306,7 @@ def download_file(
         'Data starts: {:%Y-%m-%d}\n\t '
         'Data ends:   {:%Y-%m-%d}'
         .format(source_name, variable_name, start, end)
-        )
+    )
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
