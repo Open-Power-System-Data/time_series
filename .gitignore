@@ -7,6 +7,8 @@ original_data
 *.sqlite
 *.sql
 *.pickle
+# take checksums.txt from root directory, ignore version directory
+????-??-??/checksums.txt
 
 # Generated files
 datapackage.json
