@@ -6,6 +6,31 @@
 # sources.yml : Parameters required for downloading and parsing data from sources
 #
 
+ENTSO-E Transparency FTP:
+    Actual Generation per Production Type:
+        address: '62.209.222.9'
+        user: TP_export
+        passwd: eG75pLwgyfyQLzjJ
+        path: export/export/AggregatedGenerationPerType
+        filename: '{u_start.year}_{u_start.month}_AggregatedGenerationPerType.csv'
+        frequency: monthly
+        start: 2014-12-01
+        end: recent
+        filetype: csv
+        resolution: 60min
+        web: https://transparency.entsoe.eu/generation/r2/actualGenerationPerProductionType/show
+    Actual Total Load:
+        address: '62.209.222.9'
+        user: TP_export
+        passwd: eG75pLwgyfyQLzjJ
+        path: export/export/ActualTotalLoad
+        filename: '{u_start.year}_{u_start.month}_ActualTotalLoad.csv'
+        frequency: monthly
+        start: 2014-12-01
+        end: recent
+        filetype: csv
+        resolution: 60min
+        web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
 OPSD:
     capacities:
         url_template: http://data.open-power-system-data.org/renewable_power_plants/2017-02-16/renewable_capacity_timeseries_DE.csv
@@ -324,37 +349,37 @@ PSE:
         filetype: csv
         resolution: 60min
         web: http://www.pse.pl/index.php?modul=21&id_rap=24
-        deviant_urls:
+        deviant_params:
             - start: 2016-02-19
               end: 2016-02-19
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160219_20160224170055
+              rap: GEN_WIATR_20160219_20160224170055
             - start: 2016-02-20
               end: 2016-02-20
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160220_20160224170055
+              rap: GEN_WIATR_20160220_20160224170055
             - start: 2016-02-21
               end: 2016-02-21
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160221_20160224170055
+              rap: GEN_WIATR_20160221_20160224170055
             - start: 2016-02-22
               end: 2016-02-22
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160222_20160224170055
+              rap: GEN_WIATR_20160222_20160224170055
             - start: 2016-02-23
               end: 2016-02-23
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160223_20160224170055
+              rap: GEN_WIATR_20160223_20160224170055
             - start: 2016-07-22
               end: 2016-07-22
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160722_20160728171233
+              rap: GEN_WIATR_20160722_20160728171233
             - start: 2016-04-21
               end: 2016-04-21
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160421_20160428170059
+              rap: GEN_WIATR_20160421_20160428170059
             - start: 2013-03-14
               end: 2013-03-14
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20130314_20130320170505
+              rap: GEN_WIATR_20130314_20130320170505
             - start: 2016-09-08
               end: 2016-09-08
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160908_20160914172604
+              rap: GEN_WIATR_20160908_20160914172604
             - start: 2016-09-09
               end: 2016-09-09
-              url: http://www.pse.pl/get_csv.php?rap=GEN_WIATR_20160909_20160915171359
+              rap: GEN_WIATR_20160909_20160915171359
 
 # For the Following sources, the download/read has not yet been implemented
 #RTE:
