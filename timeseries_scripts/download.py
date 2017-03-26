@@ -263,9 +263,9 @@ def download_file(
         second=None,
         attempt=1):
     """
-    Download a single file specified by ``param_dict``, ``start``, ``end``,
-    and save it to a directory constructed by combining ``source_name``,
-    ``variable_name`` and ``out_path``.
+    Prepare the Download of a single file.
+    Make a directory to save the file to and check if it might have been
+    downloaded already
 
     Parameters
     ----------
@@ -281,19 +281,27 @@ def download_file(
         start of data in the file
     end : datetime.date
         end of data in the file
+    filename : str, default None
+        pattern of filename to use if it can not be retrieved from server
     session : requests.session, optional
         If not given, a new session is created.
+    second : datetime.datetime, default None
+        precise time the file was upladed. Needed for PSE.
+    attempt : int, default 1
+        # of attempt to find the file on the server. Needed for PSE.
 
     Returns
     ----------
     downloaded : bool
         True if download successful, False otherwise.
+    session : requests.session
 
     """
     if session is None:
         session = requests.session()
 
-    log_text = (
+    if attempt == 1:
+        logger.info(
         'Downloading data:\n\t '
         'Source:      {}\n\t '
         'Variable:    {}\n\t '
@@ -301,8 +309,6 @@ def download_file(
         'Data ends:   {:%Y-%m-%d}'
         .format(source_name, variable_name, start, end)
     )
-    if attempt==1:
-        logger.info(log_text)
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
@@ -369,7 +375,27 @@ def download_request(
     url_template,
     url_params_template,
     second=None):
- 
+    """
+    Download a single file via HTTP get.
+    Build the url from parameters and save the file to dsik under it's original
+    filename 
+
+    Parameters
+    ----------
+    container : str
+        unique filepath for the file to be saved
+    url_template : 
+        stem of URL 
+    url_params_template : dict
+        dict of parameter names and values to paste into URL
+
+    Returns
+    ----------
+    downloaded : bool
+        True if download successful, False otherwise.
+    session : requests.session
+
+    """ 
     url_params = {}  # A dict for URL-parameters
 
     # For most sources, we can use HTTP get method with parameters-dict
@@ -436,14 +462,35 @@ def download_request(
 def download_ftp(
     start,
     end,
-    #log_text,
     filename,
     container,
     address,
     user,
     passwd,
     path):
+    """
+    Download a single file via FTP.
+
+    Parameters
+    ----------
+    container : str
+        unique filepath for the file to be saved
+    address : 
+        Server address
+    user : str
+        username
+    passwd : str
+        password
+    path : 
+        directory on server
+
+    Returns
+    ----------
+    downloaded : bool
+        True if download successful, False otherwise.
     
+    """ 
+
     ftp = FTP(host=address, user=user, passwd=passwd)
     ftp.cwd(path)
     filename = filename.format(u_start=start, u_end=end)
@@ -452,13 +499,20 @@ def download_ftp(
 
     # Retrieve file and save to disk
     downloadTracker = FtpDownloadTracker(ftp, filesize, filepath)
-    ftp.retrbinary('RETR ' + filename, callback=downloadTracker.handle, blocksize=1024)
+    ftp.retrbinary('RETR ' + filename, callback=downloadTracker.handle,
+                   blocksize=1024)
 
     downloaded = True
     return downloaded
 
 
 class FtpDownloadTracker:
+    """
+    Object that provides the path to save a file from FTP locally together
+    with a method to track the download progress via a handle for the
+    ftplib.FTP.retrbinary method.
+    """
+
     sizeWritten = 0
     totalSize = 0
     lastShownPercent = 0
