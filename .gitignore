@@ -1,13 +1,16 @@
 # Downloaded data
 original_data
 
-# Processed data
+# Data files
 *.csv
 *.xlsx
+*.xls
+*.xml
 *.sqlite
 *.sql
 *.pickle
-# take checksums.txt from root directory, ignore version directory
+
+# take checksums.txt only from root directory and ignore files in the version directories
 ????-??-??/checksums.txt
 
 # Generated files
