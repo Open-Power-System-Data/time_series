@@ -177,9 +177,9 @@ def download_source(source_name, source_dict, out_path,
             # individual files to be downloaded.
 
             # tranlate frequency to argument for pd.date_range()
-            freq_start = {'yearly': 'AS', 'quarterly': 'QS',
+            freq_start = {'yearly': 'AS', 'biannually' : '6MS', 'quarterly': 'QS',
                           'monthly': 'MS', 'daily': 'D'}
-            freq_end = {'yearly': 'A', 'quarterly': 'Q',
+            freq_end = {'yearly': 'A', 'biannually' : '6M', 'quarterly': 'Q',
                         'monthly': 'M', 'daily': 'D'}
 
             starts = pd.date_range(
@@ -413,4 +413,4 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subset', nargs='*', action='append')
     args = parser.parse_args()
 
-    download(args.sources_yaml_path, args.out_path, args.subset)
+   # download(args.sources_yaml_path, args.out_path, args.subset)
