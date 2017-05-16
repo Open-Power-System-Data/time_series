@@ -366,9 +366,9 @@ APG:
             Resolution: 15M
             DateFromLocal: '{u_start:%Y%m%d}'
             DateToLocal: '{u_end:%Y%m%d}'
-            CacheDir: 20170428131612_4266553c941447f4a8836f88af6cc4ef
+            #CacheDir: 20170428131612_4266553c941447f4a8836f88af6cc4ef is unnecessary
             CacheFileName: export_agpt_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
-        frequency: biannually
+        frequency: quarterly
         start: 2006-01-01
         end: recent
         filetype: csv

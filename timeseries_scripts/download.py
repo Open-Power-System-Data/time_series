@@ -177,9 +177,9 @@ def download_source(source_name, source_dict, out_path,
             # individual files to be downloaded.
 
             # tranlate frequency to argument for pd.date_range()
-            freq_start = {'yearly': 'AS', 'biannually' : '6MS', 'quarterly': 'QS',
+            freq_start = {'yearly': 'AS', 'quarterly': 'QS',
                           'monthly': 'MS', 'daily': 'D'}
-            freq_end = {'yearly': 'A', 'biannually' : '6M', 'quarterly': 'Q',
+            freq_end = {'yearly': 'A', 'quarterly': 'Q',
                         'monthly': 'M', 'daily': 'D'}
 
             starts = pd.date_range(

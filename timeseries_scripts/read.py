@@ -951,6 +951,10 @@ def read(source_name, variable_name, url, res_key, headers,
             elif source_name == 'TransnetBW':
                 data_to_add = read_transnetbw(
                     filepath, variable_name, url, headers)
+            elif source_name == 'APG':
+                data_to_add = read_apg(
+                    filepath, url, headers)
+            
 
             if data_set.empty:
                 data_set = data_to_add
@@ -1024,3 +1028,71 @@ def update_progress(count, total):
     sys.stdout.flush()
 
     return
+
+def read_apg(filepath, url, headers):
+    '''Read a file from APG into a DataFrame'''
+    df = df = pd.read_csv(
+        filepath,
+        sep=';',
+        encoding='iso-8859-1',
+        #encoding='cp1250',
+        header=0,
+        #index_col=['Von'],  
+        index_col=None,
+        parse_dates=None,  
+        #date_parser=None,
+        #dayfirst=True,
+        decimal=',',
+        thousands='.',
+        #converters={'Godzina': lambda x: '2:00' if x ==
+                    #'02A' else str(int(x) - 1) + ':00'},
+    )
+
+ 
+
+   
+    # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc.
+    # during the year, but 3A:00:00, 3B:00:00 for the (possibely
+    # DST-transgressing) 3rd hour of every day in October, we truncate the
+    # hours column after 2 characters and replace letters which are there to
+    # indicate the order during fall DST-transition.
+    df['Von'] = df['Von'].str.replace(
+        'A', '').str.replace('B', '')
+    
+    df['Von'] = pd.to_datetime(df['Von'], dayfirst=True,)
+    
+    df.set_index('Von', inplace=True)
+
+    df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+    
+    colmap = {
+        'Wind  [MW]': {
+            'variable': 'wind',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url
+        },
+        'Solar  [MW]': {
+            'variable': 'solar',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url
+        }
+    }
+    
+    #df.rename(columns={'Wind  [MW]': 'wind', 'Solar  [MW]': 'solar'}, inplace=True)
+    #df=df[('wind', 'solar')]
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+    
+    # Create the MultiIndex
+    #tuples = [tuple(colmap[level].format(country=col)
+                    #for level in headers) for col in df.columns]
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return df
