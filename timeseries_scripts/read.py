@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 import logging
 import zipfile
+import csv
+import re
 from datetime import datetime, date, time, timedelta
 
 logger = logging.getLogger('log')
@@ -1031,21 +1033,15 @@ def update_progress(count, total):
 
 def read_apg(filepath, url, headers):
     '''Read a file from APG into a DataFrame'''
-    df = df = pd.read_csv(
+    df = pd.read_csv(
         filepath,
         sep=';',
         encoding='iso-8859-1',
-        #encoding='cp1250',
         header=0,
-        #index_col=['Von'],  
         index_col=None,
         parse_dates=None,  
-        #date_parser=None,
-        #dayfirst=True,
         decimal=',',
-        thousands='.',
-        #converters={'Godzina': lambda x: '2:00' if x ==
-                    #'02A' else str(int(x) - 1) + ':00'},
+        thousands='.',        
     )
 
  
@@ -1083,16 +1079,99 @@ def read_apg(filepath, url, headers):
         }
     }
     
-    #df.rename(columns={'Wind  [MW]': 'wind', 'Solar  [MW]': 'solar'}, inplace=True)
-    #df=df[('wind', 'solar')]
     # Drop any column not in colmap
     df = df[list(colmap.keys())]
     
-    # Create the MultiIndex
-    #tuples = [tuple(colmap[level].format(country=col)
-                    #for level in headers) for col in df.columns]
+    # Create the MultiIndex    
     tuples = [tuple(colmap[col][level] for level in headers)
               for col in df.columns]
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
+    
+def read_rte(filepath, variable_name, url, headers):
+    '''Read a file from RTE into a DataFrame'''
+    #open zip
+    myzipfile = zipfile.ZipFile(filepath, mode='r')
+    myzipfile.extractall(path=(os.path.split(filepath)[0]))    
+    
+    #change path from zip to excel
+    from os import walk
+    f = []
+    for (dirpath, dirnames, filenames) in walk((os.path.split(filepath)[0])):
+        f.extend(filenames)
+        break
+    
+    get_excel = [item for item in f if item.endswith('.xls')]
+    
+    filepath = os.path.join((os.path.split(filepath)[0]), get_excel[0])
+            
+    #open excel which is actually tsv
+    with open(filepath, 'r') as f:        
+        reader = csv.reader(f, delimiter='\t', lineterminator='\n')
+        df = pd.DataFrame(list(reader))
+    
+    df = df.iloc[:,:13] #make sure there are no empty columns at the end    
+    df.columns = df.iloc[1] #set column names
+    df['Heures'] = df['Heures'].map(lambda x: str(x).lstrip('Données de réalisation du ')) #strip the cells with dates of any other text
+    df['Dates'] = np.nan
+    
+    #fill an extra column with corresponding dates.
+    for f in df['Heures']:
+        if re.match('\d{2}/\d{2}/\d{4}', f):
+            df['Dates'][list(df['Heures']).index(f)]=f
+    df['Dates'].fillna(method='ffill', axis=0, inplace=True, limit=25)
+    
+    #drop all rows not containing data (no time-format in first column)
+    df = df.loc[df['Heures'].str.len()==11]
+    
+    #drop daylight saving time hours (no data there)
+    df = df.loc[(df['Éolien terrestre'] != '*') & (df['Solaire'] != '*')]
+    
+    #just display beginning of hours
+    df['Heures'] = df['Heures'].map(lambda x: str(x)[:-6])
+    
+    #construct full date to later use as index
+    df['timestamp'] = df['Dates']+' '+df['Heures']
+    df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True,)
+    
+    #drop autumn dst hours as they contain inconsistent data (none or copy of hour before)
+    dst_transitions_autumn = [
+        d.replace(hour=2)
+        for d in pytz.timezone('Europe/Paris')._utc_transition_times
+        if d.year >= 2000 and d.month == 10]
+    df = df.loc[~df['timestamp'].isin(dst_transitions_autumn)]
+    df.set_index(df['timestamp'], inplace=True)
+    
+    #Transfer to UTC
+    df.index = df.index.tz_localize('Europe/Paris')
+    df.index = df.index.tz_convert(None)
+    
+    colmap = {
+        'Éolien terrestre': {
+            'variable': 'wind',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url
+        },
+        'Solaire': {
+            'variable': 'solar',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url
+        }
+    }
+
+    
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+    
+    # Create the MultiIndex    
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    
+    return df
+    

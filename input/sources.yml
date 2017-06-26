@@ -376,17 +376,17 @@ APG:
         web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
 #        
 # For the Following sources, the download/read has not yet been implemented
-#RTE:
-#    generation_by_source:
-#        url_template: http://clients.rte-france.com/servlets/RealProdServlet
-#        url_params_template:
-#            annee: '{u_start:%Y}'
-#        frequency: yearly
-#        start: 2014-01-01
-#        end: recent
-#        filetype: zip #xls
-#        resolution: 60min
-#        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
+RTE:
+    generation_by_source:
+        url_template: http://clients.rte-france.com/servlets/RealProdServlet
+        url_params_template:
+            annee: '{u_start:%Y}'
+        frequency: yearly
+        start: 2014-01-01 # real start date is 2014-12-16. download.py only works with beginning of year though.
+        end: recent
+        filetype: zip #xls
+        resolution: 60min
+        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
 #
 #Fingrid:
 #    wind:
