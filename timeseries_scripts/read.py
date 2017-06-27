@@ -1110,6 +1110,10 @@ def read_rte(filepath, variable_name, url, headers):
     with open(filepath, 'r') as f:        
         reader = csv.reader(f, delimiter='\t', lineterminator='\n')
         df = pd.DataFrame(list(reader))
+        
+    #delete the excel as read() throws exception if there are two files in one download directory
+    #this means multiple runthroughs of this script would otherwise not be possible
+    os.remove(filepath)
     
     df = df.iloc[:,:13] #make sure there are no empty columns at the end    
     df.columns = df.iloc[1] #set column names
