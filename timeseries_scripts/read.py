@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 import logging
 import zipfile
+import csv
+import re
 from datetime import datetime, date, time, timedelta
 
 logger = logging.getLogger('log')
@@ -951,6 +953,10 @@ def read(source_name, variable_name, url, res_key, headers,
             elif source_name == 'TransnetBW':
                 data_to_add = read_transnetbw(
                     filepath, variable_name, url, headers)
+            elif source_name == 'APG':
+                data_to_add = read_apg(
+                    filepath, url, headers)
+            
 
             if data_set.empty:
                 data_set = data_to_add
@@ -1024,3 +1030,152 @@ def update_progress(count, total):
     sys.stdout.flush()
 
     return
+
+def read_apg(filepath, url, headers):
+    '''Read a file from APG into a DataFrame'''
+    df = pd.read_csv(
+        filepath,
+        sep=';',
+        encoding='iso-8859-1',
+        header=0,
+        index_col=None,
+        parse_dates=None,  
+        decimal=',',
+        thousands='.',        
+    )
+
+ 
+
+   
+    # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc.
+    # during the year, but 3A:00:00, 3B:00:00 for the (possibely
+    # DST-transgressing) 3rd hour of every day in October, we truncate the
+    # hours column after 2 characters and replace letters which are there to
+    # indicate the order during fall DST-transition.
+    df['Von'] = df['Von'].str.replace(
+        'A', '').str.replace('B', '')
+    
+    df['Von'] = pd.to_datetime(df['Von'], dayfirst=True,)
+    
+    df.set_index('Von', inplace=True)
+
+    df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+    
+    colmap = {
+        'Wind  [MW]': {
+            'variable': 'wind',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url
+        },
+        'Solar  [MW]': {
+            'variable': 'solar',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url
+        }
+    }
+    
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+    
+    # Create the MultiIndex    
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return df
+    
+def read_rte(filepath, variable_name, url, headers):
+    '''Read a file from RTE into a DataFrame'''
+    #open zip
+    myzipfile = zipfile.ZipFile(filepath, mode='r')
+    myzipfile.extractall(path=(os.path.split(filepath)[0]))    
+    
+    #change path from zip to excel
+    from os import walk
+    f = []
+    for (dirpath, dirnames, filenames) in walk((os.path.split(filepath)[0])):
+        f.extend(filenames)
+        break
+    
+    get_excel = [item for item in f if item.endswith('.xls')]
+    
+    filepath = os.path.join((os.path.split(filepath)[0]), get_excel[0])
+            
+    #open excel which is actually tsv
+    with open(filepath, 'r') as f:        
+        reader = csv.reader(f, delimiter='\t', lineterminator='\n')
+        df = pd.DataFrame(list(reader))
+        
+    #delete the excel as read() throws exception if there are two files in one download directory
+    #this means multiple runthroughs of this script would otherwise not be possible
+    os.remove(filepath)
+    
+    df = df.iloc[:,:13] #make sure there are no empty columns at the end    
+    df.columns = df.iloc[1] #set column names
+    df['Heures'] = df['Heures'].map(lambda x: str(x).lstrip('Données de réalisation du ')) #strip the cells with dates of any other text
+    df['Dates'] = np.nan
+    
+    #fill an extra column with corresponding dates.
+    for f in df['Heures']:
+        if re.match('\d{2}/\d{2}/\d{4}', f):
+            df['Dates'][list(df['Heures']).index(f)]=f
+    df['Dates'].fillna(method='ffill', axis=0, inplace=True, limit=25)
+    
+    #drop all rows not containing data (no time-format in first column)
+    df = df.loc[df['Heures'].str.len()==11]
+    
+    #drop daylight saving time hours (no data there)
+    df = df.loc[(df['Éolien terrestre'] != '*') & (df['Solaire'] != '*')]
+    
+    #just display beginning of hours
+    df['Heures'] = df['Heures'].map(lambda x: str(x)[:-6])
+    
+    #construct full date to later use as index
+    df['timestamp'] = df['Dates']+' '+df['Heures']
+    df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True,)
+    
+    #drop autumn dst hours as they contain inconsistent data (none or copy of hour before)
+    dst_transitions_autumn = [
+        d.replace(hour=2)
+        for d in pytz.timezone('Europe/Paris')._utc_transition_times
+        if d.year >= 2000 and d.month == 10]
+    df = df.loc[~df['timestamp'].isin(dst_transitions_autumn)]
+    df.set_index(df['timestamp'], inplace=True)
+    
+    #Transfer to UTC
+    df.index = df.index.tz_localize('Europe/Paris')
+    df.index = df.index.tz_convert(None)
+    
+    colmap = {
+        'Éolien terrestre': {
+            'variable': 'wind',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url
+        },
+        'Solaire': {
+            'variable': 'solar',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url
+        }
+    }
+
+    
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+    
+    # Create the MultiIndex    
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    
+    return df
+    

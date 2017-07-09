@@ -595,4 +595,4 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subset', nargs='*', action='append')
     args = parser.parse_args()
 
-    download(args.sources_yaml_path, args.out_path, args.subset)
+   # download(args.sources_yaml_path, args.out_path, args.subset)

@@ -381,18 +381,37 @@ PSE:
               end: 2016-09-09
               rap: GEN_WIATR_20160909_20160915171359
 
+APG:
+    generation_by_source:
+        url_template: https://www.apg.at/transparency/Download.aspx?
+        url_params_template:
+            LANGUAGE: de
+            PID: AGPT
+            Format: csv
+            Resolution: 15M
+            DateFromLocal: '{u_start:%Y%m%d}'
+            DateToLocal: '{u_end:%Y%m%d}'
+            #CacheDir: 20170428131612_4266553c941447f4a8836f88af6cc4ef is unnecessary
+            CacheFileName: export_agpt_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
+        frequency: quarterly
+        start: 2006-01-01
+        end: recent
+        filetype: csv
+        resolution: 15min
+        web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
+#        
 # For the Following sources, the download/read has not yet been implemented
-#RTE:
-#    generation_by_source:
-#        url_template: http://clients.rte-france.com/servlets/RealProdServlet
-#        url_params_template:
-#            annee: '{u_start:%Y}'
-#        frequency: yearly
-#        start: 2014-01-01
-#        end: recent
-#        filetype: zip #xls
-#        resolution: 60min
-#        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
+RTE:
+    generation_by_source:
+        url_template: http://clients.rte-france.com/servlets/RealProdServlet
+        url_params_template:
+            annee: '{u_start:%Y}'
+        frequency: yearly
+        start: 2014-01-01 # real start date is 2014-12-16. download.py only works with beginning of year though.
+        end: recent
+        filetype: zip #xls
+        resolution: 60min
+        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
 #
 #Fingrid:
 #    wind:
@@ -433,24 +452,6 @@ PSE:
 #        filetype: xlsx
 #        resolution: 15min
 #
-#APG:
-#    generation_by_source:
-#        url_template: https://www.apg.at/transparency/Download.aspx
-#        url_params_template:
-#            LANGUAGE: de
-#            PID: AGPT
-#            Format: csv
-#            Resolution: 15M
-#            DateFromLocal: '{u_start:%Y%m%dZ}'
-#            DateToLocal: '{u_end:%Y%m%dZ}'
-#            CacheDir: 20160929235917_d48a7721c39e488f8aa5a94c646a4595
-#            CacheFileName: export_awg_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
-#        frequency: quarterly
-#        start: 2010-01-01
-#        end: recent
-#        filetype: csv
-#        resolution: 15min
-#        web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
 #
 #TEMPLATE
 #

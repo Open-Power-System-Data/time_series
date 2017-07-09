@@ -205,7 +205,8 @@ def make_json(data_sets, info_cols, version, changes, headers):
             elif h['region'] == 'CS':
                 geo = 'Serbia and Montenegro'
             else:
-                geo = pycountry.countries.get(alpha_2=h['region']).name
+                #2017-05-16: The key in pycountry.countries.get() changed from alpha_2 to alpha2.
+                geo = pycountry.countries.get(alpha2=h['region']).name
 
             descriptions = yaml.load(
                 descriptions_template.format(tech=h['variable'], geo=geo)
