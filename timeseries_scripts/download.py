@@ -16,8 +16,11 @@ import zipfile
 import pandas as pd
 import requests
 import yaml
+from ftplib import FTP
+import math
+import sys
 
-logger = logging.getLogger('log')
+logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
 
 
@@ -127,7 +130,7 @@ def download_source(source_name, source_dict, out_path,
     session = None
 
     for variable_name, param_dict in source_dict.items():
-        # Set up the filename
+        # Set up the filename structure
         if 'filename' in param_dict:
             filename = param_dict['filename']
         else:
@@ -161,13 +164,10 @@ def download_source(source_name, source_dict, out_path,
                 source_name,
                 variable_name,
                 out_path,
-                # param_dict,
+                param_dict,
                 start=start_server,
                 end=end_server,
-                url_template=param_dict['url_template'],
-                url_params_template=param_dict['url_params_template'],
-                filename=filename,
-                session=session,
+                filename=filename
             )
 
         else:
@@ -194,18 +194,18 @@ def download_source(source_name, source_dict, out_path,
             if len(ends) == 0:
                 ends = pd.DatetimeIndex([end_server])
 
-            if 'deviant_urls' in param_dict:
-                for deviating in param_dict['deviant_urls']:
-                    if start_server <= deviating['start'] <= end_server:
+            if 'deviant_params' in param_dict:
+                for deviant in param_dict['deviant_params']:
+                    if start_server <= deviant['start'] <= end_server:
                         downloaded, session = download_file(
                             source_name,
                             variable_name,
                             out_path,
-                            # param_dict,
-                            start=deviating['start'],
-                            end=deviating['end'],
-                            url_template=deviating['url'],
-                            session=session,
+                            param_dict,
+                            start=deviant['start'],
+                            end=deviant['end'],
+                            second=deviant['second'],
+                            attempt=1
                         )
 
             for s, e in zip(starts, ends):
@@ -216,6 +216,7 @@ def download_source(source_name, source_dict, out_path,
                 # we need to try out every second in that period until the file is
                 # found.
                 if source_name == 'PSE':
+                    i = 0
                     downloaded = False
                     for second in pd.date_range(
                             start=datetime.combine(
@@ -224,19 +225,17 @@ def download_source(source_name, source_dict, out_path,
                                 s + timedelta(days=6), time(17, 2, 0)),
                             freq='S'):
                         if not downloaded:
+                            i += 1
                             logger.debug('attempt %s', second)
                             downloaded, session = download_file(
                                 source_name,
                                 variable_name,
                                 out_path,
-                                # param_dict,
+                                param_dict,
                                 start=s,
                                 end=e,
-                                url_template=param_dict['url_template'],
-                                url_params_template=param_dict[
-                                    'url_params_template'],
-                                # session=session,
-                                second=second
+                                second=second,
+                                attempt=i
                             )
 
                 else:
@@ -244,13 +243,11 @@ def download_source(source_name, source_dict, out_path,
                         source_name,
                         variable_name,
                         out_path,
-                        # param_dict,
+                        param_dict,
                         start=s,
                         end=e,
-                        url_template=param_dict['url_template'],
-                        url_params_template=param_dict['url_params_template'],
                         filename=filename,
-                        session=session,
+                        session=session
                     )
 
     return
@@ -260,18 +257,17 @@ def download_file(
         source_name,
         variable_name,
         out_path,
-        # param_dict,
+        param_dict,
         start,
         end,
-        url_template,
-        url_params_template=None,
         filename=None,
         session=None,
-        second=None):
+        second=None,
+        attempt=1):
     """
-    Download a single file specified by ``param_dict``, ``start``, ``end``,
-    and save it to a directory constructed by combining ``source_name``,
-    ``variable_name`` and ``out_path``.
+    Prepare the Download of a single file.
+    Make a directory to save the file to and check if it might have been
+    downloaded already
 
     Parameters
     ----------
@@ -287,26 +283,27 @@ def download_file(
         start of data in the file
     end : datetime.date
         end of data in the file
+    filename : str, default None
+        pattern of filename to use if it can not be retrieved from server
     session : requests.session, optional
         If not given, a new session is created.
+    second : datetime.datetime, default None
+        precise time the file was upladed. Needed for PSE.
+    attempt : int, default 1
+        # of attempt to find the file on the server. Needed for PSE.
 
     Returns
     ----------
     downloaded : bool
         True if download successful, False otherwise.
+    session : requests.session
 
     """
     if session is None:
         session = requests.session()
 
-    log_text = (
-        'Downloading data:\n\t '
-        'Source:      {}\n\t '
-        'Variable:    {}\n\t '
-        'Data starts: {:%Y-%m-%d}\n\t '
-        'Data ends:   {:%Y-%m-%d}'
-        .format(source_name, variable_name, start, end)
-    )
+    message = '| {:20.20} | {:20.20} | {:%Y-%m-%d} | {:%Y-%m-%d} | '.format(
+        source_name, variable_name, start, end)
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
@@ -325,6 +322,82 @@ def download_file(
                .localize(datetime.combine(end + timedelta(days=1), time()))
                .astimezone(pytz.timezone('UTC')))
 
+    # Attempt the download if there is no file yet.
+    count_files = len(os.listdir(container))
+    if count_files == 0:
+        if source_name == 'ENTSO-E Transparency FTP':
+            downloaded = download_ftp(
+                start,
+                end,
+                filename,
+                container,
+                address=param_dict['address'],
+                user=param_dict['user'],
+                passwd=param_dict['passwd'],
+                path=param_dict['path']
+            )
+        else:
+            downloaded, session = download_request(
+                source_name,
+                start,
+                end,
+                session,
+                filename,
+                container,
+                url_template=param_dict['url_template'],
+                url_params_template=param_dict['url_params_template'],
+                second=second
+            )
+        if downloaded:
+            logger.info(message + 'download successful')
+        elif source_name != 'PSE':
+            logger.info(message + 'download failed')
+        elif attempt > 110:
+            logger.info(message + 'download failed')
+
+    elif count_files == 1:
+        downloaded = True
+        logger.info(message + 'download previously')
+
+    else:
+        downloaded = True
+        logger.info('There must not be more '
+                    'than one file in: %s. Please check ', container)
+
+    return downloaded, session
+
+
+def download_request(
+        source_name,
+        start,
+        end,
+        session,
+        filename,
+        container,
+        url_template,
+        url_params_template,
+        second=None):
+    """
+    Download a single file via HTTP get.
+    Build the url from parameters and save the file to dsik under it's original
+    filename 
+
+    Parameters
+    ----------
+    container : str
+        unique filepath for the file to be saved
+    url_template : 
+        stem of URL 
+    url_params_template : dict
+        dict of parameter names and values to paste into URL
+
+    Returns
+    ----------
+    downloaded : bool
+        True if download successful, False otherwise.
+    session : requests.session
+
+    """
     url_params = {}  # A dict for URL-parameters
 
     # For most sources, we can use HTTP get method with parameters-dict
@@ -346,63 +419,174 @@ def download_file(
             u_second=second
         )
 
-    # Attempt the download if there is no file yet.
-    count_files = len(os.listdir(container))
-    if count_files == 0:
-        resp = session.get(url, params=url_params)
-        # For polish TSO PSE, URLs have been guessed.
-        # Don't proceed for wrong guesses
-        if source_name == 'PSE':
-            if resp.text in ['Brak uprawnieñ', 'Brak uprawnień']:
-                logger.debug(log_text)
-                downloaded = False
-                return downloaded, session
-        logger.info(log_text)
+    resp = session.get(url, params=url_params)
+    # For polish TSO PSE, URLs have been guessed.
+    # Don't proceed for wrong guesses
+    if source_name == 'PSE':
+        if resp.text in ['Brak uprawnieñ', 'Brak uprawnień']:
+            downloaded = False
+            return downloaded, session
 
-        # Get the original filename
-        try:
-            original_filename = (
-                resp.headers['content-disposition']
-                .split('filename=')[-1]
-                .replace('"', '')
-                .replace(';', '')
+    # Get the original filename
+    try:
+        original_filename = (
+            resp.headers['content-disposition']
+            .split('filename=')[-1]
+            .replace('"', '')
+            .replace(';', '')
+        )
+        logger.debug('Downloaded from URL: %s Original filename: %s',
+                     resp.url, original_filename)
+
+    # For cases where the original filename can not be retrieved,
+    # I put the filename in the param_dict
+    except KeyError:
+        if filename:
+            original_filename = filename.format(u_start=start, u_end=end)
+        else:
+            logger.info(
+                'original filename could neither be retrieved from server '
+                'nor sources.yml'
             )
-            logger.info('Downloaded from URL: %s\n\t Original filename: %s',
-                        resp.url, original_filename)
+            original_filename = 'unknown_filename'
 
-        # For cases where the original filename can not be retrieved,
-        # I put the filename in the param_dict
-        except KeyError:
-            if filename:
-                original_filename = filename.format(u_start=start, u_end=end)
-            else:
-                logger.info(
-                    'original filename could neither be retrieved from server '
-                    'nor sources.yml'
-                )
-                original_filename = 'unknown_filename'
+        logger.debug('Downloaded from URL: %s', resp.url)
 
-            logger.info('Downloaded from URL: %s', resp.url)
-
-        # Save file to disk
-        filepath = os.path.join(container, original_filename)
-        with open(filepath, 'wb') as output_file:
-            for chunk in resp.iter_content(1024):
-                output_file.write(chunk)
-        downloaded = True
-
-    elif count_files == 1:
-        downloaded = True
-        logger.info(log_text)
-        logger.info('Found local file: %s', os.listdir(container)[0])
-
-    else:
-        downloaded = True
-        logger.info(log_text)
-        logger.info('There must not be more '
-                    'than one file in: %s. Please check ', container)
-
+    # Save file to disk
+    filepath = os.path.join(container, original_filename)
+    with open(filepath, 'wb') as output_file:
+        for chunk in resp.iter_content(1024):
+            output_file.write(chunk)
+    downloaded = True
     return downloaded, session
+
+
+def download_ftp(
+        start,
+        end,
+        filename,
+        container,
+        address,
+        user,
+        passwd,
+        path):
+    """
+    Download a single file via FTP.
+
+    Parameters
+    ----------
+    container : str
+        unique filepath for the file to be saved
+    address : 
+        Server address
+    user : str
+        username
+    passwd : str
+        password
+    path : 
+        directory on server
+
+    Returns
+    ----------
+    downloaded : bool
+        True if download successful, False otherwise.
+
+    """
+
+    ftp = FTP(host=address, user=user, passwd=passwd)
+    ftp.cwd(path)
+    filename = filename.format(u_start=start, u_end=end)
+    filepath = os.path.join(container, filename)
+    #filesize = ftp.size(filename)
+
+    # Retrieve file and save to disk
+    #downloadTracker = FtpDownloadTracker(ftp, filesize, filepath)
+    ftp.retrbinary('RETR ' + filename, callback=open(filepath, 'wb').write,  # callback=downloadTracker.handle,
+                   blocksize=1024)
+
+    downloaded = True
+    return downloaded
+
+
+class FtpDownloadTracker:
+    """
+    Object that provides the path to save a file from FTP locally together
+    with a method to track the download progress via a handle for the
+    ftplib.FTP.retrbinary method.
+    """
+
+    sizeWritten = 0
+    totalSize = 0
+    lastShownPercent = 0
+
+    def __init__(self, ftp, filesize, filepath):
+        self.totalSize = filesize
+        self.filepath = filepath
+
+    def handle(self, block):
+        with open(self.filepath, 'wb') as output_file:
+            output_file.write(block)
+
+        self.sizeWritten += 1024
+        progress = round(self.sizeWritten / self.totalSize, 2)
+
+        if (self.lastShownPercent != progress):
+            self.lastShownPercent = progress
+            update_progress(progress, self.totalSize)
+
+
+def update_progress(progress, total):
+    '''
+    Display or updates a console progress bar.
+
+    Parameters
+    ----------
+    progress : float
+        fraction of file already downloades 
+    total : int
+        total number of files
+
+    Returns
+    ----------
+    None
+
+    '''
+
+    barLength = 50  # Modify this to change the length of the progress bar
+    status = ""
+    block = int(round(barLength * progress))
+    text = "\rProgress: [{0}] {1:.0%} of {2} {3}".format(
+        "#" * block + "-" * (barLength - block),
+        progress, convert_size(total), status)
+    sys.stdout.write(text)
+    sys.stdout.flush()
+
+    return
+
+
+def convert_size(size_bytes):
+    '''
+    Convert byte to kilobyte, megabyte etc.
+
+    Parameters
+    ----------
+    size_bytes : int
+        filesize in byte
+
+    Returns
+    ----------
+    str
+        filesize in KB/MB/etc.
+
+    '''
+
+    if (size_bytes == 0):
+        return '0B'
+    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return '{} {}'.format(s, size_name[i])
 
 
 if __name__ == '__main__':
@@ -413,4 +597,4 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--subset', nargs='*', action='append')
     args = parser.parse_args()
 
-    download(args.sources_yaml_path, args.out_path, args.subset)
+   # download(args.sources_yaml_path, args.out_path, args.subset)

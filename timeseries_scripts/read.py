@@ -14,10 +14,135 @@ import numpy as np
 import pandas as pd
 import logging
 import zipfile
+import csv
+import re
 from datetime import datetime, date, time, timedelta
 
-logger = logging.getLogger('log')
+logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
+
+def read_entso_e_transparency(
+    areas, filepath, variable_name, url, headers, res_key):
+
+    if variable_name == 'Actual Generation per Production Type':
+        cols = {
+            'DateTime': None,
+            'AreaName': None,
+            'ProductionType_Name': 'variable',
+            'ActualGenerationOutput': 'generation', 
+            # not used: 'ActualConsumption'
+        }
+        renewables =  {
+            'Solar': 'solar',
+            'Wind Onshore': 'wind_onshore',
+            'Wind Offshore': 'wind_offshore'
+        }
+        stacked = ['region', 'variable']
+        unstacked = 'attribute'
+        append_headers = {
+            'source': 'ENTSO-E Transparency',
+            'web': url,
+            'unit': 'MW'
+        }
+
+    elif variable_name == 'Actual Total Load':
+        cols = {
+            'DateTime': None,
+            'AreaName': None,
+            'TotalLoadValue': 'load'
+        }
+        stacked = ['region']
+        unstacked = 'variable'
+        append_headers = {
+            'attribute': 'new',
+            'source': 'ENTSO-E Transparency',
+            'web': url,
+            'unit': 'MW'
+        }
+
+    elif variable_name == 'Day Ahead Prices':
+        cols = {
+            'DateTime': None,
+            'AreaName': None,
+            'Price': 'price',
+            'Currency_IsoCode': 'unit'
+        }
+        stacked = ['region', 'unit']
+        unstacked = 'variable'
+        append_headers = {
+            'attribute': 'day_ahead',
+            'source': 'ENTSO-E Transparency',
+            'web': url,
+        }
+
+    df_raw = pd.read_csv(
+        filepath,
+        sep='\t',
+        encoding='utf-16',
+        header=0,
+        index_col='timestamp',
+        parse_dates={'timestamp': ['DateTime']},
+        date_parser=None,
+        dayfirst=False,
+        decimal='.',
+        thousands=None,
+        usecols=cols.keys(),  # unused cols: ['MapCode', 'SubmissionTS']
+        # the column specifying the technology has a trailing space, which we
+        # cut off
+        converters={'ProductionType_Name': lambda x: x[:-1]},
+    )
+
+    if variable_name == 'Actual Generation per Production Type':
+        # keep only renewables columns
+        df_raw = df_raw[df_raw['ProductionType_Name'].isin(renewables.keys())]
+        df_raw.replace({'ProductionType_Name': renewables}, inplace=True)
+
+    # keep only entries for selected geographic entities as specified in
+    # areas.csv + select regions whith same temporal resolution    
+    time_and_place = (areas['AreaName FTP used for OPSD']
+                      .loc[areas[res_key]==True])
+    df_raw = df_raw.loc[df_raw['AreaName'].isin(time_and_place)]
+
+    # based on the AreaName column, map the area names used throughout OPSD 
+    lookup = areas.set_index('AreaName FTP used for OPSD')['OPSD area']
+    lookup = lookup[~lookup.index.duplicated()]
+    df_raw['region'] = df_raw['AreaName'].map(lookup)
+    df_raw.drop('AreaName', axis=1, inplace=True)
+
+    # rename columns to comply with other data
+    df_raw.rename(columns=cols, inplace=True)
+
+    # juggle the index and columns
+    df = df_raw
+    df.set_index(stacked, append=True, inplace=True)
+    # at this point, only the values we are intereseted in are are left as
+    # columns
+    df.columns.rename(unstacked, inplace=True)
+    df = df.unstack(stacked)
+
+    # keep only columns that have at least some nonzero values
+    df = df.loc[:, (df > 0).any(axis=0)]
+
+    # add source and url to the columns
+    df = pd.concat([df],
+                   keys=[tuple(append_headers.values())], #header_values,
+                   names=[*append_headers.keys(), unstacked, *stacked], # header_temp_order,
+                   axis=1)
+
+    # reorder and sort columns
+    df = df.reorder_levels(headers, axis=1)
+    df.sort_index(axis=1, inplace=True)
+
+    # throw out obs with wrong timestamp
+    # no_gaps = pd.DatetimeIndex(start=df.index[0],
+    #                           end=df.index[-1],
+    #                           freq=res_key)
+    # print(len(df[~df.index.isin(no_gaps)]))
+    #df= df.reindex(index=no_gaps)
+    #dfs[res_key] = df
+    ##
+
+    return df
 
 
 def read_pse(filepath, variable_name, url, headers):
@@ -48,8 +173,8 @@ def read_pse(filepath, variable_name, url, headers):
         sep=';',
         encoding='cp1250',
         header=0,
-        index_col=None,  # 'timestamp',
-        parse_dates=None,  # {'timestamp': ['Data', 'Godzina']},
+        index_col=None,
+        parse_dates=None,
         date_parser=None,
         dayfirst=False,
         decimal=',',
@@ -59,8 +184,10 @@ def read_pse(filepath, variable_name, url, headers):
         # UTC 00:00-01:00 = CEST 2:00-3:00 is indicated by '02A',
         # UTC 01:00-02:00 = CET  2:00-3:00 is indicated by '03'.
         # regular hours require backshifting by 1 period
-        converters={'Godzina': lambda x: '2:00' if x ==
-                    '02A' else str(int(x) - 1) + ':00'},
+        converters={
+            'Godzina':
+                lambda x: '2:00' if x == '02A' else str(int(x) - 1) + ':00'
+        }
     )
     # Create a list of spring-daylight savings time (DST)-transitions
     dst_transitions_spring = [
@@ -68,15 +195,16 @@ def read_pse(filepath, variable_name, url, headers):
         for d in pytz.timezone('Europe/Copenhagen')._utc_transition_times
         if d.year >= 2000 and d.month == 3]
 
-    # The hour from 01:00 - 02:00 is indexed by "03:00",
-    # requiring backshifting by another period
-    df['timestamp'] = pd.to_datetime(
+    # The hour from 01:00 - 02:00 (CET) should by PSE's logic be indexed
+    # by "02:00", but at DST day in spring they use "03:00" in the files.
+    # Our routine requires it to be "01:00"
+    df['proto_timestamp'] = pd.to_datetime(
         df['Data'].astype(str) + ' ' +
         df['Godzina'])
-
-    slicer = df['timestamp'].isin(dst_transitions_spring)
+    slicer = df['proto_timestamp'].isin(dst_transitions_spring)
     df.loc[slicer, 'Godzina'] = '1:00'
 
+    # create the actual timestamp from the corrected "Data"-column
     df['timestamp'] = pd.to_datetime(
         df['Data'].astype(str) + ' ' +
         df['Godzina'])
@@ -90,10 +218,11 @@ def read_pse(filepath, variable_name, url, headers):
     colmap = {
         'Sumaryczna generacja źródeł wiatrowych': {
             'region': 'PL',
-            'variable': 'wind',
+            'variable': 'wind_onshore',
             'attribute': 'generation',
             'source': 'PSE',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -127,17 +256,19 @@ def read_ceps(filepath, variable_name, url, headers):
     colmap = {
         'WPP [MW]': {
             'region': 'CZ',
-            'variable': 'wind',
+            'variable': 'wind_onshore',
             'attribute': 'generation',
             'source': 'CEPS',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'PVPP [MW]': {
             'region': 'CZ',
             'variable': 'solar',
             'attribute': 'generation',
             'source': 'CEPS',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -165,21 +296,24 @@ def read_elia(filepath, variable_name, url, headers):
             'variable': variable,
             'attribute': 'forecast',
             'source': 'Elia',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Corrected Upscaled Measurement [MW]': {
             'region': 'BE',
             'variable': variable,
             'attribute': 'generation',
             'source': 'Elia',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Monitored Capacity [MWp]': {
             'region': 'BE',
             'variable': variable,
             'attribute': 'capacity',
             'source': 'Elia',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -214,6 +348,8 @@ def read_energinet_dk(filepath, url, headers):
         thousands=','
     )
 
+    # pandas on it's own authority sets first 2 columns as index
+    # probably because the column's names are in merged cells
     df.index.rename(['date', 'hour'], inplace=True)
     df.reset_index(inplace=True)
     df['timestamp'] = pd.to_datetime(
@@ -236,96 +372,109 @@ def read_energinet_dk(filepath, url, headers):
 
     source = 'Energinet.dk'
     colmap = {
-        'DK-West': {
+        'DK-Vest': {
             'variable': 'price',
-            'region': 'DK_west',
+            'region': 'DK_1',
             'attribute': 'day_ahead',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'EUR'
         },
-        'DK-East': {
+        'DK-Øst': {
             'variable': 'price',
-            'region': 'DK_east',
+            'region': 'DK_2',
             'attribute': 'day_ahead',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'EUR'
         },
-        'Norway': {
+        'Norge': {
             'variable': 'price',
             'region': 'NO',
             'attribute': 'day_ahead',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'EUR'
         },
-        'Sweden (SE)': {
+        'Sverige (SE)': {
             'variable': 'price',
             'region': 'SE',
             'attribute': 'day_ahead',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'EUR'
         },
-        'Sweden (SE3)': {
+        'Sverige (SE3)': {
             'variable': 'price',
             'region': 'SE_3',
             'attribute': 'day_ahead',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'EUR'
         },
-        'Sweden (SE4)': {
+        'Sverige (SE4)': {
             'variable': 'price',
             'region': 'SE_4',
             'attribute': 'day_ahead',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'EUR'
         },
         'DE European Power Exchange': {
             'variable': 'price',
             'region': 'DE',
             'attribute': 'day_ahead',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'EUR'
         },
-        'DK-West: Wind power production': {
+        'DK-Vest: Vindproduktion': {
             'variable': 'wind',
-            'region': 'DK_west',
+            'region': 'DK_1',
             'attribute': 'generation',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
-        'DK-West: Solar cell production (estimated)': {
+        'DK-Vest: Solcelle produktion (estimeret)': {
             'variable': 'solar',
-            'region': 'DK_west',
+            'region': 'DK_1',
             'attribute': 'generation',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
-        'DK-East: Wind power production': {
+        'DK-Øst: Vindproduktion': {
             'variable': 'wind',
-            'region': 'DK_east',
+            'region': 'DK_2',
             'attribute': 'generation',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
-        'DK-East: Solar cell production (estimated)': {
+        'DK-Øst: Solcelle produktion (estimeret)': {
             'variable': 'solar',
-            'region': 'DK_east',
+            'region': 'DK_2',
             'attribute': 'generation',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
-        'DK: Wind power production (onshore)': {
+        'DK: Vindproduktion (onshore)': {
             'variable': 'wind_onshore',
             'region': 'DK',
             'attribute': 'generation',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
-        'DK: Wind power production (offshore)': {
+        'DK: Vindproduktion (offshore)': {
             'variable': 'wind_offshore',
             'region': 'DK',
             'attribute': 'generation',
             'source': source,
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
     }
 
@@ -367,7 +516,8 @@ def read_entso_e_portal(filepath, url, headers):
     df['hour'] = df['raw_hour'].str[:2].str.replace(
         'A', '').str.replace('B', '')
     # Hours are indexed 1-24 by ENTSO-E, but pandas requires 0-23, so we
-    # deduct 1, i.e. the 3rd hour will be indicated by "2:00" rather than "3:00"
+    # deduct 1, i.e. the 3rd hour will be indicated by "2:00" rather than
+    # "3:00"
     df['hour'] = (df['hour'].astype(int) - 1).astype(str)
 
     df['timestamp'] = pd.to_datetime(df['Day'] + ' ' + df['hour'] + ':00')
@@ -393,14 +543,16 @@ def read_entso_e_portal(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    df.rename(columns={'DK_W': 'DK_west', 'UA_W': 'UA_west'}, inplace=True)
+    renamer = {'DK_W': 'DK_1', 'UA_W': 'UA_west', 'NI': 'GB_NIR'}
+    df.rename(columns=renamer, inplace=True)
 
     colmap = {
         'variable': 'load',
         'region': '{country}',
-        'attribute': '',
+        'attribute': 'old',
         'source': 'ENTSO-E Data Portal',
-        'web': url
+        'web': url,
+        'unit': 'MW'
     }
 
     # Create the MultiIndex
@@ -451,21 +603,24 @@ def read_hertz(filepath, variable_name, url, headers):
             'region': 'DE_50hertz',
             'attribute': '{attribute}',
             'source': '50Hertz',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Onshore MW': {
             'variable': 'wind_onshore',
             'region': 'DE_50hertz',
             'attribute': '{attribute}',
             'source': '50Hertz',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Offshore MW': {
             'variable': 'wind_offshore',
             'region': 'DE_50hertz',
             'attribute': '{attribute}',
             'source': '50Hertz',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
     # Since 2016, wind data has an aditional column for offshore.
@@ -521,14 +676,16 @@ def read_amprion(filepath, variable_name, url, headers):
             'region': 'DE_amprion',
             'attribute': 'forecast',
             'source': 'Amprion',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Online Hochrechnung [MW]': {
             'variable': '{tech}',
             'region': 'DE_amprion',
             'attribute': 'generation',
             'source': 'Amprion',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -604,21 +761,24 @@ def read_tennet(filepath, variable_name, url, headers):
             'region': 'DE_tennet',
             'attribute': 'forecast',
             'source': 'TenneT',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'tatsächlich [MW]': {
             'variable': '{tech}',
             'region': 'DE_tennet',
             'attribute': 'generation',
             'source': 'TenneT',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Anteil Offshore [MW]': {
             'variable': 'wind_offshore',
             'region': 'DE_tennet',
             'attribute': 'generation',
             'source': 'TenneT',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -671,14 +831,16 @@ def read_transnetbw(filepath, variable_name, url, headers):
             'region': 'DE_transnetbw',
             'attribute': 'forecast',
             'source': 'TransnetBW',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Ist-Wert (MW)': {
             'variable': '{tech}',
             'region': 'DE_transnetbw',
             'attribute': 'generation',
             'source': 'TransnetBW',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -726,21 +888,24 @@ def read_opsd(filepath, url, headers):
             'region': 'DE',
             'attribute': 'capacity',
             'source': 'BNetzA and Netztransparenz.de',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Onshore': {
             'variable': 'wind_onshore',
             'region': 'DE',
             'attribute': 'capacity',
             'source': 'BNetzA and Netztransparenz.de',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'Offshore': {
             'variable': 'wind_offshore',
             'region': 'DE',
             'attribute': 'capacity',
             'source': 'BNetzA and Netztransparenz.de',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -812,14 +977,16 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
             'region': 'SE',
             'attribute': 'generation',
             'source': 'Svenska Kraftnaet',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         },
         'solar': {
             'variable': 'solar',
             'region': 'SE',
             'attribute': 'generation',
             'source': 'Svenska Kraftnaet',
-            'web': url
+            'web': url,
+            'unit': 'MW'
         }
     }
 
@@ -831,8 +998,173 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
     return df
 
 
-def read(source_name, variable_name, url, res_key, headers,
-         out_path='original_data', start_from_user=None, end_from_user=None):
+def read_apg(filepath, url, headers):
+    '''Read a file from APG into a DataFrame'''
+    df = pd.read_csv(
+        filepath,
+        sep=';',
+        encoding='latin_1',
+        header=0,
+        index_col='timestamp',
+        parse_dates={'timestamp': ['Von']},
+        dayfirst=True,
+        decimal=',',
+        thousands='.',
+        # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc.
+        # during the year, but 3A:00:00, 3B:00:00 for the (possibely
+        # DST-transgressing) 3rd hour of every day in October, we truncate the
+        # hours column after 2 characters and replace letters which are there to
+        # indicate the order during fall DST-transition.
+        converters={'Von': lambda x: str(x).replace('A', '').replace('B', '')}
+    )
+
+    df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+
+    colmap = {
+        'Wind [MW]': {
+            'variable': 'wind_onshore',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Solar [MW]': {
+            'variable': 'solar',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Wind  [MW]': {
+            'variable': 'wind_onshore',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Solar  [MW]': {
+            'variable': 'solar',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url,
+            'unit': 'MW'
+        }
+    }
+
+    # Drop any column not in colmap
+    df = df[[key for key in colmap.keys() if key in df.columns]]
+
+    # Create the MultiIndex
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return df
+
+
+def read_rte(filepath, variable_name, url, headers):
+    '''Read a file from RTE into a DataFrame'''
+
+    # pandas.read_csv infers the table dimensions from the header row.
+    # Since the first row uses only one column, it needs to be read separately
+    # in order not to mess up the DataFrame
+    df1 = pd.read_csv(
+        filepath,
+        sep='\t',
+        encoding='cp1252',
+        compression='zip',
+        nrows=1,
+        header=None
+    )
+    df2 = pd.read_csv(
+        filepath,
+        sep='\t',
+        encoding='cp1252',
+        compression='zip',
+        skiprows=[0],
+        header=None,
+        usecols=list(range(0, 13))
+    )
+
+    # Glue the DataFrames together
+    df = pd.concat([df1, df2], ignore_index=True)
+
+    # set column names
+    df = df.rename(columns=df.iloc[1])
+
+    # strip the cells with dates of any other text
+    df['Heures'] = df['Heures'].str.lstrip('Données de réalisation du ')
+
+    # fill an extra column with corresponding dates.
+    df['Dates'] = np.nan
+    slicer = df['Heures'].str.match('\d{2}/\d{2}/\d{4}')
+    df['Dates'] = df['Heures'].loc[slicer]
+    df['Dates'].fillna(method='ffill', axis=0, inplace=True, limit=25)
+
+    # drop all rows not containing data (no time-format in first column)
+    df = df.loc[df['Heures'].str.len() == 11]
+
+    # drop daylight saving time hours (no data there)
+    df = df.loc[(df['Éolien terrestre'] != '*') & (df['Solaire'] != '*')]
+
+    # just display beginning of hours
+    df['Heures'] = df['Heures'].str[:5]
+
+    # construct full date to later use as index
+    df['timestamp'] = df['Dates'] + ' ' + df['Heures']
+    df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True,)
+
+    # drop autumn dst hours as they contain inconsistent data (none or copy of
+    # hour before)
+    dst_transitions_autumn = [
+        d.replace(hour=2)
+        for d in pytz.timezone('Europe/Paris')._utc_transition_times
+        if d.year >= 2000 and d.month == 10]
+    df = df.loc[~df['timestamp'].isin(dst_transitions_autumn)]
+    df.set_index(df['timestamp'], inplace=True)
+
+    # Transfer to UTC
+    df.index = df.index.tz_localize('Europe/Paris')
+    df.index = df.index.tz_convert(None)
+
+    colmap = {
+        'Éolien terrestre': {
+            'variable': 'wind_onshore',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Solaire': {
+            'variable': 'solar',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url,
+            'unit': 'MW'
+        }
+    }
+
+    # Drop any column not in colmap
+    df = df[[key for key in colmap.keys() if key in df.columns]]
+
+    # Create the MultiIndex
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return df
+
+
+
+def read(data_path, areas, source_name, variable_name, url, res_key,
+         headers, start_from_user=None, end_from_user=None):
     """
     For the sources specified in the sources.yml file, pass each downloaded
     file to the correct read function.
@@ -850,7 +1182,7 @@ def read(source_name, variable_name, url, res_key, headers,
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe
-    out_path : str, default: 'original_data'
+    data_path : str, default: 'original_data'
         Base download directory in which to save all downloaded files
     start_from_user : datetime.date, default None
         Start of period for which to read the data
@@ -865,7 +1197,7 @@ def read(source_name, variable_name, url, res_key, headers,
     """
     data_set = pd.DataFrame()
 
-    variable_dir = os.path.join(out_path, source_name, variable_name)
+    variable_dir = os.path.join(data_path, source_name, variable_name)
 
     logger.info('reading %s - %s', source_name, variable_name)
 
@@ -879,7 +1211,7 @@ def read(source_name, variable_name, url, res_key, headers,
         return data_set
 
     # For each file downloaded for that variable
-    for container in os.listdir(variable_dir):
+    for container in sorted(os.listdir(variable_dir)):
         # Skip this file if period covered excluded by user
         if start_from_user:
             # Filecontent is too old
@@ -924,6 +1256,9 @@ def read(source_name, variable_name, url, res_key, headers,
                 data_to_add = read_opsd(filepath, url, headers)
             elif source_name == 'CEPS':
                 data_to_add = read_ceps(filepath, variable_name, url, headers)
+            elif source_name == 'ENTSO-E Transparency FTP':
+                data_to_add = read_entso_e_transparency(
+                    areas, filepath, variable_name, url, headers, res_key)
             elif source_name == 'ENTSO-E Data Portal':
                 #save_stdout = sys.stdout
                 #sys.stdout = open('trash', 'w')
@@ -951,6 +1286,8 @@ def read(source_name, variable_name, url, res_key, headers,
             elif source_name == 'TransnetBW':
                 data_to_add = read_transnetbw(
                     filepath, variable_name, url, headers)
+            elif source_name == 'APG':
+                data_to_add = read_apg(filepath, url, headers)
 
             if data_set.empty:
                 data_set = data_to_add
@@ -1024,3 +1361,152 @@ def update_progress(count, total):
     sys.stdout.flush()
 
     return
+
+def read_apg(filepath, url, headers):
+    '''Read a file from APG into a DataFrame'''
+    df = pd.read_csv(
+        filepath,
+        sep=';',
+        encoding='iso-8859-1',
+        header=0,
+        index_col=None,
+        parse_dates=None,  
+        decimal=',',
+        thousands='.',        
+    )
+
+ 
+
+   
+    # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc.
+    # during the year, but 3A:00:00, 3B:00:00 for the (possibely
+    # DST-transgressing) 3rd hour of every day in October, we truncate the
+    # hours column after 2 characters and replace letters which are there to
+    # indicate the order during fall DST-transition.
+    df['Von'] = df['Von'].str.replace(
+        'A', '').str.replace('B', '')
+    
+    df['Von'] = pd.to_datetime(df['Von'], dayfirst=True,)
+    
+    df.set_index('Von', inplace=True)
+
+    df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+    
+    colmap = {
+        'Wind  [MW]': {
+            'variable': 'wind',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url
+        },
+        'Solar  [MW]': {
+            'variable': 'solar',
+            'region': 'AT',
+            'attribute': 'generation',
+            'source': 'APG',
+            'web': url
+        }
+    }
+    
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+    
+    # Create the MultiIndex    
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return df
+    
+def read_rte(filepath, variable_name, url, headers):
+    '''Read a file from RTE into a DataFrame'''
+    #open zip
+    myzipfile = zipfile.ZipFile(filepath, mode='r')
+    myzipfile.extractall(path=(os.path.split(filepath)[0]))    
+    
+    #change path from zip to excel
+    from os import walk
+    f = []
+    for (dirpath, dirnames, filenames) in walk((os.path.split(filepath)[0])):
+        f.extend(filenames)
+        break
+    
+    get_excel = [item for item in f if item.endswith('.xls')]
+    
+    filepath = os.path.join((os.path.split(filepath)[0]), get_excel[0])
+            
+    #open excel which is actually tsv
+    with open(filepath, 'r') as f:        
+        reader = csv.reader(f, delimiter='\t', lineterminator='\n')
+        df = pd.DataFrame(list(reader))
+        
+    #delete the excel as read() throws exception if there are two files in one download directory
+    #this means multiple runthroughs of this script would otherwise not be possible
+    os.remove(filepath)
+    
+    df = df.iloc[:,:13] #make sure there are no empty columns at the end    
+    df.columns = df.iloc[1] #set column names
+    df['Heures'] = df['Heures'].map(lambda x: str(x).lstrip('Données de réalisation du ')) #strip the cells with dates of any other text
+    df['Dates'] = np.nan
+    
+    #fill an extra column with corresponding dates.
+    for f in df['Heures']:
+        if re.match('\d{2}/\d{2}/\d{4}', f):
+            df['Dates'][list(df['Heures']).index(f)]=f
+    df['Dates'].fillna(method='ffill', axis=0, inplace=True, limit=25)
+    
+    #drop all rows not containing data (no time-format in first column)
+    df = df.loc[df['Heures'].str.len()==11]
+    
+    #drop daylight saving time hours (no data there)
+    df = df.loc[(df['Éolien terrestre'] != '*') & (df['Solaire'] != '*')]
+    
+    #just display beginning of hours
+    df['Heures'] = df['Heures'].map(lambda x: str(x)[:-6])
+    
+    #construct full date to later use as index
+    df['timestamp'] = df['Dates']+' '+df['Heures']
+    df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True,)
+    
+    #drop autumn dst hours as they contain inconsistent data (none or copy of hour before)
+    dst_transitions_autumn = [
+        d.replace(hour=2)
+        for d in pytz.timezone('Europe/Paris')._utc_transition_times
+        if d.year >= 2000 and d.month == 10]
+    df = df.loc[~df['timestamp'].isin(dst_transitions_autumn)]
+    df.set_index(df['timestamp'], inplace=True)
+    
+    #Transfer to UTC
+    df.index = df.index.tz_localize('Europe/Paris')
+    df.index = df.index.tz_convert(None)
+    
+    colmap = {
+        'Éolien terrestre': {
+            'variable': 'wind',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url
+        },
+        'Solaire': {
+            'variable': 'solar',
+            'region': 'FR',
+            'attribute': 'generation',
+            'source': 'RTE',
+            'web': url
+        }
+    }
+
+    
+    # Drop any column not in colmap
+    df = df[list(colmap.keys())]
+    
+    # Create the MultiIndex    
+    tuples = [tuple(colmap[col][level] for level in headers)
+              for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    
+    return df
+    

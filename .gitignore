@@ -1,17 +1,25 @@
 # Downloaded data
 original_data
+temp
 
-# Processed data
+# Data files
 *.csv
 *.xlsx
+*.xls
+*.xml
 *.sqlite
 *.sql
 *.pickle
-# take checksums.txt from root directory, ignore version directory
+*.json
+
+# take checksums.txt only from root directory and ignore files in the version directories
 ????-??-??/checksums.txt
 
 # Generated files
-datapackage.json
 .idea/
 .ipynb_checkpoints/
-timeseries_scripts/__pycache__/
+*.pyc
+
+# files to include explicitly
+!notation.csv
+!areas.csv
