@@ -12,11 +12,11 @@ import pandas as pd
 import numpy as np
 import logging
 
-logger = logging.getLogger('log')
-logger.setLevel('DEBUG')
+logger = logging.getLogger(__name__)
+logger.setLevel('INFO')
 
 
-def find_nan(df, headers, patch=False):
+def find_nan(df, res_key, headers, patch=False):
     '''
     Search for missing values in a DataFrame and optionally apply further 
     functions on each column.
@@ -44,15 +44,37 @@ def find_nan(df, headers, patch=False):
     patched = pd.DataFrame()
     marker_col = pd.Series(np.nan, index=df.index)
 
+    if df.empty:
+        return patched, nan_table
+
     # Get the frequency/length of one period of df
-    one_period = df.index[1] - df.index[0]
+    one_period = pd.Timedelta(res_key)
     for col_name, col in df.iteritems():
         col = col.to_frame()
+        message = '| {:5.5} | {:6.6} | {:10.10} | {:10.10} | {:10.10} | '.format(
+            res_key, *col_name[0:4])
 
-        col_name_str = '_'.join(
-            [level for level in col_name[0:3] if not level == ''])
+        # make an empty list of NaN regions to use as default
+        nan_idx = pd.MultiIndex.from_arrays([
+            [0, 0, 0, 0],
+            ['count', 'span', 'start_idx', 'till_idx']])
+        nan_list = pd.DataFrame(index=nan_idx, columns=col.columns)
 
-        # skip this column if it has no entries at all
+        # skip all columns from ENTSO-E Transparency as it takes too long
+        # if  col_name[headers.index('source')] == 'ENTSO-E Transparency':
+        #    if patched.empty:
+        #        patched = col
+        #    else:
+        #        patched = patched.combine_first(col)
+        #
+        #    if nan_table.empty:
+        #        nan_table = nan_list
+        #    else:
+        #        nan_table = nan_table.combine_first(nan_list)
+        #    continue
+
+        # skip this column if it has no entries at all.
+        # This will also delete the column from the patched df
         if col.empty:
             continue
 
@@ -76,14 +98,12 @@ def find_nan(df, headers, patch=False):
             col['tag'] & ~
             col['tag'].shift(-1).fillna(False)]
 
+        # if there are no NaNs, do nothing
         if not col['tag'].any():
-            logger.info('%s : nothing to patch in this column', col_name_str)
+            logger.info(message + 'nothing to patch in this column')
             col.drop('tag', axis=1, inplace=True)
-            nan_idx = pd.MultiIndex.from_arrays([
-                [0, 0, 0, 0],
-                ['count', 'span', 'start_idx', 'till_idx']])
-            nan_list = pd.DataFrame(index=nan_idx, columns=col.columns)
 
+        # else make a list of the NaN regions
         else:
             # how long is each region
             nan_regs['span'] = (
@@ -99,6 +119,7 @@ def find_nan(df, headers, patch=False):
 
             if patch:
                 col, marker_col = choose_fill_method(
+                    message,
                     col, col_name, nan_regs, df, marker_col, one_period)
 
         if patched.empty:
@@ -113,7 +134,7 @@ def find_nan(df, headers, patch=False):
 
     # append the marker to the DataFrame
     marker_col = marker_col.to_frame()
-    tuples = [('interpolated_values', '', '', '', '')]
+    tuples = [('interpolated_values', '', '', '', '', '')]
     marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
     patched = pd.concat([patched, marker_col], axis=1)
 
@@ -124,7 +145,8 @@ def find_nan(df, headers, patch=False):
     return patched, nan_table
 
 
-def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
+def choose_fill_method(
+        message, col, col_name, nan_regs, df, marker_col, one_period):
     '''
     Choose the appropriate function for filling a region of missing values.
 
@@ -142,7 +164,7 @@ def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
         An n*1 DataFrame specifying for each row which of the previously treated 
         columns have been patched
     one_period : pandas.Timedelta
-        Time resolution of frame and col (15/60 minutes)
+        Time resolution of frame and col (15/30/60 minutes)
 
     Returns
     ----------  
@@ -157,8 +179,9 @@ def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
         j = 0
         # Interpolate missing value spans up to 2 hours
         if nan_region['span'] <= timedelta(hours=2):
-            col, marker_col = my_interpolate(i, j, nan_region, col, col_name,
-                                             marker_col, nan_regs, one_period)
+            col, marker_col = my_interpolate(
+                i, j, nan_region, col, col_name, marker_col, nan_regs,
+                one_period, message)
         # Guess missing value spans longer than one hour based on other tsos
         # (Only for German wind and solar generation data)
         elif col_name[1][:2] == 'DE' and col_name[2] == 'generation':
@@ -171,7 +194,7 @@ def choose_fill_method(col, col_name, nan_regs, df, marker_col, one_period):
 
 
 def my_interpolate(
-    i, j, nan_region, col, col_name, marker_col, nan_regs, one_period):
+        i, j, nan_region, col, col_name, marker_col, nan_regs, one_period, message):
     '''
     Interpolate one missing value region in one column as described by 
     nan_region.
@@ -202,12 +225,10 @@ def my_interpolate(
         The column with all nan_regs treated for periods shorter than 1:15.
 
     '''
-    col_name_str = '_'.join(
-        [level for level in col_name[0:3] if not level == ''])
     if i + 1 == len(nan_regs):
-        logger.info('%s : \n\t '
-                    'interpolated %s up-to-2-hour-span(s) of NaNs',
-                    col_name_str, i + 1 - j)
+        treated = i + 1 - j
+        logger.info(message + 'interpolated %s up-to-2-hour-span(s) of NaNs',
+                    treated)
 
     to_fill = slice(nan_region['start_idx'] - one_period,
                     nan_region['till_idx'] + one_period)
@@ -216,6 +237,9 @@ def my_interpolate(
     col.iloc[:, 0].loc[to_fill] = col.iloc[:, 0].loc[to_fill].interpolate()
 
     # Create a marker column to mark where data has been interpolated
+    col_name_str = '_'.join(
+        [level for level in col_name[0:3] if not level == ''])
+
     comment_before = marker_col.notnull()
     comment_again = comment_before.loc[comment_now]
     if comment_again.any():
@@ -266,8 +290,8 @@ def impute(nan_region, col, col_name, nan_regs, df, one_period):
     # other_tsos = [c[1] for c in compact.drop(col_name, axis=1)
     #.loc[:,(col_name[0],slice(None),col_name[2])].columns.tolist()]
     other_tsos = [tso
-        for tso in ['DE-50Hertz', 'DE-Amprion', 'DE-TenneT', 'DE-TransnetBW']
-        if tso != col_name[1]]
+                  for tso in ['DE-50Hertz', 'DE-Amprion', 'DE-TenneT', 'DE-TransnetBW']
+                  if tso != col_name[1]]
 
     # select columns with data for same technology (wind/solar) but from other
     # TSOs
@@ -322,7 +346,7 @@ def resample_markers(group):
     '''
 
     if group.notnull().values.any():
-        # unpack string of marker s into a list
+        # unpack string of markers into a list
         unpacked = [mark for line in group if type(line) is str
                     for mark in line.split(' | ')]  # [:-1]]
         # keep only unique values from the list

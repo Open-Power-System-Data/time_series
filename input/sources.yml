@@ -17,8 +17,18 @@ ENTSO-E Transparency FTP:
         start: 2014-12-01
         end: recent
         filetype: csv
-        resolution: 60min
+        resolution:
+            - 15min
+            - 30min
+            - 60min
         web: https://transparency.entsoe.eu/generation/r2/actualGenerationPerProductionType/show
+        columns:
+            - DateTime
+            - AreaTypeCode
+            - MapCode
+            - ProductionType_Name
+            - ActualConsumption
+            - ActualGenerationOutput
     Actual Total Load:
         address: '62.209.222.9'
         user: TP_export
@@ -29,10 +39,37 @@ ENTSO-E Transparency FTP:
         start: 2014-12-01
         end: recent
         filetype: csv
-        resolution: 60min
+        resolution:
+            - 15min
+            - 30min
+            - 60min
         web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
+        columns:
+            - DateTime
+            - AreaTypeCode
+            - MapCode
+            - TotalLoadValue 
+    Day Ahead Prices:
+        address: '62.209.222.9'
+        user: TP_export
+        passwd: eG75pLwgyfyQLzjJ
+        path: export/export/DayAheadPrices
+        filename: '{u_start.year}_{u_start.month}_DayAheadPrices.csv'
+        frequency: monthly
+        start: 2014-12-01
+        end: recent
+        filetype: csv
+        resolution:
+            - 60min
+        web: https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
+        columns:
+            - DateTime
+            - AreaTypeCode
+            - MapCode
+            - Currency_IsoCode
+            - Price
 OPSD:
-    capacities:
+    capacity:
         url_template: http://data.open-power-system-data.org/renewable_power_plants/2017-02-16/renewable_capacity_timeseries_DE.csv
         filename: renewable_capacity_timeseries_DE.csv
         url_params_template:
@@ -40,7 +77,8 @@ OPSD:
         start: 2005-01-01
         end: 2016-12-31
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://data.open-power-system-data.org/renewable_power_plants/
 
 ENTSO-E Data Portal:
@@ -58,7 +96,8 @@ ENTSO-E Data Portal:
         start: 2006-01-01
         end: 2015-12-31
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx  # Hourly load values of all countries for a specific month
 
 50Hertz:
@@ -71,7 +110,8 @@ ENTSO-E Data Portal:
         start: 2005-01-01
         end: 2015-12-31
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     wind_forecast_pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
@@ -82,7 +122,8 @@ ENTSO-E Data Portal:
         start: 2005-01-01
         end: 2015-12-31
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     wind_generation_with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
@@ -93,7 +134,8 @@ ENTSO-E Data Portal:
         start: 2016-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     wind_forecast_with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
@@ -104,7 +146,8 @@ ENTSO-E Data Portal:
         start: 2016-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
     solar_generation:
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicActual/DownloadFile
@@ -115,7 +158,8 @@ ENTSO-E Data Portal:
         start: 2012-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
     solar_forecast:
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicForecast/DownloadFile
@@ -126,7 +170,8 @@ ENTSO-E Data Portal:
         start: 2012-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
 
 Amprion:
@@ -141,7 +186,8 @@ Amprion:
         start: 2008-01-04
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.amprion.net/en/wind-feed-in
     solar:
         url_template: http://amprion.de/applications/applicationfiles/PV_einspeisung.php
@@ -154,7 +200,8 @@ Amprion:
         start: 2010-01-07
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.amprion.net/en/photovoltaic-infeed
 
 TenneT:
@@ -168,7 +215,8 @@ TenneT:
         start: 2006-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-wind-energy-feed-in
     solar:
         url_template: http://www.tennettso.de/site/de/phpbridge
@@ -181,7 +229,8 @@ TenneT:
         start: 2010-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-photovoltaic-energy-feed-in
 
 TransnetBW:
@@ -193,7 +242,8 @@ TransnetBW:
         start: 2010-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: https://www.transnetbw.com/en/transparency/market-data/key-figures
     solar:
         url_template: https://api.transnetbw.de/photovoltaics/csv
@@ -203,7 +253,8 @@ TransnetBW:
         start: 2011-01-01
         end: recent
         filetype: csv
-        resolution: 15min
+        resolution:
+            - 15min
         web: https://www.transnetbw.com/en/transparency/market-data/key-figures
 
 Svenska Kraftnaet:
@@ -214,7 +265,8 @@ Svenska Kraftnaet:
         start: 2002-01-01
         end: 2009-12-31
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot{u_start:%Y}.xls
     wind_solar_2:
@@ -224,7 +276,8 @@ Svenska Kraftnaet:
         start: 2010-01-01
         end: 2010-06-30
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot201001-06.xls
     wind_solar_3:
@@ -234,7 +287,8 @@ Svenska Kraftnaet:
         start: 2010-07-01
         end: 2010-12-31
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot2010-07-12.xls
     wind_solar_4:
@@ -244,7 +298,8 @@ Svenska Kraftnaet:
         start: 2011-01-01
         end: 2011-12-31
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n-fot2011-01-12.xls
     wind_solar_5:
@@ -254,7 +309,8 @@ Svenska Kraftnaet:
         start: 2012-01-01
         end: 2014-12-31
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot{u_start:%Y}-01-12.xls
     wind_solar_6:
@@ -264,17 +320,19 @@ Svenska Kraftnaet:
         start: 2015-01-01
         end: 2015-12-31
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
     wind_solar_7:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}..xls
+        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
         url_params_template:
         frequency: yearly
         start: 2016-01-01
-        end: 2016-12-31
+        end: 2017-12-31
         filetype: xls
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
 
@@ -290,7 +348,8 @@ Elia:
         start: 2012-01-01  #the data starts from 2012-01-19
         end: recent
         filetype: xls
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
     wind-offshore:
         url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
@@ -303,7 +362,8 @@ Elia:
         start: 2012-01-01  #the data starts from 2012-01-19
         end: recent
         filetype: xls
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
     solar:
         url_template: http://publications.elia.be/Publications/Publications/SolarForecasting.v3.svc/ExportSolarForecastGraph
@@ -315,7 +375,8 @@ Elia:
         start: 2012-11-01 #the data starts from 2012-11-14
         end: recent
         filetype: xls
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.elia.be/en/grid-data/power-generation/Solar-power-generation-data/Graph
 
 Energinet.dk:
@@ -324,18 +385,21 @@ Energinet.dk:
         start: 2000-01-01 # or even earlier for some data, but not useful as other sources don't go as far back
         end: recent
         filetype: xls
-        resolution: 60min
-        web: http://www.energinet.dk/en/el/engrosmarked/udtraek-af-markedsdata/Sider/default.aspx
+        resolution:
+            - 60min
+        web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
 
 CEPS:
     wind_pv:
+        # Here, the slashes mess up the url if passed to url_params, therefore we use only url_template
         url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx&from={u_start:%m/%d/%Y}%2012:00:00%20AM&to={u_end:%m/%d/%Y}%2011:59:59%20PM&hasinterval=True&sol=26&lang=ENG&agr=QH&fnc=AVG&ver=RT&para1=all&
         url_params_template:
         frequency: complete
         start: 2012-01-02
         end: recent
         filetype: xlsx
-        resolution: 15min
+        resolution:
+            - 15min
         web: http://www.ceps.cz/ENG/Data/Vsechna-data/Pages/odhad-vyroby-obnovitelnych-zdroju.aspx
 
 PSE:
@@ -347,52 +411,84 @@ PSE:
         start:  2012-05-26
         end: recent
         filetype: csv
-        resolution: 60min
+        resolution:
+            - 60min
         web: http://www.pse.pl/index.php?modul=21&id_rap=24
         deviant_params:
             - start: 2016-02-19
               end: 2016-02-19
-              rap: GEN_WIATR_20160219_20160224170055
+              second: 2016-02-24 17:00:55
             - start: 2016-02-20
               end: 2016-02-20
-              rap: GEN_WIATR_20160220_20160224170055
+              second: 2016-02-24 17:00:55
             - start: 2016-02-21
               end: 2016-02-21
-              rap: GEN_WIATR_20160221_20160224170055
+              second: 2016-02-24 17:00:55
             - start: 2016-02-22
               end: 2016-02-22
-              rap: GEN_WIATR_20160222_20160224170055
+              second: 2016-02-24 17:00:55
             - start: 2016-02-23
               end: 2016-02-23
-              rap: GEN_WIATR_20160223_20160224170055
+              second: 2016-02-24 17:00:55
             - start: 2016-07-22
               end: 2016-07-22
-              rap: GEN_WIATR_20160722_20160728171233
+              second: 2016-07-28 17:12:33
             - start: 2016-04-21
               end: 2016-04-21
-              rap: GEN_WIATR_20160421_20160428170059
+              second: 2016-04-28 17:00:59
             - start: 2013-03-14
               end: 2013-03-14
-              rap: GEN_WIATR_20130314_20130320170505
+              second: 2013-03-20 17:05:05
             - start: 2016-09-08
               end: 2016-09-08
-              rap: GEN_WIATR_20160908_20160914172604
+              second: 2016-09-14 17:26:04
             - start: 2016-09-09
               end: 2016-09-09
-              rap: GEN_WIATR_20160909_20160915171359
+              second: 2016-09-15 17:13:59
+            - start: 2017-02-20
+              end: 2017-02-20
+              second: 2017-02-26 17:20:55
+            - start: 2017-02-21
+              end: 2017-02-21
+              second: 2017-02-27 17:17:55
+            - start: 2017-02-22
+              end: 2017-02-22
+              second: 2017-02-28 17:23:26
 
+APG:
+    generation_by_source:
+        url_template: https://www.apg.at/transparency/Download.aspx?
+        url_params_template:
+            LANGUAGE: de
+            PID: AGPT
+            Format: csv
+            Resolution: 15M
+            DateFromLocal: '{u_start:%Y%m%d}'
+            DateToLocal: '{u_end:%Y%m%d}'
+            #CacheDir: 20170428131612_4266553c941447f4a8836f88af6cc4ef is unnecessary
+            CacheFileName: export_agpt_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
+        frequency: quarterly
+        start: 2006-01-01
+        end: recent
+        filetype: csv
+        resolution:
+            - 15min
+        web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
+
+RTE:
+    generation_by_source:
+        url_template: http://clients.rte-france.com/servlets/RealProdServlet
+        url_params_template:
+            annee: '{u_start:%Y}'
+        frequency: yearly
+        start: 2014-01-01 # real start date is 2014-12-16. download.py only works with beginning of year though.
+        end: recent
+        filetype: zip #xls
+        resolution:
+            - 60min
+        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
+#
 # For the Following sources, the download/read has not yet been implemented
-#RTE:
-#    generation_by_source:
-#        url_template: http://clients.rte-france.com/servlets/RealProdServlet
-#        url_params_template:
-#            annee: '{u_start:%Y}'
-#        frequency: yearly
-#        start: 2014-01-01
-#        end: recent
-#        filetype: zip #xls
-#        resolution: 60min
-#        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
 #
 #Fingrid:
 #    wind:
@@ -407,7 +503,8 @@ PSE:
 #        start: 2014-11-28
 #        end: recent
 #        filetype: xls
-#        resolution: 60min
+#        resolution:
+#            - 60min
 #        web:
 #
 #OeMag:
@@ -417,41 +514,25 @@ PSE:
 #        start: 2003-01-01
 #        end: 2011-01-01
 #        filetype: xls
-#        resolution: 15min
+#        resolution:
+#            - 15min
 #    wind_2:
 #        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/winderzeugung_{u_start:%Y}.xlsx
 #        bundle: YEARLY
 #        start: 2012-01-01
 #        end: 2013-12-31
 #        filetype: xlsx
-#        resolution: 15min
+#        resolution:
+#            - 15min
 #    wind_3:
 #        url_template: http://www.oem-ag.at/fileadmin/user_upload/Dokumente/statistik/winderzeugung/Winderzeugung_{u_start:%Y}.xlsx
 #        bundle: YEARLY
 #        start: 2013-01-01
 #        end: 2013-12-31
 #        filetype: xlsx
-#        resolution: 15min
-#
-#APG:
-#    generation_by_source:
-#        url_template: https://www.apg.at/transparency/Download.aspx
-#        url_params_template:
-#            LANGUAGE: de
-#            PID: AGPT
-#            Format: csv
-#            Resolution: 15M
-#            DateFromLocal: '{u_start:%Y%m%dZ}'
-#            DateToLocal: '{u_end:%Y%m%dZ}'
-#            CacheDir: 20160929235917_d48a7721c39e488f8aa5a94c646a4595
-#            CacheFileName: export_awg_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
-#        frequency: quarterly
-#        start: 2010-01-01
-#        end: recent
-#        filetype: csv
-#        resolution: 15min
-#        web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
-#
+#        resolution:
+#            - 15min
+##
 #TEMPLATE
 #
 #source:
