@@ -60,19 +60,6 @@ def find_nan(df, res_key, headers, patch=False):
             ['count', 'span', 'start_idx', 'till_idx']])
         nan_list = pd.DataFrame(index=nan_idx, columns=col.columns)
 
-        # skip all columns from ENTSO-E Transparency as it takes too long
-        # if  col_name[headers.index('source')] == 'ENTSO-E Transparency':
-        #    if patched.empty:
-        #        patched = col
-        #    else:
-        #        patched = patched.combine_first(col)
-        #
-        #    if nan_table.empty:
-        #        nan_table = nan_list
-        #    else:
-        #        nan_table = nan_table.combine_first(nan_list)
-        #    continue
-
         # skip this column if it has no entries at all.
         # This will also delete the column from the patched df
         if col.empty:
