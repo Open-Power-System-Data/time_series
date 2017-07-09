@@ -8,7 +8,6 @@ make:json.py : create JSON meta data for the Data Package
 """
 
 import pandas as pd
-import pycountry
 import json
 import yaml
 
@@ -107,7 +106,7 @@ schemas_template = '''
         format: fmt:%Y-%m-%dT%H%M%S%z
       - name: {marker}
         description: marker to indicate which columns are missing data in source data
-            and has been interpolated (e.g. DE_transnetbw_solar_generation;)
+            and has been interpolated (e.g. DE_transnetbw_solar_generation)
         type: string
 '''
 
@@ -115,6 +114,7 @@ field_template = '''
       - name: {region}_{variable}_{attribute}
         description: {description}
         type: number (float)
+        unit: {unit}
         source:
             name: {source}
             web: {web}
@@ -125,15 +125,13 @@ field_template = '''
 '''
 
 descriptions_template = '''
-load: Consumption in {geo} in MW
-generation: Actual {tech} generation in {geo} in MW
-actual: Actual {tech} generation in {geo} in MW
-forecast: Forecasted {tech} generation in {geo} in MW
-capacity: Electrical capacity of {tech} in {geo} in MW
-profile: Share of {tech} capacity producing in {geo}
-epex: Day-ahead spot price for {geo}
-elspot: Day-ahead spot price for {geo}
-day_ahead: Day-ahead spot price for {geo}
+load: Total load in {geo} in {unit}
+generation: Actual {tech} generation in {geo} in {unit}
+actual: Actual {tech} generation in {geo} in {unit}
+forecast: Forecasted {tech} generation in {geo} in {unit}
+capacity: Electrical capacity of {tech} in {geo} in {unit}
+profile: Percentage of {tech} capacity producing in {geo}
+day_ahead: Day-ahead spot price for {geo} in {unit}
 '''
 
 # Dataset-specific metadata
@@ -149,7 +147,7 @@ day_ahead: Day-ahead spot price for {geo}
 # as this makes for  more readable code.
 
 
-def make_json(data_sets, info_cols, version, changes, headers):
+def make_json(data_sets, info_cols, version, changes, headers, areas):
     '''
     Create a datapackage.json file that complies with the Frictionless
     data JSON Table Schema from the information in the column-MultiIndex.
@@ -198,19 +196,15 @@ def make_json(data_sets, info_cols, version, changes, headers):
             if col[0] in info_cols.values():
                 continue
             h = {k: v for k, v in zip(headers, col)}
-            if len(h['region']) > 2:
-                geo = h['region'] + ' balancing area'
-            elif h['region'] == 'NI':
-                geo = 'Northern Ireland'
-            elif h['region'] == 'CS':
-                geo = 'Serbia and Montenegro'
-            else:
-                #2017-05-16: The key in pycountry.countries.get() changed from alpha_2 to alpha2.
-                geo = pycountry.countries.get(alpha2=h['region']).name
+            row = areas['OPSD area'] == h['region']
+            primary_concept = areas.loc[row, 'primary concept'].values[0]
+            geo = areas[primary_concept][row].values[0]
+            if not primary_concept == 'country':
+                geo = geo + ' (' + primary_concept + ')'
 
             descriptions = yaml.load(
-                descriptions_template.format(tech=h['variable'], geo=geo)
-            )
+                descriptions_template.format(
+                    tech=h['variable'], unit=h['unit'], geo=geo))
             try:
                 h['description'] = descriptions[h['attribute']]
             except KeyError:
@@ -237,7 +231,8 @@ def make_json(data_sets, info_cols, version, changes, headers):
     # Remove URL for source if a column is based on own calculations
     for schema in metadata['schemas'].values():
         for field in schema['fields']:
-            if 'source' in field.keys() and field['source']['name'] == 'own calculation':
+            if ('source' in field.keys() and
+                    field['source']['name'] == 'own calculation'):
                 del field['source']['web']
 
     # write the metadata to disk

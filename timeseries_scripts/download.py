@@ -20,7 +20,7 @@ from ftplib import FTP
 import math
 import sys
 
-logger = logging.getLogger('log')
+logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
 
 
@@ -194,17 +194,18 @@ def download_source(source_name, source_dict, out_path,
             if len(ends) == 0:
                 ends = pd.DatetimeIndex([end_server])
 
-            if 'deviant_urls' in param_dict:
+            if 'deviant_params' in param_dict:
                 for deviant in param_dict['deviant_params']:
-                    if start_server <= deviating['start'] <= end_server:
-                        param_dict['url_params_template'] = deviant
+                    if start_server <= deviant['start'] <= end_server:
                         downloaded, session = download_file(
                             source_name,
                             variable_name,
                             out_path,
                             param_dict,
-                            start=deviating['start'],
-                            end=deviating['end'],
+                            start=deviant['start'],
+                            end=deviant['end'],
+                            second=deviant['second'],
+                            attempt=1
                         )
 
             for s, e in zip(starts, ends):
@@ -250,6 +251,7 @@ def download_source(source_name, source_dict, out_path,
                     )
 
     return
+
 
 def download_file(
         source_name,
@@ -300,15 +302,8 @@ def download_file(
     if session is None:
         session = requests.session()
 
-    if attempt == 1:
-        logger.info(
-        'Downloading data:\n\t '
-        'Source:      {}\n\t '
-        'Variable:    {}\n\t '
-        'Data starts: {:%Y-%m-%d}\n\t '
-        'Data ends:   {:%Y-%m-%d}'
-        .format(source_name, variable_name, start, end)
-    )
+    message = '| {:20.20} | {:20.20} | {:%Y-%m-%d} | {:%Y-%m-%d} | '.format(
+        source_name, variable_name, start, end)
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
@@ -353,9 +348,16 @@ def download_file(
                 url_params_template=param_dict['url_params_template'],
                 second=second
             )
+        if downloaded:
+            logger.info(message + 'download successful')
+        elif source_name != 'PSE':
+            logger.info(message + 'download failed')
+        elif attempt > 110:
+            logger.info(message + 'download failed')
+
     elif count_files == 1:
         downloaded = True
-        logger.info('Found local file: %s', os.listdir(container)[0])
+        logger.info(message + 'download previously')
 
     else:
         downloaded = True
@@ -366,15 +368,15 @@ def download_file(
 
 
 def download_request(
-    source_name,
-    start,
-    end,
-    session,
-    filename,
-    container,
-    url_template,
-    url_params_template,
-    second=None):
+        source_name,
+        start,
+        end,
+        session,
+        filename,
+        container,
+        url_template,
+        url_params_template,
+        second=None):
     """
     Download a single file via HTTP get.
     Build the url from parameters and save the file to dsik under it's original
@@ -395,7 +397,7 @@ def download_request(
         True if download successful, False otherwise.
     session : requests.session
 
-    """ 
+    """
     url_params = {}  # A dict for URL-parameters
 
     # For most sources, we can use HTTP get method with parameters-dict
@@ -433,8 +435,8 @@ def download_request(
             .replace('"', '')
             .replace(';', '')
         )
-        logger.info('Downloaded from URL: %s\n\t Original filename: %s',
-                    resp.url, original_filename)
+        logger.debug('Downloaded from URL: %s Original filename: %s',
+                     resp.url, original_filename)
 
     # For cases where the original filename can not be retrieved,
     # I put the filename in the param_dict
@@ -448,7 +450,7 @@ def download_request(
             )
             original_filename = 'unknown_filename'
 
-        logger.info('Downloaded from URL: %s', resp.url)
+        logger.debug('Downloaded from URL: %s', resp.url)
 
     # Save file to disk
     filepath = os.path.join(container, original_filename)
@@ -460,14 +462,14 @@ def download_request(
 
 
 def download_ftp(
-    start,
-    end,
-    filename,
-    container,
-    address,
-    user,
-    passwd,
-    path):
+        start,
+        end,
+        filename,
+        container,
+        address,
+        user,
+        passwd,
+        path):
     """
     Download a single file via FTP.
 
@@ -488,18 +490,18 @@ def download_ftp(
     ----------
     downloaded : bool
         True if download successful, False otherwise.
-    
-    """ 
+
+    """
 
     ftp = FTP(host=address, user=user, passwd=passwd)
     ftp.cwd(path)
     filename = filename.format(u_start=start, u_end=end)
     filepath = os.path.join(container, filename)
-    filesize = ftp.size(filename)
+    #filesize = ftp.size(filename)
 
     # Retrieve file and save to disk
-    downloadTracker = FtpDownloadTracker(ftp, filesize, filepath)
-    ftp.retrbinary('RETR ' + filename, callback=downloadTracker.handle,
+    #downloadTracker = FtpDownloadTracker(ftp, filesize, filepath)
+    ftp.retrbinary('RETR ' + filename, callback=open(filepath, 'wb').write,  # callback=downloadTracker.handle,
                    blocksize=1024)
 
     downloaded = True
@@ -583,7 +585,7 @@ def convert_size(size_bytes):
     size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
     i = int(math.floor(math.log(size_bytes, 1024)))
     p = math.pow(1024, i)
-    s = round(size_bytes/p, 2)
+    s = round(size_bytes / p, 2)
     return '{} {}'.format(s, size_name[i])
 
 
