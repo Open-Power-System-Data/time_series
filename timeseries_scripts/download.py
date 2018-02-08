@@ -25,7 +25,8 @@ logger.setLevel('INFO')
 
 
 def download(sources, out_path, archive_version=None,
-             start_from_user=None, end_from_user=None):
+             start_from_user=None, end_from_user=None,
+             testmode=False):
     """
     Load YAML file with sources from disk, and download all files for each
     source into the given out_path.
@@ -42,6 +43,7 @@ def download(sources, out_path, archive_version=None,
         Start of period for which to download the data.
     end_from_user : datetime.date, default None
         End of period for which to download the data.
+    testmode: only download 1 file per source to check if the URLs still still work
 
     Returns
     ----------
@@ -62,9 +64,9 @@ def download(sources, out_path, archive_version=None,
 
     else:
         for source_name, source_dict in sources.items():
-            if not source_name == "Energinet.dk":
+            if not source_name in ['Energinet.dk', 'ENTSO-E Power Statistics', 'CEPS']:
                 download_source(source_name, source_dict, out_path,
-                                start_from_user, end_from_user)
+                                start_from_user, end_from_user, testmode=testmode)
 
     return
 
@@ -103,7 +105,8 @@ def download_archive(archive_version):
 
 
 def download_source(source_name, source_dict, out_path,
-                    start_from_user=None, end_from_user=None):
+                    start_from_user=None, end_from_user=None,
+                    testmode=False):
     """
     Download all files for source_name as specified by the given
     source_dict into out_path.
@@ -117,7 +120,7 @@ def download_source(source_name, source_dict, out_path,
     out_path : str
         Base download directory in which to save all downloaded files.
     start_from_user : datetime.date, default None
-        Start of period for which to download the data.
+        Start of period for which to download the data. 
     end_from_user : datetime.date, default None
         End of period for which to download the data
 
@@ -160,6 +163,7 @@ def download_source(source_name, source_dict, out_path,
                 pass  # do nothing
 
         if param_dict['frequency'] in ['complete', 'irregular']:
+            # In these two cases, all data is housed in one file on the server
             downloaded, session = download_file(
                 source_name,
                 variable_name,
@@ -171,7 +175,7 @@ def download_source(source_name, source_dict, out_path,
             )
 
         else:
-            # The files on the servers usually contain the data for subperiods
+            # In all other cases, the files on the servers usually contain the data for subperiods
             # of some regular length (i.e. months or years available
             # Create lists of start- and enddates of periods represented in
             # individual files to be downloaded.
@@ -186,13 +190,32 @@ def download_source(source_name, source_dict, out_path,
                 start=start_server, end=end_server,
                 freq=freq_start[param_dict['frequency']]
             )
+
             ends = pd.date_range(
                 start=start_server, end=end_server,
                 freq=freq_end[param_dict['frequency']]
             )
 
+            if len(starts) == 0:
+                starts = pd.DatetimeIndex([start_server])
             if len(ends) == 0:
                 ends = pd.DatetimeIndex([end_server])
+
+            if starts[0].date() > start_server:
+                # make sure to include full first period, i.e. if start_server is 2014-12-14,
+                # set first start to 2014-01-01
+                starts = starts.union([starts[0] - 1])
+
+            if ends[-1].date() < end_server:
+                # make sure to include full last period, i.e. if end_server is 2018-01-14,
+                # set last end to 2018-01-31
+                ends = ends.union([ends[-1] + 1])
+
+            #else:
+            #    # extend both by one period to load a little more data than the user asked for.
+            #    # Reasoning: The last hour of te year in UTC is already the first hour of the new year in CET
+            #    starts = starts.union([starts[-1] + 1])
+            #    ends = ends.union([ends[-1] + 1])
 
             if 'deviant_params' in param_dict:
                 for deviant in param_dict['deviant_params']:
@@ -209,46 +232,18 @@ def download_source(source_name, source_dict, out_path,
                         )
 
             for s, e in zip(starts, ends):
-
-                # The Polish TSO PSE has daily files that are usually uploaded
-                # 6 days later somtime between 17:00:10 and 17:01:30. As the exact
-                # second is unknown ex-ante, but needs to be included in the URL,
-                # we need to try out every second in that period until the file is
-                # found.
-                if source_name == 'PSE':
-                    i = 0
-                    downloaded = False
-                    for second in pd.date_range(
-                            start=datetime.combine(
-                                s + timedelta(days=6), time(17, 0, 10)),
-                            end=datetime.combine(
-                                s + timedelta(days=6), time(17, 2, 0)),
-                            freq='S'):
-                        if not downloaded:
-                            i += 1
-                            logger.debug('attempt %s', second)
-                            downloaded, session = download_file(
-                                source_name,
-                                variable_name,
-                                out_path,
-                                param_dict,
-                                start=s,
-                                end=e,
-                                second=second,
-                                attempt=i
-                            )
-
-                else:
-                    downloaded, session = download_file(
-                        source_name,
-                        variable_name,
-                        out_path,
-                        param_dict,
-                        start=s,
-                        end=e,
-                        filename=filename,
-                        session=session
-                    )
+                downloaded, session = download_file(
+                    source_name,
+                    variable_name,
+                    out_path,
+                    param_dict,
+                    start=s,
+                    end=e,
+                    filename=filename,
+                    session=session
+                )
+                if testmode:
+                    break
 
     return
 

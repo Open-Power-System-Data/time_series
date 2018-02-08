@@ -17,6 +17,7 @@ import zipfile
 import csv
 import re
 from datetime import datetime, date, time, timedelta
+import xlrd
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -99,12 +100,12 @@ def read_entso_e_transparency(
 
     # keep only entries for selected geographic entities as specified in
     # areas.csv + select regions whith same temporal resolution    
-    time_and_place = (areas['AreaName FTP used for OPSD']
+    time_and_place = (areas['primary AreaName FTP']
                       .loc[areas[res_key]==True])
     df_raw = df_raw.loc[df_raw['AreaName'].isin(time_and_place)]
 
     # based on the AreaName column, map the area names used throughout OPSD 
-    lookup = areas.set_index('AreaName FTP used for OPSD')['OPSD area']
+    lookup = areas.set_index('primary AreaName FTP')['area ID']
     lookup = lookup[~lookup.index.duplicated()]
     df_raw['region'] = df_raw['AreaName'].map(lookup)
     df_raw.drop('AreaName', axis=1, inplace=True)
@@ -185,8 +186,8 @@ def read_pse(filepath, variable_name, url, headers):
         # UTC 01:00-02:00 = CET  2:00-3:00 is indicated by '03'.
         # regular hours require backshifting by 1 period
         converters={
-            'Godzina':
-                lambda x: '2:00' if x == '02A' else str(int(x) - 1) + ':00'
+            'Time':
+                lambda x: '2:00' if x == '2A' else str(int(x) - 1) + ':00'
         }
     )
     # Create a list of spring-daylight savings time (DST)-transitions
@@ -195,28 +196,36 @@ def read_pse(filepath, variable_name, url, headers):
         for d in pytz.timezone('Europe/Copenhagen')._utc_transition_times
         if d.year >= 2000 and d.month == 3]
 
-    # The hour from 01:00 - 02:00 (CET) should by PSE's logic be indexed
-    # by "02:00", but at DST day in spring they use "03:00" in the files.
-    # Our routine requires it to be "01:00"
-    df['proto_timestamp'] = pd.to_datetime(
-        df['Data'].astype(str) + ' ' +
-        df['Godzina'])
-    slicer = df['proto_timestamp'].isin(dst_transitions_spring)
-    df.loc[slicer, 'Godzina'] = '1:00'
+    # Account for an error where an hour is jumped in the data, incrementing 
+    # the hour by one
+    #time_int = df['Time'].str[:-3].astype(int)
+    #if (time_int time_int.shift(1) - 1). 
+    #if (time_int == 24).any():
+    #    logger.info(filepath)
+    #    df = df[time_int != 24]
+    if df['Date'][0] == 20130324:
+        df['Time'] = [str(num) + ':00' for num in range(24)]
 
-    # create the actual timestamp from the corrected "Data"-column
+    # The hour from 01:00 - 02:00 (CET) should by PSE's logic be indexed
+    # by "02:00" (the endpoint), but at DST day in spring they use "03:00" in
+    # the files. Our routine requires it to be "01:00" (the start point).
+    df['proto_timestamp'] = pd.to_datetime(
+        df['Date'].astype(str) + ' ' + df['Time'])
+    slicer = df['proto_timestamp'].isin(dst_transitions_spring)
+    df.loc[slicer, 'Time'] = '1:00'
+
+    # create the actual timestamp from the corrected "Date"-column
     df['timestamp'] = pd.to_datetime(
-        df['Data'].astype(str) + ' ' +
-        df['Godzina'])
+        df['Date'].astype(str) + ' ' + df['Time'])
     df.set_index('timestamp', inplace=True)
 
     # 'ambigous' refers to how the October dst-transition hour is handled.
-    # ‘infer’ will attempt to infer dst-transition hours based on order.
+    # 'infer' will attempt to infer dst-transition hours based on order.
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
     colmap = {
-        'Sumaryczna generacja źródeł wiatrowych': {
+        'Generation of Wind Farms': {
             'region': 'PL',
             'variable': 'wind_onshore',
             'attribute': 'generation',
@@ -239,12 +248,15 @@ def read_pse(filepath, variable_name, url, headers):
 
 def read_ceps(filepath, variable_name, url, headers):
     '''Read a file from CEPS into a DataFrame'''
-    df = pd.read_excel(
-        io=filepath,
+    df = pd.read_csv(
+        #pd.read_excel(io=filepath,
+        #sheet_name='ČEPS report',
+        filepath,
+        sep=';',
         header=2,
         skiprows=None,
         index_col=0,
-        parse_cols=[0, 1, 2]
+        usecols=[0, 1, 2]
     )
 
     df.index = pd.to_datetime(df.index.rename('timestamp'))
@@ -287,7 +299,7 @@ def read_elia(filepath, variable_name, url, headers):
         header=None,
         skiprows=4,
         index_col=0,
-        parse_cols=None
+        usecols=None
     )
 
     colmap = {
@@ -344,7 +356,7 @@ def read_energinet_dk(filepath, url, headers):
         # Row 3 is enough to unambigously identify the columns
         skiprows=None,
         index_col=None,
-        parse_cols=None,  # None means: parse all columns
+        usecols=None,  # None means: parse all columns
         thousands=','
     )
 
@@ -489,16 +501,54 @@ def read_energinet_dk(filepath, url, headers):
     return df
 
 
-def read_entso_e_portal(filepath, url, headers):
+def read_entso_e_statistics(filepath, url, headers):
     '''Read a file from ENTSO-E into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
+        header=10,
+        usecols='A, B, D, E, H, J, M:AQ'
+    )
+
+    df.drop(index=0, inplace=True)
+    renamer = {'Date Time (CET/CEST)': 'date', df.columns[1]: 'time'}
+    df.rename(columns=renamer, inplace=True)
+    df['time'] = df['time'].str[:5]
+    df['date'] = df['date'].fillna(method='ffill').dt.strftime('%Y-%m-%d')
+    df.index = pd.to_datetime(df['date'] + ' ' + df['time'])
+    df.drop(columns=['date', 'time'], inplace=True)
+    df.rename(columns=lambda x: x[:2], inplace=True)
+
+    df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+
+    colmap = {
+        'variable': 'load',
+        'region': '{country}',
+        'attribute': 'old',
+        'source': 'ENTSO-E Data Portal/Power Statistics',
+        'web': url,
+        'unit': 'MW'
+    }
+
+    # Create the MultiIndex
+    tuples = [tuple(colmap[level].format(country=col)
+                    for level in headers) for col in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return df
+
+
+def read_entso_e_portal(filepath, url, headers):
+    '''Read a file from ENTSO-E into a DataFrame'''
+    df = pd.read_excel(
+        io=xlrd.open_workbook(filepath, logfile=open(os.devnull, 'w')),
         header=9,  # 0 indexed, so the column names are actually in the 10th row
         skiprows=None,
         # create MultiIndex from first 2 columns ['Country', 'Day']
         index_col=[0, 1],
-        parse_cols=None,  # None means: parse all columns
-        na_values=['n.a.']
+        usecols=None,  # None means: parse all columns
+        na_values=['n.a.'],
+        engine='xlrd'
     )
 
     df.columns.names = ['raw_hour']
@@ -550,7 +600,7 @@ def read_entso_e_portal(filepath, url, headers):
         'variable': 'load',
         'region': '{country}',
         'attribute': 'old',
-        'source': 'ENTSO-E Data Portal',
+        'source': 'ENTSO-E Data Portal/Power Statistics',
         'web': url,
         'unit': 'MW'
     }
@@ -938,11 +988,11 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
         io=filePath,
         # read the last sheet (in some years,
         # there are hidden sheets that would cause errors)
-        sheetname=-1,
+        sheet_name=-1,
         header=None,
         skiprows=skip,
         index_col=None,
-        parse_cols=cols
+        usecols=cols
     )
 
     # renamer = {'Tid': 'timestamp', 'DATUM': 'date', 'TID': 'hour'}
@@ -1260,10 +1310,9 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
                 data_to_add = read_entso_e_transparency(
                     areas, filepath, variable_name, url, headers, res_key)
             elif source_name == 'ENTSO-E Data Portal':
-                #save_stdout = sys.stdout
-                #sys.stdout = open('trash', 'w')
                 data_to_add = read_entso_e_portal(filepath, url, headers)
-                #sys.stdout = save_stdout
+            elif source_name == 'ENTSO-E Power Statistics':
+                data_to_add = read_entso_e_statistics(filepath, url, headers)
             elif source_name == 'Energinet.dk':
                 data_to_add = read_energinet_dk(filepath, url, headers)
             elif source_name == 'Elia':
@@ -1310,7 +1359,8 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
     data_set = data_set.reindex(index=no_gaps)
 
     # Cut off the data outside of [start_from_user:end_from_user]
-    # First, convert userinput to UTC time to conform with data_set.index
+    # In order to make sure that the respective time period is covered in both
+    # UTC and CE(S)T, we set the start in CE(S)T, but the end in UTC
     if start_from_user:
         start_from_user = (
             pytz.timezone('Europe/Brussels')
@@ -1318,10 +1368,9 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
             .astimezone(pytz.timezone('UTC')))
     if end_from_user:
         end_from_user = (
-            pytz.timezone('Europe/Brussels')
+            pytz.timezone('UTC')
             .localize(datetime.combine(end_from_user, time()))
-            .astimezone(pytz.timezone('UTC'))
-            # appropriate offset to inlude the end of period
+            # Appropriate offset to inlude the end of period
             + timedelta(days=1, minutes=-int(res_key[:2])))
     # Then cut off the data_set
     data_set = data_set.loc[start_from_user:end_from_user, :]
@@ -1355,158 +1404,10 @@ def update_progress(count, total):
         progress = 1
         status = "Done...\r\n"
     block = int(round(barLength * progress))
-    text = "\rProgress: [{0}] {1}/{2} files {3}".format(
-        "#" * block + "-" * (barLength - block), count, total, status)
+    text = "\rProgress: {0} {1}/{2} files {3}".format(
+        "░" * block + "█" * (barLength - block), count, total, status)
     sys.stdout.write(text)
     sys.stdout.flush()
 
     return
-
-def read_apg(filepath, url, headers):
-    '''Read a file from APG into a DataFrame'''
-    df = pd.read_csv(
-        filepath,
-        sep=';',
-        encoding='iso-8859-1',
-        header=0,
-        index_col=None,
-        parse_dates=None,  
-        decimal=',',
-        thousands='.',        
-    )
-
- 
-
-   
-    # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc.
-    # during the year, but 3A:00:00, 3B:00:00 for the (possibely
-    # DST-transgressing) 3rd hour of every day in October, we truncate the
-    # hours column after 2 characters and replace letters which are there to
-    # indicate the order during fall DST-transition.
-    df['Von'] = df['Von'].str.replace(
-        'A', '').str.replace('B', '')
-    
-    df['Von'] = pd.to_datetime(df['Von'], dayfirst=True,)
-    
-    df.set_index('Von', inplace=True)
-
-    df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
-    df.index = df.index.tz_convert(None)
-    
-    colmap = {
-        'Wind  [MW]': {
-            'variable': 'wind',
-            'region': 'AT',
-            'attribute': 'generation',
-            'source': 'APG',
-            'web': url
-        },
-        'Solar  [MW]': {
-            'variable': 'solar',
-            'region': 'AT',
-            'attribute': 'generation',
-            'source': 'APG',
-            'web': url
-        }
-    }
-    
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
-    
-    # Create the MultiIndex    
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-
-    return df
-    
-def read_rte(filepath, variable_name, url, headers):
-    '''Read a file from RTE into a DataFrame'''
-    #open zip
-    myzipfile = zipfile.ZipFile(filepath, mode='r')
-    myzipfile.extractall(path=(os.path.split(filepath)[0]))    
-    
-    #change path from zip to excel
-    from os import walk
-    f = []
-    for (dirpath, dirnames, filenames) in walk((os.path.split(filepath)[0])):
-        f.extend(filenames)
-        break
-    
-    get_excel = [item for item in f if item.endswith('.xls')]
-    
-    filepath = os.path.join((os.path.split(filepath)[0]), get_excel[0])
-            
-    #open excel which is actually tsv
-    with open(filepath, 'r') as f:        
-        reader = csv.reader(f, delimiter='\t', lineterminator='\n')
-        df = pd.DataFrame(list(reader))
-        
-    #delete the excel as read() throws exception if there are two files in one download directory
-    #this means multiple runthroughs of this script would otherwise not be possible
-    os.remove(filepath)
-    
-    df = df.iloc[:,:13] #make sure there are no empty columns at the end    
-    df.columns = df.iloc[1] #set column names
-    df['Heures'] = df['Heures'].map(lambda x: str(x).lstrip('Données de réalisation du ')) #strip the cells with dates of any other text
-    df['Dates'] = np.nan
-    
-    #fill an extra column with corresponding dates.
-    for f in df['Heures']:
-        if re.match('\d{2}/\d{2}/\d{4}', f):
-            df['Dates'][list(df['Heures']).index(f)]=f
-    df['Dates'].fillna(method='ffill', axis=0, inplace=True, limit=25)
-    
-    #drop all rows not containing data (no time-format in first column)
-    df = df.loc[df['Heures'].str.len()==11]
-    
-    #drop daylight saving time hours (no data there)
-    df = df.loc[(df['Éolien terrestre'] != '*') & (df['Solaire'] != '*')]
-    
-    #just display beginning of hours
-    df['Heures'] = df['Heures'].map(lambda x: str(x)[:-6])
-    
-    #construct full date to later use as index
-    df['timestamp'] = df['Dates']+' '+df['Heures']
-    df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True,)
-    
-    #drop autumn dst hours as they contain inconsistent data (none or copy of hour before)
-    dst_transitions_autumn = [
-        d.replace(hour=2)
-        for d in pytz.timezone('Europe/Paris')._utc_transition_times
-        if d.year >= 2000 and d.month == 10]
-    df = df.loc[~df['timestamp'].isin(dst_transitions_autumn)]
-    df.set_index(df['timestamp'], inplace=True)
-    
-    #Transfer to UTC
-    df.index = df.index.tz_localize('Europe/Paris')
-    df.index = df.index.tz_convert(None)
-    
-    colmap = {
-        'Éolien terrestre': {
-            'variable': 'wind',
-            'region': 'FR',
-            'attribute': 'generation',
-            'source': 'RTE',
-            'web': url
-        },
-        'Solaire': {
-            'variable': 'solar',
-            'region': 'FR',
-            'attribute': 'generation',
-            'source': 'RTE',
-            'web': url
-        }
-    }
-
-    
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
-    
-    # Create the MultiIndex    
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    
-    return df
     

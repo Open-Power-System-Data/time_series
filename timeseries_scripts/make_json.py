@@ -22,7 +22,7 @@ description: Load, wind and solar, prices in hourly resolution
 
 long_description: This data package contains different kinds of timeseries
     data relevant for power system modelling, namely electricity consumption 
-    (load) for 36 European countries as well as wind and solar power generation
+    (load) for 37 European countries as well as wind and solar power generation
     and capacities and prices for a growing subset of countries. 
     The timeseries become available at different points in time depending on the
     sources. The
@@ -51,7 +51,7 @@ keywords:
     - power consumption
     - power market
 
-geographical-scope: 35 European countries
+geographical-scope: 37 European countries
 
 contributors:
     - web: http://neon-energie.de/en/team/
@@ -196,7 +196,7 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
             if col[0] in info_cols.values():
                 continue
             h = {k: v for k, v in zip(headers, col)}
-            row = areas['OPSD area'] == h['region']
+            row = areas['area ID'] == h['region']
             primary_concept = areas.loc[row, 'primary concept'].values[0]
             geo = areas[primary_concept][row].values[0]
             if not primary_concept == 'country':

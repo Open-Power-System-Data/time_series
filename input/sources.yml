@@ -1,11 +1,10 @@
 #
 # Open Power System Data
 #
-# Timeseries Datapackage
+# Time series Datapackage
 #
 # sources.yml : Parameters required for downloading and parsing data from sources
 #
-
 ENTSO-E Transparency FTP:
     Actual Generation per Production Type:
         address: '62.209.222.9'
@@ -99,6 +98,16 @@ ENTSO-E Data Portal:
         resolution:
             - 60min
         web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx  # Hourly load values of all countries for a specific month
+
+ENTSO-E Power Statistics:  # Automatic download not implemented
+    load:
+        frequency: monthly
+        start: 2016-01-01
+        end: recent
+        filetype: xlsx
+        resolution:
+            - 60min
+        web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx
 
 50Hertz:
     wind_generation_pre-offshore:
@@ -318,17 +327,6 @@ Svenska Kraftnaet:
         url_params_template:
         frequency: yearly
         start: 2015-01-01
-        end: 2015-12-31
-        filetype: xls
-        resolution:
-            - 60min
-        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
-        filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
-    wind_solar_7:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
-        url_params_template:
-        frequency: yearly
-        start: 2016-01-01
         end: 2017-12-31
         filetype: xls
         resolution:
@@ -345,7 +343,7 @@ Elia:
             isOffshore: 'false'
             isEliaConnected: ''
         frequency: monthly #the frequency could in principle be chosen arbitrarily, even complete the complete dataset, but in practise the server often times out if too much data is requested at once
-        start: 2012-01-01  #the data starts from 2012-01-19
+        start: 2012-01-19  #the data starts from 2012-01-19
         end: recent
         filetype: xls
         resolution:
@@ -359,7 +357,7 @@ Elia:
             isOffshore: 'true'
             isEliaConnected: ''
         frequency: quarterly
-        start: 2012-01-01  #the data starts from 2012-01-19
+        start: 2012-01-19  #the data starts from 2012-01-19
         end: recent
         filetype: xls
         resolution:
@@ -372,14 +370,14 @@ Elia:
             dateTo: '{u_end:%Y-%m-%d}T23:00:00.000Z'
             sourceId: '1'
         frequency: monthly
-        start: 2012-11-01 #the data starts from 2012-11-14
+        start: 2012-11-14 #the data starts from 2012-11-14
         end: recent
         filetype: xls
         resolution:
             - 15min
         web: http://www.elia.be/en/grid-data/power-generation/Solar-power-generation-data/Graph
 
-Energinet.dk:
+Energinet.dk:  # Automatic download not implemented
     prices_wind_solar:
         frequency: complete
         start: 2000-01-01 # or even earlier for some data, but not useful as other sources don't go as far back
@@ -388,72 +386,46 @@ Energinet.dk:
         resolution:
             - 60min
         web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+#     prices_2:
+#         url_template: https://stapckanedsfiles01.blob.core.windows.net/edsprod/Elspot_Prices_Data-d2f38eb6e3a74cdab724fec1c050689f.csv
+#         frequency: complete
+#         start: 2016  # 100000 rows download limit
+#         end: recent
+#         filetype: csv
+#         resolution:
+#             - 60min
+#         web: https://www.energidataservice.dk/dataset/elspotprices/
+#     wind_solar_2:
+#         url_template: https://stapckanedsfiles01.blob.core.windows.net/edsprod/Electricity_Balance_Data-88d6261333094e56a30f8f8a94ffe509.csv
+#         frequency: complete
+#         start: 2012  # 100000 rows download limit
+#         end: recent
+#         filetype: csv
+#         resolution:
+#             - 60min
+#         web: https://www.energidataservice.dk/dataset/electricitybalance/
 
-CEPS:
+CEPS:  # Automatic download not implemented
     wind_pv:
-        # Here, the slashes mess up the url if passed to url_params, therefore we use only url_template
-        url_template: http://www.ceps.cz/_layouts/15/Ceps/_Pages/GraphData.aspx?mode=xlsx&from={u_start:%m/%d/%Y}%2012:00:00%20AM&to={u_end:%m/%d/%Y}%2011:59:59%20PM&hasinterval=True&sol=26&lang=ENG&agr=QH&fnc=AVG&ver=RT&para1=all&
-        url_params_template:
         frequency: complete
-        start: 2012-01-02
+        start: 2012-01-01
         end: recent
-        filetype: xlsx
+        filetype: xls
         resolution:
-            - 15min
-        web: http://www.ceps.cz/ENG/Data/Vsechna-data/Pages/odhad-vyroby-obnovitelnych-zdroju.aspx
+            - 60min
+        web: http://www.ceps.cz/en/all-data#GenerationRES
 
 PSE:
     wind:
-        url_template: http://www.pse.pl/get_csv.php
+        url_template: https://www.pse.pl/getcsv/-/export/csv/Operation_PPS_G_WF/data/{u_start:%Y%m%d}
         url_params_template:
-            rap: GEN_WIATR_{u_start:%Y%m%d}_{u_second:%Y%m%d%H%M%S}
         frequency: daily
         start:  2012-05-26
         end: recent
         filetype: csv
         resolution:
             - 60min
-        web: http://www.pse.pl/index.php?modul=21&id_rap=24
-        deviant_params:
-            - start: 2016-02-19
-              end: 2016-02-19
-              second: 2016-02-24 17:00:55
-            - start: 2016-02-20
-              end: 2016-02-20
-              second: 2016-02-24 17:00:55
-            - start: 2016-02-21
-              end: 2016-02-21
-              second: 2016-02-24 17:00:55
-            - start: 2016-02-22
-              end: 2016-02-22
-              second: 2016-02-24 17:00:55
-            - start: 2016-02-23
-              end: 2016-02-23
-              second: 2016-02-24 17:00:55
-            - start: 2016-07-22
-              end: 2016-07-22
-              second: 2016-07-28 17:12:33
-            - start: 2016-04-21
-              end: 2016-04-21
-              second: 2016-04-28 17:00:59
-            - start: 2013-03-14
-              end: 2013-03-14
-              second: 2013-03-20 17:05:05
-            - start: 2016-09-08
-              end: 2016-09-08
-              second: 2016-09-14 17:26:04
-            - start: 2016-09-09
-              end: 2016-09-09
-              second: 2016-09-15 17:13:59
-            - start: 2017-02-20
-              end: 2017-02-20
-              second: 2017-02-26 17:20:55
-            - start: 2017-02-21
-              end: 2017-02-21
-              second: 2017-02-27 17:17:55
-            - start: 2017-02-22
-              end: 2017-02-22
-              second: 2017-02-28 17:23:26
+        web: https://www.pse.pl/web/pse-eng/data/polish-power-system-operation/generation-in-wind-farms
 
 APG:
     generation_by_source:
@@ -465,7 +437,7 @@ APG:
             Resolution: 15M
             DateFromLocal: '{u_start:%Y%m%d}'
             DateToLocal: '{u_end:%Y%m%d}'
-            #CacheDir: 20170428131612_4266553c941447f4a8836f88af6cc4ef is unnecessary
+        #    CacheDir: 20170428131612_4266553c941447f4a8836f88af6cc4ef  #is unnecessary
             CacheFileName: export_agpt_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
         frequency: quarterly
         start: 2006-01-01
@@ -532,6 +504,26 @@ RTE:
 #        filetype: xlsx
 #        resolution:
 #            - 15min
+#
+#Energinet.dk:  # Automatic download not implemented
+#     prices_2:
+#         url_template: https://stapckanedsfiles01.blob.core.windows.net/edsprod/Elspot_Prices_Data-d2f38eb6e3a74cdab724fec1c050689f.csv
+#         frequency: complete
+#         start: 2016  # 100000 rows download limit
+#         end: recent
+#         filetype: csv
+#         resolution:
+#             - 60min
+#         web: https://www.energidataservice.dk/dataset/elspotprices/
+#     wind_solar_2:
+#         url_template: https://stapckanedsfiles01.blob.core.windows.net/edsprod/Electricity_Balance_Data-88d6261333094e56a30f8f8a94ffe509.csv
+#         frequency: complete
+#         start: 2012  # 100000 rows download limit
+#         end: recent
+#         filetype: csv
+#         resolution:
+#             - 60min
+#         web: https://www.energidataservice.dk/dataset/electricitybalance/
 #
 #TEMPLATE
 #
