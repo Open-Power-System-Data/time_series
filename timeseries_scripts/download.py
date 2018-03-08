@@ -213,7 +213,7 @@ def download_source(source_name, source_dict, out_path,
 
             #else:
             #    # extend both by one period to load a little more data than the user asked for.
-            #    # Reasoning: The last hour of te year in UTC is already the first hour of the new year in CET
+            #    # Reasoning: The last hour of the year in UTC is already the first hour of the new year in CET
             #    starts = starts.union([starts[-1] + 1])
             #    ends = ends.union([ends[-1] + 1])
 

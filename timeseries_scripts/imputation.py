@@ -315,14 +315,16 @@ def impute(nan_region, col, col_name, nan_regs, df, one_period):
     return col
 
 
-def resample_markers(group):
-    '''Resample marker column from 15 to 60 min
+def resample_markers(group, drop_region='x'):
+    '''Resample marker column from 15(30) to 60 min
 
     Parameters
     ----------
     group: pd.Series
-        Series of 4 succeeding quarter-hourly values from the marker column
+        Series of 2(4) succeeding half(quarter)-hourly values from the marker column
         that have to be combined into one.
+    drop_region: string
+        region to drop from marker column
 
     Returns
     ----------
@@ -334,8 +336,9 @@ def resample_markers(group):
 
     if group.notnull().values.any():
         # unpack string of markers into a list
-        unpacked = [mark for line in group if type(line) is str
-                    for mark in line.split(' | ')]  # [:-1]]
+        unpacked = [mark
+                    for line in group if type(line) is str
+                    for mark in line.split(' | ') if not mark.startswith(drop_region)]  # [:-1]]
         # keep only unique values from the list
         aggregated_marker = ' | '.join(set(unpacked))  # + ' | '
 
@@ -343,3 +346,53 @@ def resample_markers(group):
         aggregated_marker = np.nan
 
     return aggregated_marker
+
+
+def glue_markers(marker_1, marker_2):
+    '''Concatenate two marker columns from two DataFrames to be combined,
+    using ' | ' as delimiter.
+
+    Parameters
+    ----------
+    marker_1: pd.Series
+        Series of strings/ np.nan, containing information which columns have been interpolated in one Data Frame.
+        I.e.: 'ES_load_entsoe_transparency | ES_solar_generation_actual | ES_wind_onshore_generation_actual | LV_load_entsoe_transparency' .
+    marker_2: string
+        region to drop from marker column
+
+    Returns
+    ----------
+    glued : pd.Series
+        The marker for the combind DataFrame
+
+    '''
+    both = marker_1.notnull() & marker_2.notnull()
+    only_2 = marker_1.isnull() & marker_2.notnull()
+    glued = marker_1
+    glued[both] = (marker_1.str.cat(others=marker_2, sep=' | '))
+    glued[only_2] = marker_2
+    
+    return glued
+
+
+def mark_own_calc(col_name):
+    '''Prepend the entry in the 4th level of a multiindex-column-name-tuple,
+    which contains the 'source'-name with the prefix 'own calculation based on '
+
+    Parameters
+    ----------
+    col_name: tuple
+        Multiindex-column-name-tuple.
+
+    Returns
+    ----------
+    col_name : tuple
+        The same tuple with the 4th entry prepended with
+        'own calculation based on '
+
+    '''
+    col_name = list(col_name)
+    if not col_name[3].startswith('own calculation'):
+        col_name[3] = 'own calculation based on ' + col_name[3]
+    col_name = tuple(col_name)
+    return col_name

@@ -10,10 +10,16 @@ make:json.py : create JSON meta data for the Data Package
 import pandas as pd
 import json
 import yaml
+import os
+import hashlib
 
 # General metadata
 
 metadata_head = '''
+hide: yes
+
+profile: tabular-data-package
+
 name: opsd_time_series
 
 title: Time series
@@ -32,6 +38,8 @@ long_description: This data package contains different kinds of timeseries
     minutes) is provided in a separate file. All data processing is
     conducted in python and pandas and has been documented in the
     Jupyter notebooks linked below.
+
+homepage: https://data.open-power-system-data.org/time_series/{version}
 
 documentation:
     https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/{version}/main.ipynb
@@ -57,6 +65,8 @@ contributors:
     - web: http://neon-energie.de/en/team/
       name: Jonathan Muehlenpfordt
       email: muehlenpfordt@neon-energie.de
+
+
 '''
 
 source_template = '''
@@ -65,10 +75,14 @@ source_template = '''
 '''
 
 resource_template = '''
-- path: time_series_{res_key}_singleindex.csv
+- profile: tabular-data-resource
+  name: opsd_time_series_{res_key}
+  path: time_series_{res_key}_singleindex.csv
   format: csv
   mediatype: text/csv
   encoding: UTF8
+  bytes: {bytes}
+  hash: {hash}
   schema: {res_key}
   dialect: 
       csvddfVersion: 1.0
@@ -106,7 +120,7 @@ schemas_template = '''
         format: fmt:%Y-%m-%dT%H%M%S%z
       - name: {marker}
         description: marker to indicate which columns are missing data in source data
-            and has been interpolated (e.g. DE_transnetbw_solar_generation)
+            and has been interpolated (e.g. DE_transnetbw_solar_generation_actual)
         type: string
 '''
 
@@ -120,15 +134,14 @@ field_template = '''
             web: {web}
         opsd-properties: 
             Region: "{region}"
-            Variable: {variable}
-            Attribute: {attribute}
+            Variable: {variable}_{attribute}
 '''
 
 descriptions_template = '''
-load: Total load in {geo} in {unit}
-generation: Actual {tech} generation in {geo} in {unit}
-actual: Actual {tech} generation in {geo} in {unit}
-forecast: Forecasted {tech} generation in {geo} in {unit}
+entsoe_power_statistics: Total load in {geo} in {unit} as published on ENTSO-E Data Portal/Power Statistics
+entsoe_transparency: Total load in {geo} in {unit} as published on ENTSO-E Transparency Platform
+generation_actual: Actual {tech} generation in {geo} in {unit}
+generation_forecast: Forecasted {tech} generation in {geo} in {unit}
 capacity: Electrical capacity of {tech} in {geo} in {unit}
 profile: Percentage of {tech} capacity producing in {geo}
 day_ahead: Day-ahead spot price for {geo} in {unit}
@@ -185,13 +198,16 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
 
     for res_key, df in data_sets.items():
         field_list = ''  # list of columns in a file in YAML-format
+        file_name = 'time_series_' + res_key + '_singleindex.csv'
+        file_size = os.path.getsize('time_series_' + res_key + '_singleindex.csv')
+        file_hash = get_sha_hash(file_name)
 
-        # Both datasets (15min and 60min) get an antry in the resource list
+        # All datasets (15min, 30min, 60min) get an entry in the resource list
         resource_list = resource_list + resource_template.format(
-            res_key=res_key)
+            res_key=res_key, bytes=file_size, hash=file_hash)
 
-        # Create the list of of columns in a file, starting with the index
-        # field
+        # Create the field_list (list of of columns) in a file, starting with
+        # the index field
         for col in df.columns:
             if col[0] in info_cols.values():
                 continue
@@ -216,10 +232,13 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
 
     # Remove duplicates from sources_list. set() returns unique values from a
     # collection, but it cannot compare dicts. Since source_list is a list of of
-    # dicts, this requires some juggling with data types
+    # dicts, this requires first converting it to a tuple, the nconverting it back to a dict.
+    # entry is a dict of structure {'name': source_name}
     source_list = [dict(tupleized)
                    for tupleized in set(tuple(entry.items())
-                                        for entry in yaml.load(source_list))]
+                                        for entry in yaml.load(source_list)
+                                        if not entry['name'].startswith('own calculation'))]
+    source_list.append({'name': 'BNetzA and netztransparenz.de'})
 
     # Parse the YAML-Strings and stitch the building blocks together
     metadata = yaml.load(metadata_head.format(
@@ -232,7 +251,7 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
     for schema in metadata['schemas'].values():
         for field in schema['fields']:
             if ('source' in field.keys() and
-                    field['source']['name'] == 'own calculation'):
+                    field['source']['name'].startswith('own calculation')):
                 del field['source']['web']
 
     # write the metadata to disk
@@ -241,3 +260,13 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
         f.write(datapackage_json)
 
     return
+
+def get_sha_hash(path, blocksize=65536):
+    sha_hasher = hashlib.sha256()
+    with open(path, 'rb') as f:
+        buffer = f.read(blocksize)
+        while len(buffer) > 0:
+            sha_hasher.update(buffer)
+            buffer = f.read(blocksize)
+
+        return sha_hasher.hexdigest()

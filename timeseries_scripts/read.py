@@ -30,7 +30,7 @@ def read_entso_e_transparency(
             'DateTime': None,
             'AreaName': None,
             'ProductionType_Name': 'variable',
-            'ActualGenerationOutput': 'generation', 
+            'ActualGenerationOutput': 'generation_actual', 
             # not used: 'ActualConsumption'
         }
         renewables =  {
@@ -55,7 +55,7 @@ def read_entso_e_transparency(
         stacked = ['region']
         unstacked = 'variable'
         append_headers = {
-            'attribute': 'new',
+            'attribute': 'entsoe_transparency',
             'source': 'ENTSO-E Transparency',
             'web': url,
             'unit': 'MW'
@@ -228,7 +228,7 @@ def read_pse(filepath, variable_name, url, headers):
         'Generation of Wind Farms': {
             'region': 'PL',
             'variable': 'wind_onshore',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'PSE',
             'web': url,
             'unit': 'MW'
@@ -269,7 +269,7 @@ def read_ceps(filepath, variable_name, url, headers):
         'WPP [MW]': {
             'region': 'CZ',
             'variable': 'wind_onshore',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'CEPS',
             'web': url,
             'unit': 'MW'
@@ -277,7 +277,7 @@ def read_ceps(filepath, variable_name, url, headers):
         'PVPP [MW]': {
             'region': 'CZ',
             'variable': 'solar',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'CEPS',
             'web': url,
             'unit': 'MW'
@@ -306,7 +306,7 @@ def read_elia(filepath, variable_name, url, headers):
         'Day-Ahead forecast [MW]': {
             'region': 'BE',
             'variable': variable,
-            'attribute': 'forecast',
+            'attribute': 'generation_forecast',
             'source': 'Elia',
             'web': url,
             'unit': 'MW'
@@ -314,7 +314,7 @@ def read_elia(filepath, variable_name, url, headers):
         'Corrected Upscaled Measurement [MW]': {
             'region': 'BE',
             'variable': variable,
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'Elia',
             'web': url,
             'unit': 'MW'
@@ -443,7 +443,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK-Vest: Vindproduktion': {
             'variable': 'wind',
             'region': 'DK_1',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -451,7 +451,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK-Vest: Solcelle produktion (estimeret)': {
             'variable': 'solar',
             'region': 'DK_1',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -459,7 +459,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK-Øst: Vindproduktion': {
             'variable': 'wind',
             'region': 'DK_2',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -467,7 +467,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK-Øst: Solcelle produktion (estimeret)': {
             'variable': 'solar',
             'region': 'DK_2',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -475,7 +475,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK: Vindproduktion (onshore)': {
             'variable': 'wind_onshore',
             'region': 'DK',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -483,7 +483,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK: Vindproduktion (offshore)': {
             'variable': 'wind_offshore',
             'region': 'DK',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -491,6 +491,7 @@ def read_energinet_dk(filepath, url, headers):
     }
 
     # Drop any column not in colmap
+    colmap = {k: v for k, v in colmap.items() if k in df.columns}
     df = df[list(colmap.keys())]
 
     # Create the MultiIndex
@@ -524,8 +525,8 @@ def read_entso_e_statistics(filepath, url, headers):
     colmap = {
         'variable': 'load',
         'region': '{country}',
-        'attribute': 'old',
-        'source': 'ENTSO-E Data Portal/Power Statistics',
+        'attribute': 'entsoe_power_statistics',
+        'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
     }
@@ -599,8 +600,8 @@ def read_entso_e_portal(filepath, url, headers):
     colmap = {
         'variable': 'load',
         'region': '{country}',
-        'attribute': 'old',
-        'source': 'ENTSO-E Data Portal/Power Statistics',
+        'attribute': 'entsoe_power_statistics',
+        'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
     }
@@ -636,7 +637,7 @@ def read_hertz(filepath, variable_name, url, headers):
     # dst_arr is a boolean array consisting only of "False" entries, telling
     # python to treat the hour from 2:00 to 2:59 as wintertime.
     if (pd.to_datetime(df.index.values[0]).year not in [2005, 2006, 2015] or
-            (variable_name == 'wind_generation_pre-offshore' and
+            (variable_name == 'wind generation_actual pre-offshore' and
              pd.to_datetime(df.index.values[0]).year == 2015)):
         df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     else:
@@ -645,7 +646,7 @@ def read_hertz(filepath, variable_name, url, headers):
 
     df.index = df.index.tz_convert(None)
 
-    tech, attribute = variable_name.split('_')[:2]
+    tech, attribute = variable_name.split(' ')[:2]
 
     colmap = {
         'MW': {
@@ -724,7 +725,7 @@ def read_amprion(filepath, variable_name, url, headers):
         '8:00 Uhr Prognose [MW]': {
             'variable': '{tech}',
             'region': 'DE_amprion',
-            'attribute': 'forecast',
+            'attribute': 'generation_forecast',
             'source': 'Amprion',
             'web': url,
             'unit': 'MW'
@@ -732,7 +733,7 @@ def read_amprion(filepath, variable_name, url, headers):
         'Online Hochrechnung [MW]': {
             'variable': '{tech}',
             'region': 'DE_amprion',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'Amprion',
             'web': url,
             'unit': 'MW'
@@ -809,7 +810,7 @@ def read_tennet(filepath, variable_name, url, headers):
         'prognostiziert [MW]': {
             'variable': '{tech}',
             'region': 'DE_tennet',
-            'attribute': 'forecast',
+            'attribute': 'generation_forecast',
             'source': 'TenneT',
             'web': url,
             'unit': 'MW'
@@ -817,7 +818,7 @@ def read_tennet(filepath, variable_name, url, headers):
         'tatsächlich [MW]': {
             'variable': '{tech}',
             'region': 'DE_tennet',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'TenneT',
             'web': url,
             'unit': 'MW'
@@ -825,7 +826,7 @@ def read_tennet(filepath, variable_name, url, headers):
         'Anteil Offshore [MW]': {
             'variable': 'wind_offshore',
             'region': 'DE_tennet',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'TenneT',
             'web': url,
             'unit': 'MW'
@@ -879,7 +880,7 @@ def read_transnetbw(filepath, variable_name, url, headers):
         'Prognose (MW)': {
             'variable': '{tech}',
             'region': 'DE_transnetbw',
-            'attribute': 'forecast',
+            'attribute': 'generation_forecast',
             'source': 'TransnetBW',
             'web': url,
             'unit': 'MW'
@@ -887,7 +888,7 @@ def read_transnetbw(filepath, variable_name, url, headers):
         'Ist-Wert (MW)': {
             'variable': '{tech}',
             'region': 'DE_transnetbw',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'TransnetBW',
             'web': url,
             'unit': 'MW'
@@ -925,19 +926,19 @@ def read_opsd(filepath, url, headers):
     # all quarter-hours of the day until the next given data point.
     # For this, we we expand the index so it reaches to 23:59 of
     # the last day, not only 00:00.
-    last = pd.to_datetime([df.index[-1].replace(hour=23, minute=59)])
+    last = pd.to_datetime([df.index[-1]]) + timedelta(days=1, minutes=59)
     until_last = df.index.append(last).rename('timestamp')
     df = df.reindex(index=until_last, method='ffill')
     df.index = df.index.tz_localize('Europe/Berlin')
     df.index = df.index.tz_convert(None)
-    df = df.resample('15min').ffill()
+    df = df.resample('15min').ffill().round(0)
 
     colmap = {
         'Solar': {
             'variable': 'solar',
             'region': 'DE',
             'attribute': 'capacity',
-            'source': 'BNetzA and Netztransparenz.de',
+            'source': 'own calculation based on BNetzA and netztransparenz.de',
             'web': url,
             'unit': 'MW'
         },
@@ -945,7 +946,7 @@ def read_opsd(filepath, url, headers):
             'variable': 'wind_onshore',
             'region': 'DE',
             'attribute': 'capacity',
-            'source': 'BNetzA and Netztransparenz.de',
+            'source': 'own calculation based on BNetzA and netztransparenz.de',
             'web': url,
             'unit': 'MW'
         },
@@ -953,7 +954,7 @@ def read_opsd(filepath, url, headers):
             'variable': 'wind_offshore',
             'region': 'DE',
             'attribute': 'capacity',
-            'source': 'BNetzA and Netztransparenz.de',
+            'source': 'own calculation based on BNetzA and netztransparenz.de',
             'web': url,
             'unit': 'MW'
         }
@@ -1025,7 +1026,7 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
         'wind': {
             'variable': 'wind',
             'region': 'SE',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'Svenska Kraftnaet',
             'web': url,
             'unit': 'MW'
@@ -1033,7 +1034,7 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
         'solar': {
             'variable': 'solar',
             'region': 'SE',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'Svenska Kraftnaet',
             'web': url,
             'unit': 'MW'
@@ -1075,7 +1076,7 @@ def read_apg(filepath, url, headers):
         'Wind [MW]': {
             'variable': 'wind_onshore',
             'region': 'AT',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'APG',
             'web': url,
             'unit': 'MW'
@@ -1083,7 +1084,7 @@ def read_apg(filepath, url, headers):
         'Solar [MW]': {
             'variable': 'solar',
             'region': 'AT',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'APG',
             'web': url,
             'unit': 'MW'
@@ -1091,7 +1092,7 @@ def read_apg(filepath, url, headers):
         'Wind  [MW]': {
             'variable': 'wind_onshore',
             'region': 'AT',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'APG',
             'web': url,
             'unit': 'MW'
@@ -1099,7 +1100,7 @@ def read_apg(filepath, url, headers):
         'Solar  [MW]': {
             'variable': 'solar',
             'region': 'AT',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'APG',
             'web': url,
             'unit': 'MW'
@@ -1186,7 +1187,7 @@ def read_rte(filepath, variable_name, url, headers):
         'Éolien terrestre': {
             'variable': 'wind_onshore',
             'region': 'FR',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'RTE',
             'web': url,
             'unit': 'MW'
@@ -1194,7 +1195,7 @@ def read_rte(filepath, variable_name, url, headers):
         'Solaire': {
             'variable': 'solar',
             'region': 'FR',
-            'attribute': 'generation',
+            'attribute': 'generation_actual',
             'source': 'RTE',
             'web': url,
             'unit': 'MW'
@@ -1264,13 +1265,13 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
     for container in sorted(os.listdir(variable_dir)):
         # Skip this file if period covered excluded by user
         if start_from_user:
-            # Filecontent is too old
+            # start lies after file end => filecontent is too old
             if start_from_user > yaml.load(container.split('_')[1]):
                 continue  # go to next container
 
         if end_from_user:
-            # Filecontent is too recent
-            if end_from_user < yaml.load(container.split('_')[0]):
+            # end lies before file start => filecontent is too recent
+            if end_from_user < yaml.load(container.split('_')[0]) - timedelta(days=1):
                 continue  # go to next container
 
         files = os.listdir(os.path.join(variable_dir, container))
@@ -1370,7 +1371,7 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
         end_from_user = (
             pytz.timezone('UTC')
             .localize(datetime.combine(end_from_user, time()))
-            # Appropriate offset to inlude the end of period
+            # Appropriate offset to include the end of period (23:45 fo the same day)
             + timedelta(days=1, minutes=-int(res_key[:2])))
     # Then cut off the data_set
     data_set = data_set.loc[start_from_user:end_from_user, :]

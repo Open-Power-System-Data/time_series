@@ -69,12 +69,12 @@ ENTSO-E Transparency FTP:
             - Price
 OPSD:
     capacity:
-        url_template: http://data.open-power-system-data.org/renewable_power_plants/2017-02-16/renewable_capacity_timeseries_DE.csv
+        url_template: http://data.open-power-system-data.org/renewable_power_plants/2018-02-27/renewable_capacity_timeseries_DE.csv
         filename: renewable_capacity_timeseries_DE.csv
         url_params_template:
         frequency: complete
         start: 2005-01-01
-        end: 2016-12-31
+        end: 2017-12-31
         filetype: csv
         resolution:
             - 15min
@@ -110,7 +110,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx
 
 50Hertz:
-    wind_generation_pre-offshore:
+    wind generation_actual pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
         url_params_template:
             callback: '?'
@@ -122,7 +122,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
-    wind_forecast_pre-offshore:
+    wind generation_forecast pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
             callback: '?'
@@ -134,7 +134,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
-    wind_generation_with-offshore:
+    wind generation_actual with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
         url_params_template:
             callback: '?'
@@ -146,7 +146,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
-    wind_forecast_with-offshore:
+    wind generation_forecast with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
             callback: '?'
@@ -158,7 +158,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
-    solar_generation:
+    solar generation_actual :
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicActual/DownloadFile
         url_params_template:
             callback: '?'
@@ -170,7 +170,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
-    solar_forecast:
+    solar generation_forecast:
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicForecast/DownloadFile
         url_params_template:
             callback: '?'
