@@ -1,8 +1,8 @@
 region,variable,attribute,Explanation
-"ISO-2 digit country code and name of balancing area if applicable, eg. DE_amprion",load,old,Hourly Load from ENTSO-E Data Portal
-"ISO-2 digit country code and name of balancing area if applicable, eg. DE_amprion",load,new,Hourly Load from ENTSO-E Transparency Platform
-"ISO-2 digit country code and name of balancing area if applicable, eg. DE_amprion",price,day_ahead,Day-ahead spot price
-"ISO-2 digit country code and name of balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,generation,Electricity produced py solar power plants
-"ISO-2 digit country code and name of balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,forecast,Day-ahead generation forecast
-"ISO-2 digit country code and name of balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,capacity,Installed capacity (actual availability not accounted for)
-"ISO-2 digit country code and name of balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,profile,Share of installed capacity producing
+"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",load,entsoe_power_statistics,Hourly Load from ENTSO-E Data Portal
+"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",load,entsoe_transparency,Hourly Load from ENTSO-E Transparency Platform
+"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",price,day_ahead,Day-ahead spot price
+"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,generation_actual,Electricity produced py solar power plants
+"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,generation_forecast,Day-ahead generation forecast
+"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,capacity,Installed capacity (actual availability not accounted for)
+"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,profile,Share of installed capacity producing
