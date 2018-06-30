@@ -19,23 +19,24 @@ import yaml
 from ftplib import FTP
 import math
 import sys
+import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
 
 
-def download(sources, out_path, archive_version=None,
+def download(sources, data_path, archive_version=None,
              start_from_user=None, end_from_user=None,
              testmode=False):
     """
     Load YAML file with sources from disk, and download all files for each
-    source into the given out_path.
+    source into the given data_path.
 
     Parameters
     ----------
     sources : dict
         Dict of download parameters specific to each source.
-    out_path : str
+    data_path : str
         Base download directory in which to save all downloaded files.
     archive_version: str, default None
         OPSD Data Package Version to download original data from.
@@ -60,29 +61,29 @@ def download(sources, out_path, archive_version=None,
             return
 
     if archive_version:
-        download_archive(archive_version)
+        download_archive(archive_version, data_path)
 
     else:
         for source_name, source_dict in sources.items():
             if not source_name in ['Energinet.dk', 'ENTSO-E Power Statistics', 'CEPS']:
-                download_source(source_name, source_dict, out_path,
+                download_source(source_name, source_dict, data_path,
                                 start_from_user, end_from_user, testmode=testmode)
 
     return
 
 
-def download_archive(archive_version):
+def download_archive(archive_version, data_path):
     """
     Download archived data from the OPSD server. See download()
     for info on parameter.
 
     """
 
-    filepath = 'original_data.zip'
+    filepath = os.path.join(data_path, 'original_data.zip')
 
     if not os.path.exists(filepath):
         url = ('http://data.open-power-system-data.org/time_series/'
-               '{}/original_data/{}'.format(archive_version, filepath))
+               '{}/original_data/original_data.zip'.format(archive_version))
         logger.info('Downloading and extracting archived data from %s', url)
         resp = requests.get(url)
         with open(filepath, 'wb') as output_file:
@@ -90,12 +91,8 @@ def download_archive(archive_version):
                 output_file.write(chunk)
 
         myzipfile = zipfile.ZipFile(filepath)
-        if myzipfile.namelist()[0] == 'original_data/':
-            myzipfile.extractall()
-            logger.info('Extracted data to /original_data.')
-        else:
-            logger.warning('%s has unexpected content. Please check manually',
-                           filepath)
+        myzipfile.extractall(data_path)
+        logger.info('Extracted data to {}'.format(data_path))
 
     else:
         logger.info('%s already exists. Delete it if you want to download again',
@@ -104,12 +101,12 @@ def download_archive(archive_version):
     return
 
 
-def download_source(source_name, source_dict, out_path,
+def download_source(source_name, source_dict, data_path,
                     start_from_user=None, end_from_user=None,
                     testmode=False):
     """
     Download all files for source_name as specified by the given
-    source_dict into out_path.
+    source_dict into data_path.
 
     Parameters
     ----------
@@ -117,7 +114,7 @@ def download_source(source_name, source_dict, out_path,
         Name of source dataset, e.g. ``TenneT``.
     source_dict : dict
         Dictionary of variables and their parameters for the given source.
-    out_path : str
+    data_path : str
         Base download directory in which to save all downloaded files.
     start_from_user : datetime.date, default None
         Start of period for which to download the data. 
@@ -167,7 +164,7 @@ def download_source(source_name, source_dict, out_path,
             downloaded, session = download_file(
                 source_name,
                 variable_name,
-                out_path,
+                data_path,
                 param_dict,
                 start=start_server,
                 end=end_server,
@@ -223,19 +220,17 @@ def download_source(source_name, source_dict, out_path,
                         downloaded, session = download_file(
                             source_name,
                             variable_name,
-                            out_path,
+                            data_path,
                             param_dict,
                             start=deviant['start'],
                             end=deviant['end'],
-                            second=deviant['second'],
-                            attempt=1
                         )
 
             for s, e in zip(starts, ends):
                 downloaded, session = download_file(
                     source_name,
                     variable_name,
-                    out_path,
+                    data_path,
                     param_dict,
                     start=s,
                     end=e,
@@ -251,14 +246,12 @@ def download_source(source_name, source_dict, out_path,
 def download_file(
         source_name,
         variable_name,
-        out_path,
+        data_path,
         param_dict,
         start,
         end,
         filename=None,
-        session=None,
-        second=None,
-        attempt=1):
+        session=None):
     """
     Prepare the Download of a single file.
     Make a directory to save the file to and check if it might have been
@@ -270,7 +263,7 @@ def download_file(
         Name of source dataset, e.g. ``TenneT``
     variable_name : str
         Name of variable, e.g. ``solar``
-    out_path : str
+    data_path : str
         Base download directory in which to save all downloaded files
     param_dict : dict
         Info required for download, e.g. url, url-parameter, filename. 
@@ -282,10 +275,6 @@ def download_file(
         pattern of filename to use if it can not be retrieved from server
     session : requests.session, optional
         If not given, a new session is created.
-    second : datetime.datetime, default None
-        precise time the file was upladed. Needed for PSE.
-    attempt : int, default 1
-        # of attempt to find the file on the server. Needed for PSE.
 
     Returns
     ----------
@@ -302,7 +291,7 @@ def download_file(
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
-    container = os.path.join(out_path, source_name, variable_name,
+    container = os.path.join(data_path, source_name, variable_name,
                              start.strftime('%Y-%m-%d') + '_' +
                              end.strftime('%Y-%m-%d'))
     os.makedirs(container, exist_ok=True)
@@ -341,18 +330,15 @@ def download_file(
                 container,
                 url_template=param_dict['url_template'],
                 url_params_template=param_dict['url_params_template'],
-                second=second
             )
         if downloaded:
             logger.info(message + 'download successful')
-        elif source_name != 'PSE':
-            logger.info(message + 'download failed')
-        elif attempt > 110:
+        else :
             logger.info(message + 'download failed')
 
     elif count_files == 1:
         downloaded = True
-        logger.info(message + 'download previously')
+        logger.debug(message + 'download previously')
 
     else:
         downloaded = True
@@ -370,8 +356,7 @@ def download_request(
         filename,
         container,
         url_template,
-        url_params_template,
-        second=None):
+        url_params_template):
     """
     Download a single file via HTTP get.
     Build the url from parameters and save the file to dsik under it's original
@@ -401,7 +386,6 @@ def download_request(
             url_params[key] = value.format(
                 u_start=start,
                 u_end=end,
-                u_second=second
             )
         url = url_template
 
@@ -411,16 +395,18 @@ def download_request(
         url = url_template.format(
             u_start=start,
             u_end=end,
-            u_second=second
         )
 
-    resp = session.get(url, params=url_params)
-    # For polish TSO PSE, URLs have been guessed.
-    # Don't proceed for wrong guesses
-    if source_name == 'PSE':
-        if resp.text in ['Brak uprawnieñ', 'Brak uprawnień']:
-            downloaded = False
-            return downloaded, session
+    for i in range(10):
+        resp = session.get(url, params=url_params)
+        if resp.status_code == 200:
+            break
+        else:
+            logger.warning('http status code %s, attempt %s, trying again in 10 seconds...', resp.status_code, i + 1)
+            time.sleep(70)
+            if i == 9:
+                downloaded = False
+                return downloaded, session
 
     # Get the original filename
     try:
@@ -587,9 +573,9 @@ def convert_size(size_bytes):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('sources_yaml_path', type=str)
-    parser.add_argument('out_path', type=str)
+    parser.add_argument('data_path', type=str)
     parser.add_argument('end_from_user', type=date)
     parser.add_argument('-s', '--subset', nargs='*', action='append')
     args = parser.parse_args()
 
-   # download(args.sources_yaml_path, args.out_path, args.subset)
+   # download(args.sources_yaml_path, args.data_path, args.subset)
