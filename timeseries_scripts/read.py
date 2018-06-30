@@ -23,58 +23,46 @@ logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
 
 def read_entso_e_transparency(
-    areas, filepath, variable_name, url, headers, res_key):
-
-    if variable_name == 'Actual Generation per Production Type':
-        cols = {
-            'DateTime': None,
-            'AreaName': None,
-            'ProductionType_Name': 'variable',
-            'ActualGenerationOutput': 'generation_actual', 
-            # not used: 'ActualConsumption'
-        }
-        renewables =  {
-            'Solar': 'solar',
-            'Wind Onshore': 'wind_onshore',
-            'Wind Offshore': 'wind_offshore'
-        }
-        stacked = ['region', 'variable']
-        unstacked = 'attribute'
-        append_headers = {
-            'source': 'ENTSO-E Transparency',
-            'web': url,
-            'unit': 'MW'
-        }
-
-    elif variable_name == 'Actual Total Load':
-        cols = {
-            'DateTime': None,
-            'AreaName': None,
-            'TotalLoadValue': 'load'
-        }
-        stacked = ['region']
-        unstacked = 'variable'
-        append_headers = {
-            'attribute': 'entsoe_transparency',
-            'source': 'ENTSO-E Transparency',
-            'web': url,
-            'unit': 'MW'
-        }
-
-    elif variable_name == 'Day Ahead Prices':
-        cols = {
-            'DateTime': None,
-            'AreaName': None,
-            'Price': 'price',
-            'Currency_IsoCode': 'unit'
-        }
-        stacked = ['region', 'unit']
-        unstacked = 'variable'
-        append_headers = {
-            'attribute': 'day_ahead',
-            'source': 'ENTSO-E Transparency',
-            'web': url,
-        }
+    areas, filepath, variable_name, url, headers, res_key, cols, stacked,
+    unstacked, geo, append_headers, **kwargs):
+    """
+    Read a .csv file from ENTSO-E TRansparency into a DataFrame.
+    Parameters
+    ----------
+    filepath : str
+        Directory path of file to be read
+    variable_name : str
+        Name of variable, e.g. ``solar``
+    url : str
+        URL linking to the source website where this data comes from
+    headers : list
+        List of strings indicating the level names of the pandas.MultiIndex
+        for the columns of the dataframe
+    res_key : str
+        Resolution of the source data. Must be one of ['15min', '30min', 60min']
+    cols : dict
+        A mapping of of columnnames to use from input file and a new name to
+        rename them to. The new name is the header level whose corresponding
+        values are specified in that column
+    stacked : list
+        List of strings indicating the header levels that are reported
+        column-wise in the input files
+    unstacked
+        One strings indicating the header level that is reported row-wise in the
+        input files
+    geo: string
+        The geographical concept (i.e. ``country`` or ``bidding zone`` for which
+        data should be extracted.
+        Records for other concepts (i.e. ``control areas``)) willl be ignored.
+    append_headers: dict
+        Map of header levels and values to append to Multiindex
+    kwargs: dict
+        placeholder for further named function arguments
+    Returns
+    ----------
+    df: pandas.DataFrame
+        The content of one file from PSE
+    """
 
     df_raw = pd.read_csv(
         filepath,
@@ -87,7 +75,7 @@ def read_entso_e_transparency(
         dayfirst=False,
         decimal='.',
         thousands=None,
-        usecols=cols.keys(),  # unused cols: ['MapCode', 'SubmissionTS']
+        usecols=['DateTime', *cols.keys()],
         # the column specifying the technology has a trailing space, which we
         # cut off
         converters={'ProductionType_Name': lambda x: x[:-1]},
@@ -95,17 +83,26 @@ def read_entso_e_transparency(
 
     if variable_name == 'Actual Generation per Production Type':
         # keep only renewables columns
+        renewables =  {
+                    'Solar': 'solar',
+                    'Wind Onshore': 'wind_onshore',
+                    'Wind Offshore': 'wind_offshore'
+                }
         df_raw = df_raw[df_raw['ProductionType_Name'].isin(renewables.keys())]
         df_raw.replace({'ProductionType_Name': renewables}, inplace=True)
 
+    if variable_name == 'Day Ahead Prices':
+        no_polish_euro = ~((df_raw['AreaName'] == 'PSE SA BZ') &
+                           (df_raw['Currency_IsoCode'] == 'EUR'))
+        df_raw = df_raw.loc[no_polish_euro]
+
     # keep only entries for selected geographic entities as specified in
     # areas.csv + select regions whith same temporal resolution    
-    time_and_place = (areas['primary AreaName FTP']
-                      .loc[areas[res_key]==True])
+    time_and_place = areas[geo].loc[areas[res_key]==True].dropna()
     df_raw = df_raw.loc[df_raw['AreaName'].isin(time_and_place)]
 
     # based on the AreaName column, map the area names used throughout OPSD 
-    lookup = areas.set_index('primary AreaName FTP')['area ID']
+    lookup = areas.set_index(geo)['area ID'].dropna()
     lookup = lookup[~lookup.index.duplicated()]
     df_raw['region'] = df_raw['AreaName'].map(lookup)
     df_raw.drop('AreaName', axis=1, inplace=True)
@@ -124,25 +121,23 @@ def read_entso_e_transparency(
     # keep only columns that have at least some nonzero values
     df = df.loc[:, (df > 0).any(axis=0)]
 
-    # add source and url to the columns
+    # add source and url to the columns.
+    # Note: pd.concat inserts new MultiIndex values infront of the old ones
     df = pd.concat([df],
-                   keys=[tuple(append_headers.values())], #header_values,
-                   names=[*append_headers.keys(), unstacked, *stacked], # header_temp_order,
-                   axis=1)
+                   keys=[tuple([*append_headers.values(), url])],
+                   names=[*append_headers.keys(), 'web'],
+                   axis='columns')
 
     # reorder and sort columns
     df = df.reorder_levels(headers, axis=1)
     df.sort_index(axis=1, inplace=True)
 
     # throw out obs with wrong timestamp
-    # no_gaps = pd.DatetimeIndex(start=df.index[0],
+    #no_gaps = pd.DatetimeIndex(start=df.index[0],
     #                           end=df.index[-1],
     #                           freq=res_key)
-    # print(len(df[~df.index.isin(no_gaps)]))
     #df= df.reindex(index=no_gaps)
-    #dfs[res_key] = df
-    ##
-
+    
     return df
 
 
@@ -515,11 +510,19 @@ def read_entso_e_statistics(filepath, url, headers):
     df.rename(columns=renamer, inplace=True)
     df['time'] = df['time'].str[:5]
     df['date'] = df['date'].fillna(method='ffill').dt.strftime('%Y-%m-%d')
+
+    # fixes for individual rows
+    df.loc[df['date']=='2017-12-31', 'time'] = [
+        "{:02d}:00".format(x) for x in range(0, 24)]
+    df.loc[df['date']=='2018-03-25', 'time'] = [
+        "{:02d}:00".format(x) for x in range(-1, 24) if not x==2]
+    df = df[df['time']!='-1:00']
+
     df.index = pd.to_datetime(df['date'] + ' ' + df['time'])
     df.drop(columns=['date', 'time'], inplace=True)
     df.rename(columns=lambda x: x[:2], inplace=True)
 
-    df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
+    df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
     colmap = {
@@ -1214,8 +1217,8 @@ def read_rte(filepath, variable_name, url, headers):
 
 
 
-def read(data_path, areas, source_name, variable_name, url, res_key,
-         headers, start_from_user=None, end_from_user=None):
+def read(data_path, areas, source_name, variable_name, res_key,
+         headers, param_dict, start_from_user=None, end_from_user=None):
     """
     For the sources specified in the sources.yml file, pass each downloaded
     file to the correct read function.
@@ -1226,10 +1229,11 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
         Name of source to read files from
     variable_name : str
         Indicator for subset of data available together in the same files
-    url : str
-        URL of the Source to be placed in the column-MultiIndex
+    param_dict : dict
+        Dictionary of further parameters, i.e. the URL of the Source to be
+        placed in the column-MultiIndex
     res_key : str
-        Resolution of the source data. Must be one of ['15min', '60min']
+        Resolution of the source data. Must be one of ['15min', '30min', 60min']
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe
@@ -1303,13 +1307,16 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
 
             update_progress(files_success, files_existing)
 
+            url = param_dict['web']
+
             if source_name == 'OPSD':
                 data_to_add = read_opsd(filepath, url, headers)
             elif source_name == 'CEPS':
                 data_to_add = read_ceps(filepath, variable_name, url, headers)
             elif source_name == 'ENTSO-E Transparency FTP':
                 data_to_add = read_entso_e_transparency(
-                    areas, filepath, variable_name, url, headers, res_key)
+                    areas, filepath, variable_name, url, headers, res_key,
+                    **param_dict)
             elif source_name == 'ENTSO-E Data Portal':
                 data_to_add = read_entso_e_portal(filepath, url, headers)
             elif source_name == 'ENTSO-E Power Statistics':
@@ -1371,7 +1378,8 @@ def read(data_path, areas, source_name, variable_name, url, res_key,
         end_from_user = (
             pytz.timezone('UTC')
             .localize(datetime.combine(end_from_user, time()))
-            # Appropriate offset to include the end of period (23:45 fo the same day)
+            # Appropriate offset to include the end of period (23:45 for the 
+            # same day)
             + timedelta(days=1, minutes=-int(res_key[:2])))
     # Then cut off the data_set
     data_set = data_set.loc[start_from_user:end_from_user, :]

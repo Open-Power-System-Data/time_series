@@ -21,13 +21,24 @@ ENTSO-E Transparency FTP:
             - 30min
             - 60min
         web: https://transparency.entsoe.eu/generation/r2/actualGenerationPerProductionType/show
-        columns:
-            - DateTime
-            - AreaTypeCode
-            - MapCode
-            - ProductionType_Name
-            - ActualConsumption
-            - ActualGenerationOutput
+        cols:
+            DateTime: None
+            AreaName: None
+            ProductionType_Name: variable
+            ActualGenerationOutput: generation_actual 
+            # not used: 'ActualConsumption'
+        renewables:
+            Solar: solar
+            Wind Onshore: wind_onshore
+            Wind Offshore: wind_offshore
+        stacked:
+            - region
+            - variable  ##ProductionType_Name
+        unstacked: attribute
+        append_headers:
+            source: ENTSO-E Transparency
+            unit: MW
+        geo: country
     Actual Total Load:
         address: '62.209.222.9'
         user: TP_export
@@ -43,11 +54,18 @@ ENTSO-E Transparency FTP:
             - 30min
             - 60min
         web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
-        columns:
-            - DateTime
-            - AreaTypeCode
-            - MapCode
-            - TotalLoadValue 
+        cols:
+            DateTime: None
+            AreaName: None
+            TotalLoadValue: load
+        stacked:
+            - region
+        unstacked: variable
+        append_headers:
+            attribute: entsoe_transparency
+            source: ENTSO-E Transparency
+            unit: MW
+        geo: country
     Day Ahead Prices:
         address: '62.209.222.9'
         user: TP_export
@@ -61,12 +79,19 @@ ENTSO-E Transparency FTP:
         resolution:
             - 60min
         web: https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
-        columns:
-            - DateTime
-            - AreaTypeCode
-            - MapCode
-            - Currency_IsoCode
-            - Price
+        cols:
+            DateTime: None
+            AreaName: None
+            Price: price
+            Currency_IsoCode: unit
+        stacked:
+            - region
+            - unit
+        unstacked: variable
+        append_headers:
+            attribute: day_ahead
+            source: ENTSO-E Transparency
+        geo: bidding zone
 OPSD:
     capacity:
         url_template: http://data.open-power-system-data.org/renewable_power_plants/2018-02-27/renewable_capacity_timeseries_DE.csv
