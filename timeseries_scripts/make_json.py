@@ -45,6 +45,7 @@ documentation:
     https://github.com/Open-Power-System-Data/datapackage_timeseries/blob/{version}/main.ipynb
 
 version: '{version}'
+created: '{version}'
 
 last_changes: '{changes}'
 
@@ -59,14 +60,18 @@ keywords:
     - power consumption
     - power market
 
-geographical-scope: 37 European countries
+geographical-scope: 38 European countries
+
+temporal-scope:
+    start: '{start}'
+    end: '{end}'
 
 contributors:
     - web: http://neon-energie.de/en/team/
       name: Jonathan Muehlenpfordt
       email: muehlenpfordt@neon-energie.de
-
-
+      role: author
+      organization: Neon Neue Energieökonomik
 '''
 
 source_template = '''
@@ -74,16 +79,28 @@ source_template = '''
 #  web: {web}
 '''
 
+excel_resource = '''
+- name: time_series
+  title: Time series Excel file
+  description: All data in one file
+  path: time_series.xlsx
+  format: xlsx
+  mediatype: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+  bytes: {bytes}
+  hash: {hash}
+'''
+
 resource_template = '''
 - profile: tabular-data-resource
   name: opsd_time_series_{res_key}
+  title: Time series {res_key}utes singleindex
+  description: All data that is avaialable in {res_key}utes-resolution in singleindex format
   path: time_series_{res_key}_singleindex.csv
   format: csv
   mediatype: text/csv
   encoding: UTF8
   bytes: {bytes}
   hash: {hash}
-  schema: {res_key}
   dialect: 
       csvddfVersion: 1.0
       delimiter: ","
@@ -102,12 +119,9 @@ resource_template = '''
       - path: time_series_{res_key}_stacked.csv
         stacking: Stacked
         format: csv
-'''
-
-schemas_template = '''
-{res_key}:
+  schema:
     primaryKey: {utc}
-    missingValue: ""
+    missingValues: ""
     fields:
       - name: {utc}
         description: Start of timeperiod in Coordinated Universal Time
@@ -127,7 +141,7 @@ schemas_template = '''
 field_template = '''
       - name: {region}_{variable}_{attribute}
         description: {description}
-        type: number (float)
+        type: number
         unit: {unit}
         source:
             name: {source}
@@ -160,7 +174,8 @@ day_ahead: Day-ahead spot price for {geo} in {unit}
 # as this makes for  more readable code.
 
 
-def make_json(data_sets, info_cols, version, changes, headers, areas):
+def make_json(data_sets, info_cols, version, changes, headers, areas,
+              start_from_user, end_from_user):
     '''
     Create a datapackage.json file that complies with the Frictionless
     data JSON Table Schema from the information in the column-MultiIndex.
@@ -180,6 +195,8 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe.
+    start_from_user/end_from_user : datetime.date
+        Beginning/end of temporal data coverage
 
     Returns
     ----------
@@ -188,23 +205,16 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
     '''
 
     # list of files included in the datapackage in YAML-format
-    resource_list = '''
-- mediatype: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-  format: xlsx
-  path: time_series.xlsx
-'''
-    source_list = ''  # list of sources were data comes from in YAML-format
-    schemas_dict = ''  # dictionary of schemas in YAML-format
+    resource_list = excel_resource.format(
+                bytes=os.path.getsize('time_series.xlsx'),
+                hash=get_sha_hash('time_series.xlsx'))
+    source_list = ''  # list of data sources in YAML-format
 
     for res_key, df in data_sets.items():
         field_list = ''  # list of columns in a file in YAML-format
         file_name = 'time_series_' + res_key + '_singleindex.csv'
-        file_size = os.path.getsize('time_series_' + res_key + '_singleindex.csv')
+        file_size = os.path.getsize(file_name)
         file_hash = get_sha_hash(file_name)
-
-        # All datasets (15min, 30min, 60min) get an entry in the resource list
-        resource_list = resource_list + resource_template.format(
-            res_key=res_key, bytes=file_size, hash=file_hash)
 
         # Create the field_list (list of of columns) in a file, starting with
         # the index field
@@ -225,34 +235,30 @@ def make_json(data_sets, info_cols, version, changes, headers, areas):
                 h['description'] = descriptions[h['attribute']]
             except KeyError:
                 h['description'] = descriptions[h['variable']]
+
             field_list = field_list + field_template.format(**h)
             source_list = source_list + source_template.format(**h)
-        schemas_dict = schemas_dict + schemas_template.format(
-            res_key=res_key, **info_cols) + field_list
 
+        # All datasets (15min, 30min, 60min) get an entry in the resource list
+        resource_list = (resource_list + resource_template.format(
+            res_key=res_key, bytes=file_size, hash=file_hash, **info_cols) +
+            field_list)
+        
     # Remove duplicates from sources_list. set() returns unique values from a
     # collection, but it cannot compare dicts. Since source_list is a list of of
-    # dicts, this requires first converting it to a tuple, the nconverting it back to a dict.
+    # dicts, this requires first converting it to a tuple, then converting it back to a dict.
     # entry is a dict of structure {'name': source_name}
-    source_list = [dict(tupleized)
-                   for tupleized in set(tuple(entry.items())
-                                        for entry in yaml.load(source_list)
-                                        if not entry['name'].startswith('own calculation'))]
+    source_list = [dict(tupleized) for tupleized in set(
+        tuple(entry.items()) for entry in yaml.load(source_list)
+        if not entry['name'].startswith('own calculation'))]
     source_list.append({'name': 'BNetzA and netztransparenz.de'})
 
     # Parse the YAML-Strings and stitch the building blocks together
     metadata = yaml.load(metadata_head.format(
-        version=version, changes=changes))
+        version=version, changes=changes,
+        start=start_from_user, end=end_from_user))
     metadata['sources'] = source_list
     metadata['resources'] = yaml.load(resource_list)
-    metadata['schemas'] = yaml.load(schemas_dict)
-
-    # Remove URL for source if a column is based on own calculations
-    for schema in metadata['schemas'].values():
-        for field in schema['fields']:
-            if ('source' in field.keys() and
-                    field['source']['name'].startswith('own calculation')):
-                del field['source']['web']
 
     # write the metadata to disk
     datapackage_json = json.dumps(metadata, indent=4, separators=(',', ': '))
