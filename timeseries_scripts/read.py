@@ -22,9 +22,10 @@ import xlrd
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
 
+
 def read_entso_e_transparency(
-    areas, filepath, variable_name, url, headers, res_key, cols, stacked,
-    unstacked, geo, append_headers, **kwargs):
+        areas, filepath, variable_name, url, headers, res_key, cols, stacked,
+        unstacked, geo, append_headers, **kwargs):
     """
     Read a .csv file from ENTSO-E TRansparency into a DataFrame.
     Parameters
@@ -83,11 +84,11 @@ def read_entso_e_transparency(
 
     if variable_name == 'Actual Generation per Production Type':
         # keep only renewables columns
-        renewables =  {
-                    'Solar': 'solar',
-                    'Wind Onshore': 'wind_onshore',
-                    'Wind Offshore': 'wind_offshore'
-                }
+        renewables = {
+            'Solar': 'solar',
+            'Wind Onshore': 'wind_onshore',
+            'Wind Offshore': 'wind_offshore'
+        }
         df_raw = df_raw[df_raw['ProductionType_Name'].isin(renewables.keys())]
         df_raw.replace({'ProductionType_Name': renewables}, inplace=True)
 
@@ -97,11 +98,11 @@ def read_entso_e_transparency(
         df_raw = df_raw.loc[no_polish_euro]
 
     # keep only entries for selected geographic entities as specified in
-    # areas.csv + select regions whith same temporal resolution    
-    time_and_place = areas[geo].loc[areas[res_key]==True].dropna()
+    # areas.csv + select regions whith same temporal resolution
+    time_and_place = areas[geo].loc[areas[res_key] == True].dropna()
     df_raw = df_raw.loc[df_raw['AreaName'].isin(time_and_place)]
 
-    # based on the AreaName column, map the area names used throughout OPSD 
+    # based on the AreaName column, map the area names used throughout OPSD
     lookup = areas.set_index(geo)['area ID'].dropna()
     lookup = lookup[~lookup.index.duplicated()]
     df_raw['region'] = df_raw['AreaName'].map(lookup)
@@ -136,8 +137,8 @@ def read_entso_e_transparency(
     #no_gaps = pd.DatetimeIndex(start=df.index[0],
     #                           end=df.index[-1],
     #                           freq=res_key)
-    #df= df.reindex(index=no_gaps)
-    
+    #df = df.reindex(index=no_gaps)
+
     return df
 
 
@@ -191,10 +192,10 @@ def read_pse(filepath, variable_name, url, headers):
         for d in pytz.timezone('Europe/Copenhagen')._utc_transition_times
         if d.year >= 2000 and d.month == 3]
 
-    # Account for an error where an hour is jumped in the data, incrementing 
+    # Account for an error where an hour is jumped in the data, incrementing
     # the hour by one
     #time_int = df['Time'].str[:-3].astype(int)
-    #if (time_int time_int.shift(1) - 1). 
+    #if (time_int time_int.shift(1) - 1).
     #if (time_int == 24).any():
     #    logger.info(filepath)
     #    df = df[time_int != 24]
@@ -244,7 +245,7 @@ def read_pse(filepath, variable_name, url, headers):
 def read_ceps(filepath, variable_name, url, headers):
     '''Read a file from CEPS into a DataFrame'''
     df = pd.read_csv(
-        #pd.read_excel(io=filepath,
+        # pd.read_excel(io=filepath,
         #sheet_name='ČEPS report',
         filepath,
         sep=';',
@@ -512,11 +513,11 @@ def read_entso_e_statistics(filepath, url, headers):
     df['date'] = df['date'].fillna(method='ffill').dt.strftime('%Y-%m-%d')
 
     # fixes for individual rows
-    df.loc[df['date']=='2017-12-31', 'time'] = [
+    df.loc[df['date'] == '2017-12-31', 'time'] = [
         "{:02d}:00".format(x) for x in range(0, 24)]
-    df.loc[df['date']=='2018-03-25', 'time'] = [
-        "{:02d}:00".format(x) for x in range(-1, 24) if not x==2]
-    df = df[df['time']!='-1:00']
+    df.loc[df['date'] == '2018-03-25', 'time'] = [
+        "{:02d}:00".format(x) for x in range(-1, 24) if not x == 2]
+    df = df[df['time'] != '-1:00']
 
     df.index = pd.to_datetime(df['date'] + ' ' + df['time'])
     df.drop(columns=['date', 'time'], inplace=True)
@@ -1216,7 +1217,6 @@ def read_rte(filepath, variable_name, url, headers):
     return df
 
 
-
 def read(data_path, areas, source_name, variable_name, res_key,
          headers, param_dict, start_from_user=None, end_from_user=None):
     """
@@ -1378,7 +1378,7 @@ def read(data_path, areas, source_name, variable_name, res_key,
         end_from_user = (
             pytz.timezone('UTC')
             .localize(datetime.combine(end_from_user, time()))
-            # Appropriate offset to include the end of period (23:45 for the 
+            # Appropriate offset to include the end of period (23:45 for the
             # same day)
             + timedelta(days=1, minutes=-int(res_key[:2])))
     # Then cut off the data_set
@@ -1419,4 +1419,3 @@ def update_progress(count, total):
     sys.stdout.flush()
 
     return
-    

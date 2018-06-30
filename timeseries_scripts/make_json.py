@@ -206,8 +206,8 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
 
     # list of files included in the datapackage in YAML-format
     resource_list = excel_resource.format(
-                bytes=os.path.getsize('time_series.xlsx'),
-                hash=get_sha_hash('time_series.xlsx'))
+        bytes=os.path.getsize('time_series.xlsx'),
+        hash=get_sha_hash('time_series.xlsx'))
     source_list = ''  # list of data sources in YAML-format
 
     for res_key, df in data_sets.items():
@@ -243,7 +243,7 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
         resource_list = (resource_list + resource_template.format(
             res_key=res_key, bytes=file_size, hash=file_hash, **info_cols) +
             field_list)
-        
+
     # Remove duplicates from sources_list. set() returns unique values from a
     # collection, but it cannot compare dicts. Since source_list is a list of of
     # dicts, this requires first converting it to a tuple, then converting it back to a dict.
@@ -266,6 +266,7 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
         f.write(datapackage_json)
 
     return
+
 
 def get_sha_hash(path, blocksize=65536):
     sha_hasher = hashlib.sha256()

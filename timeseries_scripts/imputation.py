@@ -80,7 +80,7 @@ def find_nan(df, res_key, headers, patch=False):
             col.isnull().transpose().values
         ).transpose()
 
-        # count missing values 
+        # count missing values
         overview.loc['nan_count', col_name] = col['tag'].sum()
 
         # make another DF to hold info about each block
@@ -124,7 +124,8 @@ def find_nan(df, res_key, headers, patch=False):
                     col, col_name, nan_blocks, df, marker_col, one_period)
 
                 overview.loc['interpolated_blocks', col_name] = patched_blocks
-                overview.loc['interpolated_values', col_name] = patched_col.iloc[:,0].count() - col.iloc[:,0].count()
+                overview.loc['interpolated_values', col_name] = patched_col.iloc[
+                    :, 0].count() - col.iloc[:, 0].count()
             else:
                 patched_col = col
 
@@ -204,7 +205,6 @@ def choose_fill_method(
         else:
             j += 1
             patched_col = col
-
 
     patched_blocks = nan_blocks.shape[0] - j
     logger.info(message + 'interpolated %s blocks',

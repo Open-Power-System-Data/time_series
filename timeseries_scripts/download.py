@@ -208,7 +208,7 @@ def download_source(source_name, source_dict, data_path,
                 # set last end to 2018-01-31
                 ends = ends.union([ends[-1] + 1])
 
-            #else:
+            # else:
             #    # extend both by one period to load a little more data than the user asked for.
             #    # Reasoning: The last hour of the year in UTC is already the first hour of the new year in CET
             #    starts = starts.union([starts[-1] + 1])
@@ -333,7 +333,7 @@ def download_file(
             )
         if downloaded:
             logger.info(message + 'download successful')
-        else :
+        else:
             logger.info(message + 'download failed')
 
     elif count_files == 1:
@@ -402,7 +402,8 @@ def download_request(
         if resp.status_code == 200:
             break
         else:
-            logger.warning('http status code %s, attempt %s, trying again in 10 seconds...', resp.status_code, i + 1)
+            logger.warning(
+                'http status code %s, attempt %s, trying again in 10 seconds...', resp.status_code, i + 1)
             time.sleep(70)
             if i == 9:
                 downloaded = False
