@@ -12,7 +12,7 @@ DE_50hertz,,DE_50HzT,50Hertz CA,control area,False,True,True,False,False,10YDE-V
 DE_amprion,,DE_Amprion,Amprion CA,control area,False,True,True,False,False,10YDE-RWENET---I,Amprion CA,,,,Amprion CA,,True,True,False,True,False,False
 DE_tennet,,DE_TenneT_GER,TenneT GER CA,control area,False,True,True,False,False,10YDE-EON------1,TenneT GER CA,,,,TenneT GER CA,,True,True,False,True,False,False
 DE_transnetbw,,DE_TransnetBW,TransnetBW CA,control area,False,True,True,False,False,10YDE-ENBW-----N,TransnetBW CA,,,,TransnetBW CA,,True,True,False,True,False,False
-DE_AT_LU,,,DE-AT-LU,bidding zone,False,True,True,False,True,10Y1001A1001A63L,DE-AT-LU BZ,,DE-AT-LU,,,,True,True,True,False,False,False
+DE_AT_LU,,,DE-AT-LU,bidding zone,False,True,False,False,True,10Y1001A1001A63L,DE-AT-LU BZ,,DE-AT-LU,,,,True,True,True,False,False,False
 DK,DK,DK,Denmark,country,True,True,False,False,True,10Y1001A1001A65H,Denmark,Denmark,,,,,True,True,False,True,False,True
 DK_1,,DK1,DK1  BZ,bidding zone,False,True,False,False,True,10YDK-1--------W,DK1 BZ / MBA,,DK1  BZ,,,DK1 MBA,True,True,True,True,True,False
 DK_2,,DK2,DK2 BZ,bidding zone,False,True,False,False,True,10YDK-2--------M,DK2 BZ / MBA,,DK2 BZ,,,DK2 MBA,True,True,True,True,True,False
