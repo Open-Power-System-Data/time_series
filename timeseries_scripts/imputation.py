@@ -187,21 +187,24 @@ def choose_fill_method(
     '''
     for i, nan_block in nan_blocks.iterrows():
         j = 0
+        if col_name[1] == 'price':
+            # Do not interpolate prices
+            patched_col = col
 
         # Interpolate missing value spans up to 2 hours
-        if nan_block['span'] <= timedelta(hours=2):
+        elif nan_block['span'] <= timedelta(hours=2):
             patched_col, marker_col = my_interpolate(
                 i, j, nan_block, col, col_name, marker_col, nan_blocks,
                 one_period, message)
 
         # Guess missing value spans longer than one hour based on other tsos
         # (Only for German wind and solar generation data)
-        elif col_name[1][:2] == 'DE' and col_name[2] == 'generation':
+        elif col_name[0][:2] == 'DE' and col_name[2] == 'generation_actual':
 
             # NOT IMPLEMENTED
             # patched_col = impute(nan_block, col, col_name, nan_blocks, df, one_period)
             # instead:
-            pass
+            patched_col = col
         else:
             j += 1
             patched_col = col
