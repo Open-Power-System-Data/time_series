@@ -20,6 +20,7 @@ from ftplib import FTP
 import math
 import sys
 import time
+from . import terna
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -62,14 +63,13 @@ def download(sources, data_path, archive_version=None,
 
     if archive_version:
         download_archive(archive_version, data_path)
-
     else:
         for source_name, source_dict in sources.items():
             if not source_name in ['Energinet.dk', 'ENTSO-E Power Statistics', 'CEPS']:
                 download_source(source_name, source_dict, data_path,
                                 start_from_user, end_from_user, testmode=testmode)
-
-    return
+            
+    return 
 
 
 def download_archive(archive_version, data_path):
@@ -158,8 +158,20 @@ def download_source(source_name, source_dict, data_path,
                 end_server = end_from_user  # replace  end_server
             else:
                 pass  # do nothing
+            
+        if "method" in param_dict and param_dict["method"] == "scrape":
+            # In this case, the data have to be scraped from the website in a source-specific way.
+            downloaded = download_with_driver(
+                source_name,
+                variable_name,
+                data_path,
+                param_dict,
+                start=start_server,
+                end=end_server,
+                filename=filename
+            )
 
-        if param_dict['frequency'] in ['complete', 'irregular']:
+        elif param_dict['frequency'] in ['complete', 'irregular']:
             # In these two cases, all data is housed in one file on the server
             downloaded, session = download_file(
                 source_name,
@@ -170,7 +182,6 @@ def download_source(source_name, source_dict, data_path,
                 end=end_server,
                 filename=filename
             )
-
         else:
             # In all other cases, the files on the servers usually contain the data for subperiods
             # of some regular length (i.e. months or years available
@@ -225,7 +236,6 @@ def download_source(source_name, source_dict, data_path,
                             start=deviant['start'],
                             end=deviant['end'],
                         )
-
             for s, e in zip(starts, ends):
                 downloaded, session = download_file(
                     source_name,
@@ -242,6 +252,88 @@ def download_source(source_name, source_dict, data_path,
 
     return
 
+def download_with_driver(
+    source_name,
+    variable_name,
+    data_path,
+    param_dict,
+    start,
+    end,
+    filename=None):
+    """
+    Decide which scraping function should download the data.
+   
+
+    Parameters
+    ----------
+    source_name : str
+        Name of source dataset, e.g. ``Terna``
+    variable_name : str
+        Name of variable, e.g. ``solar``
+    data_path : str
+        Base download directory in which to save all downloaded files
+    param_dict : dict
+        Info required for download, e.g. url, url-parameter, filename. 
+    start : datetime.date
+        start of data in the file
+    end : datetime.date
+        end of data in the file
+    filename : str, default None
+        pattern of filename to use if it can not be retrieved from server
+
+    Returns
+    ----------
+    downloaded: bool
+        True if all the files were downloaded, False otherwise
+
+    """
+   
+    if source_name == "Terna":
+        return download_Terna(variable_name, data_path, param_dict, start, end, filename)
+
+def download_Terna(
+        variable_name,
+        data_path,
+        param_dict,
+        start,
+        end,
+        filename):
+    """
+    Extract the links from the Terna web page and download them one by one
+
+    Parameters
+    ----------
+    variable_name : str
+        Name of variable, e.g. ``solar``
+    data_path : str
+        Base download directory in which to save all downloaded files
+    param_dict : dict
+        Info required for download, e.g. url, url-parameter, filename. 
+    start : datetime.date
+        start of data in the file
+    end : datetime.date
+        end of data in the file
+    filename : str, default None
+        pattern of filename to use if it can not be retrieved from server
+
+    Returns
+    ----------
+    None
+
+    """
+    date_url_dictionary = terna.extract_urls(start, end)
+    session = None
+    all_downloaded = True
+    for date_key in date_url_dictionary:
+        url = date_url_dictionary[date_key]
+        param_dict["url_template"] = url
+        param_dict["url_params_template"] = None
+        year, month, day = date_key
+        the_date = date(year=year, month=month, day=day)
+        #print("download for: {}".format(the_date))
+        downloaded, session = download_file("Terna", variable_name, data_path, param_dict, the_date, the_date, filename, session)
+        #print("\t", downloaded)
+        all_downloaded = downloaded and all_downloaded
 
 def download_file(
         source_name,
