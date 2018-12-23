@@ -299,7 +299,12 @@ def download_Terna(
         end,
         filename):
     """
-    Extract the links from the Terna web page and download them one by one
+    Download the files from the Tera page one by one
+    
+    Extract the links from the database of recorded links.
+    If that does not cover the paeriod [start, end],
+    if extract_new_terna_links is set to False in processing.ipynb, stop,
+    but if it is set to True, scrape the links.
 
     Parameters
     ----------
@@ -321,7 +326,26 @@ def download_Terna(
     None
 
     """
-    date_url_dictionary = terna.extract_urls(start, end)
+    
+    # If extract_new_terna_urls was set to False or not set at all, treat it as a False.
+    try:
+        extract_new = pickle.load(open("extract_new_terna_urls.p", "rb"))
+    except:
+        extract_new = False
+    
+    # First consult the database
+    date_url_dictionary, start, end = terna.read_recorded(start, end)
+    
+    # If the user wants to add the links not covered in the database
+    if extract_new:
+        # and such links do exist
+        if start <= end:
+            # extract them from the Terna's web page
+            extracted_date_url_dictionary = terna.extract_urls(start, end)
+            # and add them to the dictionary of recorded links
+            date_url_dictionary.update(extracted_date_url_dictionary)
+    
+    # Now, download the files from the links
     session = None
     all_downloaded = True
     for date_key in date_url_dictionary:
@@ -335,6 +359,63 @@ def download_Terna(
         #print("\t", downloaded)
         all_downloaded = downloaded and all_downloaded
 
+def read_recorded(start, end):
+    """
+    Read the urls from the database located in recorded_terna_urls.csv
+    
+    Parameters:
+    ----------
+    start: datetime.date
+        The minimal allowed date of the links
+    end: datetime.date
+        The maximal allowed date of the links
+    
+    Returns
+    ----------
+    recorded: dict
+        Dictionary {date: link} of the dates covered by the database
+        and in the range [start, end].
+    new_start: datetime.date
+        The start of the subperiod of [start, end], not covered by the database.
+    new_end: datetime.date
+        The start of the subperiod of [start, end], not covered by the database.
+
+    """
+    # Reading the data from the csv database file
+    database_df = pd.read_csv("recorded_terna_urls.csv", header=0, squeeze=True)
+    database_df["Date"] = pd.to_datetime(database_df["Date"]).dt.date
+
+    database_start = database_df["Date"].min()
+    database_end = database_df["Date"].max()
+
+    if start > database_end:
+        # If the user requested the dates which are out of the scope 
+        # of the database, do nothing
+        new_start = start
+        new_end = end
+        return {}, new_start, new_end
+
+    # Now, find the dates which are in the intersection of
+    # [database_start, database_end] and [start, end].
+    # This will cover the range [start, min(database_end, end)]
+    # and leave [min(database_end, end) + 1 day, end] as the period to cover later, if desired so.
+    selected = database_df[(database_df["Date"] >= start) & (database_df["Date"] <= end)]
+    recorded = dict()
+    for row in database_df.itertuples():
+        date = row[1]
+        url = row[2]
+        recorded[date] = url
+
+    # Adjust the period to return
+    new_start = max(list(recorded.keys())) + datetime.timedelta(days=1)
+    new_end = end
+
+    # Remove the dates for which there are no files (those where recorded[date] is nan)
+    recorded = { date: recorded[date] for date in recorded \
+                 if not (recorded[date] != recorded[date]) }
+
+    return recorded, new_start, new_end
+        
 def download_file(
         source_name,
         variable_name,

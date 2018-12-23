@@ -488,12 +488,13 @@ RTE:
 Terna:
     generation_by_source:
         url: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
+        web: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
         url_params_template: 
         frequency: daily
         start: 2010-02-24
         end: recent
         filetype: xls
-        filename: "{u_start}_{u_end}_generation_by_source.csv"
+        filename: "{u_start}_{u_end}_generation_by_source.xls"
         method: scrape
         resolution:
             - 60min

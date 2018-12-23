@@ -3,7 +3,7 @@ Open Power System Data
 
 Timeseries Datapackage
 
-terna.py : extract file links for the web page of Terna
+terna.py : extracts file links for the web page of Terna
 """
 __author__ = "Milos Simic"
 __date__ = "2018-12-7"
@@ -14,6 +14,7 @@ import time
 import datetime
 import re
 import requests
+import pandas as pd
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import TimeoutException
@@ -814,3 +815,60 @@ def collect_urls(start_date, end_date, collected={}, subperiods=[]):
     driver.quit()
 
     return (collected, missing_dates, no_duplicates)
+
+def read_recorded(start, end):
+    """
+    Read the urls from the database located in recorded_terna_urls.csv
+    
+    Parameters:
+    ----------
+    start: datetime.date
+        The minimal allowed date of the links
+    end: datetime.date
+        The maximal allowed date of the links
+    
+    Returns
+    ----------
+    recorded: dict
+        Dictionary {date: link} of the dates covered by the database
+        and in the range [start, end].
+    new_start: datetime.date
+        The start of the subperiod of [start, end], not covered by the database.
+    new_end: datetime.date
+        The start of the subperiod of [start, end], not covered by the database.
+
+    """
+    # Reading the data from the csv database file
+    database_df = pd.read_csv("recorded_terna_urls.csv", header=0, squeeze=True)
+    database_df["Date"] = pd.to_datetime(database_df["Date"]).dt.date
+
+    database_start = database_df["Date"].min()
+    database_end = database_df["Date"].max()
+
+    if start > database_end:
+        # If the user requested the dates which are out of the scope 
+        # of the database, do nothing
+        return {}, start, end
+
+    # Now, find the dates which are in the intersection of
+    # [database_start, database_end] and [start, end].
+    # This will cover the range [start, min(database_end, end)]
+    # and leave [min(database_end, end) + 1 day, end] as the period to cover later, if desired so.
+    selected_df = database_df[(database_df["Date"] >= start) & (database_df["Date"] <= end)]
+
+    recorded = dict()
+    for row in selected_df.itertuples():
+        date = row[1]
+        url = row[2]
+        recorded[date] = url
+
+    # Adjust the period to return
+    new_start = max(list(recorded.keys())) + datetime.timedelta(days=1)
+    new_end = end
+
+    # Remove the dates for which there are no files (those where recorded[date] is nan)
+    # and put the date into appropriate format (a tuple (year, month, day)), expected by other Terna functions.
+    recorded = { (date.year, date.month, date.day): recorded[date] for date in recorded \
+                 if not (recorded[date] != recorded[date]) }
+
+    return recorded, new_start, new_end
