@@ -20,6 +20,7 @@ from ftplib import FTP
 import math
 import sys
 import time
+from . import terna
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -62,14 +63,13 @@ def download(sources, data_path, archive_version=None,
 
     if archive_version:
         download_archive(archive_version, data_path)
-
     else:
         for source_name, source_dict in sources.items():
             if not source_name in ['Energinet.dk', 'ENTSO-E Power Statistics', 'CEPS']:
                 download_source(source_name, source_dict, data_path,
                                 start_from_user, end_from_user, testmode=testmode)
-
-    return
+            
+    return 
 
 
 def download_archive(archive_version, data_path):
@@ -158,8 +158,20 @@ def download_source(source_name, source_dict, data_path,
                 end_server = end_from_user  # replace  end_server
             else:
                 pass  # do nothing
+            
+        if "method" in param_dict and param_dict["method"] == "scrape":
+            # In this case, the data have to be scraped from the website in a source-specific way.
+            downloaded = download_with_driver(
+                source_name,
+                variable_name,
+                data_path,
+                param_dict,
+                start=start_server,
+                end=end_server,
+                filename=filename
+            )
 
-        if param_dict['frequency'] in ['complete', 'irregular']:
+        elif param_dict['frequency'] in ['complete', 'irregular']:
             # In these two cases, all data is housed in one file on the server
             downloaded, session = download_file(
                 source_name,
@@ -170,7 +182,6 @@ def download_source(source_name, source_dict, data_path,
                 end=end_server,
                 filename=filename
             )
-
         else:
             # In all other cases, the files on the servers usually contain the data for subperiods
             # of some regular length (i.e. months or years available
@@ -225,7 +236,6 @@ def download_source(source_name, source_dict, data_path,
                             start=deviant['start'],
                             end=deviant['end'],
                         )
-
             for s, e in zip(starts, ends):
                 downloaded, session = download_file(
                     source_name,
@@ -242,7 +252,170 @@ def download_source(source_name, source_dict, data_path,
 
     return
 
+def download_with_driver(
+    source_name,
+    variable_name,
+    data_path,
+    param_dict,
+    start,
+    end,
+    filename=None):
+    """
+    Decide which scraping function should download the data.
+   
 
+    Parameters
+    ----------
+    source_name : str
+        Name of source dataset, e.g. ``Terna``
+    variable_name : str
+        Name of variable, e.g. ``solar``
+    data_path : str
+        Base download directory in which to save all downloaded files
+    param_dict : dict
+        Info required for download, e.g. url, url-parameter, filename. 
+    start : datetime.date
+        start of data in the file
+    end : datetime.date
+        end of data in the file
+    filename : str, default None
+        pattern of filename to use if it can not be retrieved from server
+
+    Returns
+    ----------
+    downloaded: bool
+        True if all the files were downloaded, False otherwise
+
+    """
+   
+    if source_name == "Terna":
+        return download_Terna(variable_name, data_path, param_dict, start, end, filename)
+
+def download_Terna(
+        variable_name,
+        data_path,
+        param_dict,
+        start,
+        end,
+        filename):
+    """
+    Download the files from the Tera page one by one
+    
+    Extract the links from the database of recorded links.
+    If that does not cover the paeriod [start, end],
+    if extract_new_terna_links is set to False in processing.ipynb, stop,
+    but if it is set to True, scrape the links.
+
+    Parameters
+    ----------
+    variable_name : str
+        Name of variable, e.g. ``solar``
+    data_path : str
+        Base download directory in which to save all downloaded files
+    param_dict : dict
+        Info required for download, e.g. url, url-parameter, filename. 
+    start : datetime.date
+        start of data in the file
+    end : datetime.date
+        end of data in the file
+    filename : str, default None
+        pattern of filename to use if it can not be retrieved from server
+
+    Returns
+    ----------
+    None
+
+    """
+    
+    # If extract_new_terna_urls was set to False or not set at all, treat it as a False.
+    try:
+        extract_new = pickle.load(open("extract_new_terna_urls.p", "rb"))
+    except:
+        extract_new = False
+    
+    # First consult the database
+    date_url_dictionary, start, end = terna.read_recorded(start, end)
+    
+    # If the user wants to add the links not covered in the database
+    if extract_new:
+        # and such links do exist
+        if start <= end:
+            # extract them from the Terna's web page
+            extracted_date_url_dictionary = terna.extract_urls(start, end)
+            # and add them to the dictionary of recorded links
+            date_url_dictionary.update(extracted_date_url_dictionary)
+    
+    # Now, download the files from the links
+    session = None
+    all_downloaded = True
+    for date_key in date_url_dictionary:
+        url = date_url_dictionary[date_key]
+        param_dict["url_template"] = url
+        param_dict["url_params_template"] = None
+        year, month, day = date_key
+        the_date = date(year=year, month=month, day=day)
+        #print("download for: {}".format(the_date))
+        downloaded, session = download_file("Terna", variable_name, data_path, param_dict, the_date, the_date, filename, session)
+        #print("\t", downloaded)
+        all_downloaded = downloaded and all_downloaded
+
+def read_recorded(start, end):
+    """
+    Read the urls from the database located in recorded_terna_urls.csv
+    
+    Parameters:
+    ----------
+    start: datetime.date
+        The minimal allowed date of the links
+    end: datetime.date
+        The maximal allowed date of the links
+    
+    Returns
+    ----------
+    recorded: dict
+        Dictionary {date: link} of the dates covered by the database
+        and in the range [start, end].
+    new_start: datetime.date
+        The start of the subperiod of [start, end], not covered by the database.
+    new_end: datetime.date
+        The start of the subperiod of [start, end], not covered by the database.
+
+    """
+    # Reading the data from the csv database file
+    database_df = pd.read_csv("recorded_terna_urls.csv", header=0, squeeze=True)
+    database_df["Date"] = pd.to_datetime(database_df["Date"]).dt.date
+
+    database_start = database_df["Date"].min()
+    database_end = database_df["Date"].max()
+
+    if start > database_end:
+        # If the user requested the dates which are out of the scope 
+        # of the database, do nothing
+        new_start = start
+        new_end = end
+        return {}, new_start, new_end
+
+    # Now, find the dates which are in the intersection of
+    # [database_start, database_end] and [start, end].
+    # This will cover the range [start, min(database_end, end)]
+    # and leave [min(database_end, end) + 1 day, end] as the period to cover later, if desired so.
+    selected = database_df[(database_df["Date"] >= start) & (database_df["Date"] <= end)]
+    recorded = dict()
+    for row in database_df.itertuples():
+        date = row[1]
+        url = row[2]
+        recorded[date] = url
+
+    # Adjust the period to return
+    new_start = max(list(recorded.keys())) + datetime.timedelta(days=1)
+    new_end = end
+
+    # Remove the dates for which there are no files (those where recorded[date] is nan)
+    recorded = { date: recorded[date] for date in recorded \
+                 if not (recorded[date] != recorded[date]) }
+
+    return recorded, new_start, new_end
+        
 def download_file(
         source_name,
         variable_name,

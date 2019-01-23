@@ -18,6 +18,8 @@ import csv
 import re
 from datetime import datetime, date, time, timedelta
 import xlrd
+from xml.sax import ContentHandler, parse
+from .excel_parser import ExcelHandler
 
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -288,7 +290,6 @@ def read_ceps(filepath, variable_name, url, headers):
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
-
 
 def read_elia(filepath, variable_name, url, headers):
     '''Read a file from Elia into a DataFrame'''
@@ -1218,6 +1219,122 @@ def read_rte(filepath, variable_name, url, headers):
 
     return df
 
+def terna_file_to_initial_dataframe(filepath):
+    """
+    Parse the xml or read excel directly, 
+    returning the data from the file in a simple-index dataframe.
+
+    Some files are formated as xml, some are pure excel files.
+    This function handles both cases.
+
+    Parameters:
+    ----------
+    filepath: str 
+        The path of the file to process
+
+    Returns:
+    ----------
+    df: pandas.DataFrame
+        A pandas dataframe containing the data from the specified file.
+
+    """
+    # First, we'll try to parse the file as if it is xml.
+    try:
+        excelHandler = ExcelHandler()
+        parse(filepath, excelHandler)
+
+        # Create the dataframe from the parsed data
+        df = pd.DataFrame(excelHandler.tables[0][2:], columns=excelHandler.tables[0][1])
+
+        # Convert the "Generation [MWh]" column to numeric
+        df["Generation [MWh]"] = pd.to_numeric(df["Generation [MWh]"])
+    except:
+        # In the case of an exception, treat the file as excel.
+        df = pd.read_excel(filepath, header=1)
+
+    return df
+
+
+
+
+def read_terna(filepath, url, headers):
+    """
+    Read a file from Terna into a dataframe
+
+    Parameters:
+    ----------
+    filepath: str
+        The path of the file to read.
+    url:
+        The url of the Terna page.
+    headers:
+        Levels for the MultiIndex.
+
+    Returns:
+    ----------
+    df: pandas.DataFrame
+        A pandas multi-index dataframe containing the data from the specified file.
+
+    """
+    # Reading the file into a pandas dataframe
+
+    df = terna_file_to_initial_dataframe(filepath)
+
+    # Casting the "Date/Time" column to datetime
+    df["Date/Hour"] = pd.to_datetime(df["Date/Hour"])
+
+    # Setting the index to "Date/Hour"
+
+    # Renaming the bidding area names to conform to the codes from areas.csv
+    df["Bidding Area"] = "IT_" + df["Bidding Area"]
+
+    
+    # The dictionary mapping energy types from the file to the variable - attribute pairs
+    # in the final format
+    solar_and_eolic_types = {
+        "Wind" : ("wind_onshore", "generation_actual"),
+        "Photovoltaic Estimated" : ("solar", "generation_forecast"),
+        "Photovoltaic Measured" : ("solar", "generation_actual")
+    }
+
+    # Keeping only the data for solar and eolic sources
+    df = df.loc[df["Type"].isin(solar_and_eolic_types.keys()), :]
+    
+    # Reshaping the data so that each combination of a bidding area and type
+    # is represented as a column of its own. 
+    # The new column names are formatted as follows: "Generation [MWh]:{area_code}:{type}"
+    df = df.pivot_table(index=["Date/Hour"], columns=["Bidding Area","Type"], aggfunc='first')
+    df.columns = df.columns.map(lambda x: '{}:{}:{}'.format(x[0], x[1], x[2]))
+    
+    # Note that at this point the "Date/Hour" column has become the frame's index.
+
+    # Creating a mapping from column names to the corresponding multiindex hierarchy
+    area_codes = ["IT_CNOR", "IT_CSUD", "IT_NORD", "IT_SARD", "IT_SICI", "IT_SUD"]
+    column_map = {}
+    for area_code in area_codes:
+        for energy_type in solar_and_eolic_types:
+            variable, attribute = solar_and_eolic_types[energy_type]
+            column_name = "Generation [MWh]:{}:{}".format(area_code, energy_type)
+            column_map[column_name] = {
+                "region" : area_code,
+                "variable" : variable, 
+                "attribute" : attribute,
+                "source" : "Terna",
+                "web" : url,
+                "unit" : "MWh"
+            }
+
+    # Drop any column not in the column mapping
+    df = df[list(column_map.keys())]
+
+    # Create the MultiIndex
+    tuples = [tuple(column_map[col][level] for level in headers)
+              for col in df.columns]
+
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return df
+
 
 def read(data_path, areas, source_name, variable_name, res_key,
          headers, param_dict, start_from_user=None, end_from_user=None):
@@ -1347,6 +1464,8 @@ def read(data_path, areas, source_name, variable_name, res_key,
                     filepath, variable_name, url, headers)
             elif source_name == 'APG':
                 data_to_add = read_apg(filepath, url, headers)
+            elif source_name == "Terna":
+                data_to_add = read_terna(filepath, url, headers)
 
             if data_set.empty:
                 data_set = data_to_add

@@ -484,6 +484,21 @@ RTE:
         resolution:
             - 60min
         web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
+
+Terna:
+    generation_by_source:
+        url: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
+        web: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
+        url_params_template: 
+        frequency: daily
+        start: 2010-02-24
+        end: recent
+        filetype: xls
+        filename: "{u_start}_{u_end}_generation_by_source.xls"
+        method: scrape
+        resolution:
+            - 60min
+
 #
 # For the Following sources, the download/read has not yet been implemented
 #
