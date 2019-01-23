@@ -20,13 +20,14 @@ from ftplib import FTP
 import math
 import sys
 import time
+import pickle
 from . import terna
 
 logger = logging.getLogger(__name__)
-logger.setLevel('INFO')
+logger.setLevel('DEBUG')
 
 
-def download(sources, data_path, archive_version=None,
+def download(sources, data_path, input_path, archive_version=None,
              start_from_user=None, end_from_user=None,
              testmode=False):
     """
@@ -56,7 +57,7 @@ def download(sources, data_path, archive_version=None,
     for name, date in {'end_from_user': end_from_user,
                        'start_from_user': start_from_user}.items():
         if date and date > datetime.now().date():
-            logger.info('%s given was %s, must be smaller than %s, '
+            logger.warning('%s given was %s, must be smaller than %s, '
                         'we have no data for the future!',
                         name, date, datetime.today().date())
             return
@@ -66,7 +67,7 @@ def download(sources, data_path, archive_version=None,
     else:
         for source_name, source_dict in sources.items():
             if not source_name in ['Energinet.dk', 'ENTSO-E Power Statistics', 'CEPS']:
-                download_source(source_name, source_dict, data_path,
+                download_source(source_name, source_dict, data_path, input_path,
                                 start_from_user, end_from_user, testmode=testmode)
             
     return 
@@ -75,7 +76,7 @@ def download(sources, data_path, archive_version=None,
 def download_archive(archive_version, data_path):
     """
     Download archived data from the OPSD server. See download()
-    for info on parameter.
+    for info on parameters.
 
     """
 
@@ -95,13 +96,13 @@ def download_archive(archive_version, data_path):
         logger.info('Extracted data to {}'.format(data_path))
 
     else:
-        logger.info('%s already exists. Delete it if you want to download again',
+        logger.warning('%s already exists. Delete it if you want to download again',
                     filepath)
 
     return
 
 
-def download_source(source_name, source_dict, data_path,
+def download_source(source_name, source_dict, data_path, input_path,
                     start_from_user=None, end_from_user=None,
                     testmode=False):
     """
@@ -165,6 +166,7 @@ def download_source(source_name, source_dict, data_path,
                 source_name,
                 variable_name,
                 data_path,
+                input_path,
                 param_dict,
                 start=start_server,
                 end=end_server,
@@ -256,6 +258,7 @@ def download_with_driver(
     source_name,
     variable_name,
     data_path,
+    input_path,
     param_dict,
     start,
     end,
@@ -289,11 +292,12 @@ def download_with_driver(
     """
    
     if source_name == "Terna":
-        return download_Terna(variable_name, data_path, param_dict, start, end, filename)
+        return download_Terna(variable_name, data_path, input_path, param_dict, start, end, filename)
 
 def download_Terna(
         variable_name,
         data_path,
+        input_path,
         param_dict,
         start,
         end,
@@ -329,12 +333,13 @@ def download_Terna(
     
     # If extract_new_terna_urls was set to False or not set at all, treat it as a False.
     try:
-        extract_new = pickle.load(open("extract_new_terna_urls.p", "rb"))
+        extract_new = pickle.load(open("extract_new_terna_urls.pickle", "rb"))
     except:
         extract_new = False
     
     # First consult the database
-    date_url_dictionary, start, end = terna.read_recorded(start, end)
+    recorded_path = os.path.join(input_path, 'recorded_terna_urls.csv')
+    date_url_dictionary, start, end = terna.read_recorded(recorded_path, start, end)
     
     # If the user wants to add the links not covered in the database
     if extract_new:
@@ -344,6 +349,18 @@ def download_Terna(
             extracted_date_url_dictionary = terna.extract_urls(start, end)
             # and add them to the dictionary of recorded links
             date_url_dictionary.update(extracted_date_url_dictionary)
+            # update the file holding the recorded URLs
+            dict1 = {date(*k): v for k, v in date_url_dictionary.items()}
+            df = pd.DataFrame.from_dict(
+                dict1, orient='index', columns=['url']).rename_axis('date')
+            df.sort_index(inplace=True)
+            no_gaps = pd.DatetimeIndex(start=df.index[0],
+                                       end=df.index[-1],
+                                       freq='D')
+            df = df.reindex(index=no_gaps)
+            df.index.rename('date', inplace=True)
+            df.to_csv(os.path.join(input_path, 'recorded_terna_urls.csv'),
+                      date_format='%Y-%m-%d')
     
     # Now, download the files from the links
     session = None
@@ -359,62 +376,7 @@ def download_Terna(
         #print("\t", downloaded)
         all_downloaded = downloaded and all_downloaded
 
-def read_recorded(start, end):
-    """
-    Read the urls from the database located in recorded_terna_urls.csv
-    
-    Parameters:
-    ----------
-    start: datetime.date
-        The minimal allowed date of the links
-    end: datetime.date
-        The maximal allowed date of the links
-    
-    Returns
-    ----------
-    recorded: dict
-        Dictionary {date: link} of the dates covered by the database
-        and in the range [start, end].
-    new_start: datetime.date
-        The start of the subperiod of [start, end], not covered by the database.
-    new_end: datetime.date
-        The start of the subperiod of [start, end], not covered by the database.
-
-    """
-    # Reading the data from the csv database file
-    database_df = pd.read_csv("recorded_terna_urls.csv", header=0, squeeze=True)
-    database_df["Date"] = pd.to_datetime(database_df["Date"]).dt.date
-
-    database_start = database_df["Date"].min()
-    database_end = database_df["Date"].max()
-
-    if start > database_end:
-        # If the user requested the dates which are out of the scope 
-        # of the database, do nothing
-        new_start = start
-        new_end = end
-        return {}, new_start, new_end
-
-    # Now, find the dates which are in the intersection of
-    # [database_start, database_end] and [start, end].
-    # This will cover the range [start, min(database_end, end)]
-    # and leave [min(database_end, end) + 1 day, end] as the period to cover later, if desired so.
-    selected = database_df[(database_df["Date"] >= start) & (database_df["Date"] <= end)]
-    recorded = dict()
-    for row in database_df.itertuples():
-        date = row[1]
-        url = row[2]
-        recorded[date] = url
-
-    # Adjust the period to return
-    new_start = max(list(recorded.keys())) + datetime.timedelta(days=1)
-    new_end = end
-
-    # Remove the dates for which there are no files (those where recorded[date] is nan)
-    recorded = { date: recorded[date] for date in recorded \
-                 if not (recorded[date] != recorded[date]) }
-
-    return recorded, new_start, new_end
+    return
         
 def download_file(
         source_name,
@@ -515,8 +477,9 @@ def download_file(
 
     else:
         downloaded = True
-        logger.info('There must not be more '
-                    'than one file in: %s. Please check ', container)
+        logger.warning(
+            'There must not be more than one file in: %s. Please check ',
+            container)
 
     return downloaded, session
 
@@ -532,7 +495,7 @@ def download_request(
         url_params_template):
     """
     Download a single file via HTTP get.
-    Build the url from parameters and save the file to dsik under it's original
+    Build the url from parameters and save the file to disk under it's original
     filename 
 
     Parameters
@@ -572,11 +535,13 @@ def download_request(
 
     for i in range(10):
         resp = session.get(url, params=url_params)
+        if source_name == 'Terna':
+            break
         if resp.status_code == 200:
             break
         else:
             logger.warning(
-                'http status code %s, attempt %s, trying again in 10 seconds...', resp.status_code, i + 1)
+                'http status code %s, attempt %s, trying again in 1:10 minutes...', resp.status_code, i + 1)
             time.sleep(70)
             if i == 9:
                 downloaded = False
@@ -599,7 +564,7 @@ def download_request(
         if filename:
             original_filename = filename.format(u_start=start, u_end=end)
         else:
-            logger.info(
+            logger.warning(
                 'original filename could neither be retrieved from server '
                 'nor sources.yml'
             )

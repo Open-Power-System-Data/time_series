@@ -8,8 +8,8 @@ dependencies:
   - openpyxl  # pandas: excel i/o
   - bottleneck  # accelerates some pandas operations
   - numexpr  # accelerates some pandas operations
-  - notebook  # jupyter notebook
+  - jupyter  # jupyter notebook
   - pyyaml
   - requests
   - jupyter_contrib_nbextensions  # nice add-ons for jupyter
-  
+  - selenium  # required to scrape URLs from Terna website

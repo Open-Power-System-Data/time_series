@@ -13,16 +13,13 @@ import sys
 import numpy as np
 import pandas as pd
 import logging
-import zipfile
-import csv
-import re
 from datetime import datetime, date, time, timedelta
 import xlrd
 from xml.sax import ContentHandler, parse
 from .excel_parser import ExcelHandler
 
 logger = logging.getLogger(__name__)
-logger.setLevel('INFO')
+logger.setLevel('DEBUG')
 
 
 def read_entso_e_transparency(
@@ -56,7 +53,7 @@ def read_entso_e_transparency(
     geo: string
         The geographical concept (i.e. ``country`` or ``bidding zone`` for which
         data should be extracted.
-        Records for other concepts (i.e. ``control areas``)) willl be ignored.
+        Records for other concepts (i.e. ``control areas``)) will be ignored.
     append_headers: dict
         Map of header levels and values to append to Multiindex
     kwargs: dict
@@ -1178,7 +1175,7 @@ def read_rte(filepath, variable_name, url, headers):
     df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True,)
 
     # drop autumn dst hours as they contain inconsistent data (none or copy of
-    # hour before)
+    # hour before). The 2 hours will later be interpolated
     dst_transitions_autumn = [
         d.replace(hour=2)
         for d in pytz.timezone('Europe/Paris')._utc_transition_times
@@ -1186,7 +1183,7 @@ def read_rte(filepath, variable_name, url, headers):
     df = df.loc[~df['timestamp'].isin(dst_transitions_autumn)]
     df.set_index(df['timestamp'], inplace=True)
 
-    # Transfer to UTC
+    # Convert to UTC
     df.index = df.index.tz_localize('Europe/Paris')
     df.index = df.index.tz_convert(None)
 
@@ -1250,7 +1247,10 @@ def terna_file_to_initial_dataframe(filepath):
         df["Generation [MWh]"] = pd.to_numeric(df["Generation [MWh]"])
     except:
         # In the case of an exception, treat the file as excel.
-        df = pd.read_excel(filepath, header=1)
+        try:
+            df = pd.read_excel(filepath, header=1)
+        except xlrd.XLRDError:
+            df = pd.DataFrame()
 
     return df
 
@@ -1276,62 +1276,86 @@ def read_terna(filepath, url, headers):
         A pandas multi-index dataframe containing the data from the specified file.
 
     """
-    # Reading the file into a pandas dataframe
+    # Files from 2010-2011 are in tsv format, we ignore them
+    filedate = datetime.strptime(filepath.split(os.sep)[-1].split('_')[0],
+                                 '%Y-%m-%d').date()
+    if filedate < date(2011, 2, 1):
+        return pd.DataFrame()
 
+    # Reading the file into a pandas dataframe
     df = terna_file_to_initial_dataframe(filepath)
 
-    # Casting the "Date/Time" column to datetime
-    df["Date/Hour"] = pd.to_datetime(df["Date/Hour"])
+    if df.empty:
+        return df
 
-    # Setting the index to "Date/Hour"
+    # Rename columns to match conventions
+    renamer = {
+        'Date/Hour': 'timestamp',
+        'Bidding Area': 'region',
+        'Type': 'variable',
+        'Generation [MWh]': 'values'
+    }
+    df.rename(columns=renamer, inplace=True)
+
+    # Casting the timestamp column to datetime and set it as index
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df.set_index('timestamp', append=False, inplace=True)
+
+    # Some files contain data for different date than they should, in which
+    # case the link to the file had a different date than what we see after 
+    # opening the file. So for the day they are supposed to represent there is 
+    # no data and for the day they contain there is duplicate data.
+    # We skip these files alltogether.
+    if not (df.index.date == filedate).all():
+        return pd.DataFrame()
 
     # Renaming the bidding area names to conform to the codes from areas.csv
-    df["Bidding Area"] = "IT_" + df["Bidding Area"]
+    df["region"] = "IT_" + df["region"]
 
-    
-    # The dictionary mapping energy types from the file to the variable - attribute pairs
-    # in the final format
-    solar_and_eolic_types = {
+    # Renaming and filtering out wind and solar
+    # "PV Estimated" are solar panels connected to the distribution grid
+    # "PV Measured" are those connected to transmission grid
+    renewables = {
         "Wind" : ("wind_onshore", "generation_actual"),
-        "Photovoltaic Estimated" : ("solar", "generation_forecast"),
-        "Photovoltaic Measured" : ("solar", "generation_actual")
+        "Photovoltaic Estimated" : ("solar", "generation_actual_tso"),
+        "Photovoltaic Measured" : ("solar", "generation_actual_dso")
     }
 
-    # Keeping only the data for solar and eolic sources
-    df = df.loc[df["Type"].isin(solar_and_eolic_types.keys()), :]
-    
+    df = df.loc[df['variable'].isin(renewables.keys()), :]
+
+    for k, v in renewables.items():
+        df.loc[df['variable'] == k, 'attribute'] = v[1]
+        df.loc[df['variable'] == k, 'variable'] = v[0]
+
     # Reshaping the data so that each combination of a bidding area and type
     # is represented as a column of its own. 
-    # The new column names are formatted as follows: "Generation [MWh]:{area_code}:{type}"
-    df = df.pivot_table(index=["Date/Hour"], columns=["Bidding Area","Type"], aggfunc='first')
-    df.columns = df.columns.map(lambda x: '{}:{}:{}'.format(x[0], x[1], x[2]))
-    
-    # Note that at this point the "Date/Hour" column has become the frame's index.
+    stacked = ['region', 'variable', 'attribute']
+    df.set_index(stacked, append=True, inplace=True)
+    df = df['values'].unstack(stacked)
 
-    # Creating a mapping from column names to the corresponding multiindex hierarchy
-    area_codes = ["IT_CNOR", "IT_CSUD", "IT_NORD", "IT_SARD", "IT_SICI", "IT_SUD"]
-    column_map = {}
-    for area_code in area_codes:
-        for energy_type in solar_and_eolic_types:
-            variable, attribute = solar_and_eolic_types[energy_type]
-            column_name = "Generation [MWh]:{}:{}".format(area_code, energy_type)
-            column_map[column_name] = {
-                "region" : area_code,
-                "variable" : variable, 
-                "attribute" : attribute,
-                "source" : "Terna",
-                "web" : url,
-                "unit" : "MWh"
-            }
+    # drop autumn dst hours as they contain inconsistent data (apparently 2:00 and 3:00 are
+    # added up and reported as value for 2:00). The 2 hours will later be interpolated
+    dst_transitions_autumn = [
+        d.replace(hour=2)
+        for d in pytz.timezone('Europe/Rome')._utc_transition_times
+        if d.year >= 2000 and d.month == 10]
+    df = df.loc[~df.index.isin(dst_transitions_autumn)]
 
-    # Drop any column not in the column mapping
-    df = df[list(column_map.keys())]
+    # Covert to UTC
+    df.index = df.index.tz_localize('Europe/Rome')
+    df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    tuples = [tuple(column_map[col][level] for level in headers)
-              for col in df.columns]
+    # add source and url to the columns.
+    append_headers = {'source': 'Terna', 'unit': 'MW'}
+    # Note: pd.concat inserts new MultiIndex values infront of the old ones
+    df = pd.concat([df],
+                   keys=[tuple([*append_headers.values(), url])],
+                   names=[*append_headers.keys(), 'web'],
+                   axis='columns')
 
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    # reorder and sort columns
+    df = df.reorder_levels(headers, axis=1)
+    df.sort_index(axis=1, inplace=True)
 
     return df
 
@@ -1377,6 +1401,7 @@ def read(data_path, areas, source_name, variable_name, res_key,
 
     files_existing = sum([len(files) for r, d, files in os.walk(variable_dir)])
     files_success = 0
+    update_progress(files_success, files_existing)
 
     # Check if there are folders for variable_name
     if not os.path.exists(variable_dir):
@@ -1416,15 +1441,13 @@ def read(data_path, areas, source_name, variable_name, res_key,
         if os.path.getsize(filepath) < 128:
             logger.warning('%s \n file is smaller than 128 Byte. It is probably'
                            ' empty and will thus be skipped from reading',
-                           filepath)
+                           files[0])
         else:
             logger.debug('reading data:\n\t '
                          'Source:   %s\n\t '
                          'Variable: %s\n\t '
                          'Filename: %s',
                          source_name, variable_name, files[0])
-
-            update_progress(files_success, files_existing)
 
             url = param_dict['web']
 
@@ -1466,6 +1489,10 @@ def read(data_path, areas, source_name, variable_name, res_key,
                 data_to_add = read_apg(filepath, url, headers)
             elif source_name == "Terna":
                 data_to_add = read_terna(filepath, url, headers)
+
+            if data_to_add.empty:
+                logger.warning('Cannot read file %s', files[0])
+                continue
 
             if data_set.empty:
                 data_set = data_to_add

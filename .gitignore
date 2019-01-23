@@ -20,6 +20,9 @@ temp
 .ipynb_checkpoints/
 *.pyc
 
+# chromedriver (required for Scraping of Terna URLs)
+chromedriver
+
 # files to include explicitly
 !notation.csv
 !areas.csv

@@ -487,17 +487,21 @@ RTE:
 
 Terna:
     generation_by_source:
-        url: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
-        web: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
         url_params_template: 
         frequency: daily
-        start: 2010-02-24
+# In total, data is available from May 2010 until recently, but there is a large gap in 2011-2012 and since 2016, data 
+# is available from ENTSO-E transparency, so we use 2012-2016. Furthermore, the 2010-211 data wold qu a ffeent read function,
+# as the fles arein  tsv, not xls/xml
+        start: 2010-05-25
         end: recent
+#        start: 2012-07-17
+#        end: 2015-12-31
         filetype: xls
-        filename: "{u_start}_{u_end}_generation_by_source.xls"
+        filename: "{u_start}_terna.xls"
         method: scrape
         resolution:
             - 60min
+        web: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
 
 #
 # For the Following sources, the download/read has not yet been implemented

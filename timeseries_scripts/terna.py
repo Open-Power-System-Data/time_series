@@ -20,7 +20,10 @@ from selenium.common.exceptions import StaleElementReferenceException
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import logging
 
+logger = logging.getLogger(__name__)
+logger.setLevel('DEBUG')
 
 def get_driver_for_terna():
     """ 
@@ -789,7 +792,7 @@ def collect_urls(start_date, end_date, collected={}, subperiods=[]):
         date = start_date + datetime.timedelta(days=i)
         date_key = (date.year, date.month, date.day)
         if date_key not in collected and date_key not in no_data_dates:
-            print("Missing date: ", date)
+            logger.info("No URL for %s", date)
             missing_dates += [date]
             all_the_dates = False
 
@@ -816,7 +819,7 @@ def collect_urls(start_date, end_date, collected={}, subperiods=[]):
 
     return (collected, missing_dates, no_duplicates)
 
-def read_recorded(start, end):
+def read_recorded(path, start, end):
     """
     Read the urls from the database located in recorded_terna_urls.csv
     
@@ -839,11 +842,11 @@ def read_recorded(start, end):
 
     """
     # Reading the data from the csv database file
-    database_df = pd.read_csv("recorded_terna_urls.csv", header=0, squeeze=True)
-    database_df["Date"] = pd.to_datetime(database_df["Date"]).dt.date
+    database_df = pd.read_csv(path, header=0, squeeze=True, parse_dates=["date"], dayfirst=False)
+    database_df["date"] = database_df["date"].dt.date
 
-    database_start = database_df["Date"].min()
-    database_end = database_df["Date"].max()
+    database_start = database_df["date"].min()
+    database_end = database_df["date"].max()
 
     if start > database_end:
         # If the user requested the dates which are out of the scope 
@@ -854,7 +857,7 @@ def read_recorded(start, end):
     # [database_start, database_end] and [start, end].
     # This will cover the range [start, min(database_end, end)]
     # and leave [min(database_end, end) + 1 day, end] as the period to cover later, if desired so.
-    selected_df = database_df[(database_df["Date"] >= start) & (database_df["Date"] <= end)]
+    selected_df = database_df[(database_df["date"] >= start) & (database_df["date"] <= end)]
 
     recorded = dict()
     for row in selected_df.itertuples():
