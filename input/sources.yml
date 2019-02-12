@@ -489,16 +489,18 @@ APG:
 
 RTE:
     generation_by_source:
-        url_template: http://clients.rte-france.com/servlets/RealProdServlet
+        url_template: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def/download/
         url_params_template:
-            annee: '{u_start:%Y}'
-        frequency: yearly
-        start: 2014-01-01 # real start date is 2014-12-16. download.py only works with beginning of year though.
+            format: csv
+            timezone: UTC
+            use_labels_for_header: "true"
+        frequency: complete
+        start: 2012-01-01
         end: recent
-        filetype: zip #xls
+        filetype: csv
         resolution:
-            - 60min
-        web: http://clients.rte-france.com/lang/an/visiteurs/vie/prod/realisation_production.jsp
+            - 30min
+        web: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def
 
 Terna:
     generation_by_source:

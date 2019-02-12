@@ -1094,72 +1094,56 @@ def read_apg(filepath, url, headers):
 
 
 def read_rte(filepath, variable_name, url, headers):
-    '''Read a file from RTE into a DataFrame'''
-
-    # pandas.read_csv infers the table dimensions from the header row.
-    # Since the first row uses only one column, it needs to be read separately
-    # in order not to mess up the DataFrame
-    df1 = pd.read_csv(
+    cols = ['Date', 'Heure', 'Consommation (MW)', 'Prévision J-1 (MW)',
+            'Eolien (MW)', 'Solaire (MW)']
+    df = pd.read_csv(
         filepath,
-        sep='\t',
-        encoding='cp1252',
-        compression='zip',
-        nrows=1,
-        header=None
-    )
-    df2 = pd.read_csv(
-        filepath,
-        sep='\t',
-        encoding='cp1252',
-        compression='zip',
-        skiprows=[0],
-        header=None,
-        usecols=list(range(0, 13))
+        sep=';',
+        encoding='utf-8',
+        header=0,
+        index_col='timestamp',
+        # there eis also a column with UTC but it is incorrect
+        parse_dates={'timestamp': ['Date', 'Heure']},
+        dayfirst=True,
+        usecols=cols
     )
 
-    # Glue the DataFrames together
-    df = pd.concat([df1, df2], ignore_index=True)
+    #  filter out quarter-hourly oberservations
+    df = df.loc[df.index.minute.isin([0, 30]), :]
 
-    # set column names
-    df = df.rename(columns=df.iloc[1])
+    df.sort_index(axis='index', inplace=True)
 
-    # strip the cells with dates of any other text
-    df['Heures'] = df['Heures'].str.lstrip('Données de réalisation du ')
+    # drop 1 hour after spring dst as it contains inconsistent data (copy of
+    # hour before). The 1 hour will later be interpolated
+    dst_transitions_spring = [
+        dd for d in pytz.timezone('Europe/Paris')._utc_transition_times
+        if d.year >= 2000 and d.month == 3
+        for dd in (d.replace(hour=2, minute=0), d.replace(hour=2, minute=30))]
+    df = df.loc[~df.index.isin(dst_transitions_spring)]
 
-    # fill an extra column with corresponding dates.
-    df['Dates'] = np.nan
-    slicer = df['Heures'].str.match('\d{2}/\d{2}/\d{4}')
-    df['Dates'] = df['Heures'].loc[slicer]
-    df['Dates'].fillna(method='ffill', axis=0, inplace=True, limit=25)
-
-    # drop all rows not containing data (no time-format in first column)
-    df = df.loc[df['Heures'].str.len() == 11]
-
-    # drop daylight saving time hours (no data there)
-    df = df.loc[(df['Éolien terrestre'] != '*') & (df['Solaire'] != '*')]
-
-    # just display beginning of hours
-    df['Heures'] = df['Heures'].str[:5]
-
-    # construct full date to later use as index
-    df['timestamp'] = df['Dates'] + ' ' + df['Heures']
-    df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True,)
-
-    # drop autumn dst hours as they contain inconsistent data (none or copy of
-    # hour before). The 2 hours will later be interpolated
-    dst_transitions_autumn = [
-        d.replace(hour=2)
-        for d in pytz.timezone('Europe/Paris')._utc_transition_times
-        if d.year >= 2000 and d.month == 10]
-    df = df.loc[~df['timestamp'].isin(dst_transitions_autumn)]
-    df.set_index(df['timestamp'], inplace=True)
-
-    # Convert to UTC
-    df.index = df.index.tz_localize('Europe/Paris')
+    # Make sure there are no ambiguous or nonexistent times
+    dst_arr = np.zeros(len(df.index), dtype=bool)
+    df.index = df.index.tz_localize('Europe/Paris', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
     colmap = {
-        'Éolien terrestre': {
+        'Consommation (MW)': {
+            'variable': 'load',
+            'region': 'FR',
+            'attribute': 'tso_actual',
+            'source': 'RTE',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Prévision J-1 (MW)': {
+            'variable': 'load',
+            'region': 'FR',
+            'attribute': 'tso_day_ahead_forecast',
+            'source': 'RTE',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Eolien (MW)': {
             'variable': 'wind_onshore',
             'region': 'FR',
             'attribute': 'generation_actual',
@@ -1167,7 +1151,7 @@ def read_rte(filepath, variable_name, url, headers):
             'web': url,
             'unit': 'MW'
         },
-        'Solaire': {
+        'Solaire (MW)': {
             'variable': 'solar',
             'region': 'FR',
             'attribute': 'generation_actual',
