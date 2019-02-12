@@ -7,10 +7,9 @@
 #
 ENTSO-E Transparency FTP:
     Actual Generation per Production Type:
-        address: '62.209.222.9'
-        user: TP_export
-        passwd: eG75pLwgyfyQLzjJ
-        path: export/export/AggregatedGenerationPerType
+        host: 'sftp-transparency.entsoe.eu'
+        port: 22
+        path: TP_export/AggregatedGenerationPerType/
         filename: '{u_start.year}_{u_start.month}_AggregatedGenerationPerType.csv'
         frequency: monthly
         start: 2014-12-01
@@ -40,10 +39,9 @@ ENTSO-E Transparency FTP:
             unit: MW
         geo: country
     Actual Total Load:
-        address: '62.209.222.9'
-        user: TP_export
-        passwd: eG75pLwgyfyQLzjJ
-        path: export/export/ActualTotalLoad
+        host: 'sftp-transparency.entsoe.eu'
+        port: 22
+        path: TP_export/ActualTotalLoad/
         filename: '{u_start.year}_{u_start.month}_ActualTotalLoad.csv'
         frequency: monthly
         start: 2014-12-01
@@ -67,10 +65,9 @@ ENTSO-E Transparency FTP:
             unit: MW
         geo: country
     Day Ahead Prices:
-        address: '62.209.222.9'
-        user: TP_export
-        passwd: eG75pLwgyfyQLzjJ
-        path: export/export/DayAheadPrices
+        host: 'sftp-transparency.entsoe.eu'
+        port: 22
+        path: TP_export/DayAheadPrices/
         filename: '{u_start.year}_{u_start.month}_DayAheadPrices.csv'
         frequency: monthly
         start: 2014-12-01

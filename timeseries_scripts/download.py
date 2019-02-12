@@ -22,12 +22,13 @@ import sys
 import time
 import pickle
 from . import terna
+import paramiko
 
 logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 
 
-def download(sources, data_path, input_path, archive_version=None,
+def download(sources, data_path, input_path, auth, archive_version=None,
              start_from_user=None, end_from_user=None,
              testmode=False):
     """
@@ -66,10 +67,20 @@ def download(sources, data_path, input_path, archive_version=None,
         download_archive(archive_version, data_path)
     else:
         for source_name, source_dict in sources.items():
-            if not source_name in ['Energinet.dk', 'ENTSO-E Power Statistics', 'CEPS']:
-                download_source(source_name, source_dict, data_path, input_path,
-                                start_from_user, end_from_user, testmode=testmode)
-            
+            # Skip download where it is not implemented
+            no_download = ['Energinet.dk', 'ENTSO-E Power Statistics', 'CEPS']
+            if source_name in no_download:
+                continue
+
+            if source_name in auth.keys(): 
+                source_auth = auth[source_name]
+            else:
+                source_auth=None
+
+            download_source(
+                source_name, source_dict, data_path, input_path, source_auth,
+                start_from_user, end_from_user, testmode=testmode)
+        
     return 
 
 
@@ -102,7 +113,7 @@ def download_archive(archive_version, data_path):
     return
 
 
-def download_source(source_name, source_dict, data_path, input_path,
+def download_source(source_name, source_dict, data_path, input_path, source_auth,
                     start_from_user=None, end_from_user=None,
                     testmode=False):
     """
@@ -238,6 +249,14 @@ def download_source(source_name, source_dict, data_path, input_path,
                             start=deviant['start'],
                             end=deviant['end'],
                         )
+            if source_name == 'ENTSO-E Transparency FTP':
+                transport = paramiko.Transport(param_dict['host'], param_dict['port'])
+                transport.connect(username=source_auth['username'], password=source_auth['password'])
+                sftp = paramiko.SFTPClient.from_transport(transport)
+
+            else:
+                sftp=None
+
             for s, e in zip(starts, ends):
                 downloaded, session = download_file(
                     source_name,
@@ -252,6 +271,8 @@ def download_source(source_name, source_dict, data_path, input_path,
                 if testmode:
                     break
 
+            if source_name == 'ENTSO-E Transarency FTP':
+                sftp.close()
     return
 
 def download_with_driver(
@@ -386,7 +407,8 @@ def download_file(
         start,
         end,
         filename=None,
-        session=None):
+        session=None,
+        sftp=None):
     """
     Prepare the Download of a single file.
     Make a directory to save the file to and check if it might have been
@@ -455,6 +477,11 @@ def download_file(
                 passwd=param_dict['passwd'],
                 path=param_dict['path']
             )
+            filename = filename.format(u_start=start, u_end=end)
+            filepath = os.path.join(container, filename)
+            sftp.get(param_dict['path'] + filename, filepath)
+            downloaded = True
+
         else:
             downloaded, session = download_request(
                 source_name,
