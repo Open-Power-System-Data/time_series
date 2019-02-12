@@ -107,33 +107,25 @@ OPSD:
 
 ENTSO-E Data Portal:
     load:
-        url_template: https://www.entsoe.eu/fileadmin/template/other/statistical_database/excel.php
+        url_template: https://docstore.entsoe.eu/Documents/Publications/Statistics/Monthly-hourly-load-values_2006-2015.xlsx
         url_params_template:
-            pid: '136'
-            opt_period: '0'
-            send: send
-            opt_Response: '99'
-            dataindx: '0'
-            opt_Month: '{u_start.month}'
-            opt_Year: '{u_start.year}'
-        frequency: monthly
+        frequency: complete
         start: 2006-01-01
         end: 2015-12-31
         filetype: xls
         resolution:
             - 60min
-        web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx  # Hourly load values of all countries for a specific month
+        web: https://www.entsoe.eu/data/power-stats/
 
 ENTSO-E Power Statistics:  # Automatic download not implemented
     load:
-        frequency: monthly
+        frequency: complete
         start: 2016-01-01
         end: recent
         filetype: xlsx
         resolution:
             - 60min
-        web: https://www.entsoe.eu/data/data-portal/consumption/Pages/default.aspx
-
+        web: https://www.entsoe.eu/data/power-stats/
 50Hertz:
     wind generation_actual pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile

@@ -502,34 +502,22 @@ def read_entso_e_statistics(filepath, url, headers):
     '''Read a file from ENTSO-E into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
-        header=10,
-        usecols='A, B, D, E, H, J, M:AQ'
+        header=18,
+        usecols='A, B, G, K, L, N, P:AU'
     )
 
-    df.drop(index=0, inplace=True)
-    renamer = {'Date Time (CET/CEST)': 'date', df.columns[1]: 'time'}
+    # Construct the index and set timezone
+    renamer = {df.columns[0]: 'date', df.columns[1]: 'time'}
     df.rename(columns=renamer, inplace=True)
-    df['time'] = df['time'].str[:5]
     df['date'] = df['date'].fillna(method='ffill').dt.strftime('%Y-%m-%d')
-
-    # fixes for individual rows
-    df.loc[df['date'] == '2017-12-31', 'time'] = [
-        "{:02d}:00".format(x) for x in range(0, 24)]
-    df.loc[df['date'] == '2018-03-25', 'time'] = [
-        "{:02d}:00".format(x) for x in range(-1, 24) if not x == 2]
-    df = df[df['time'] != '-1:00']
-
-    df.index = pd.to_datetime(df['date'] + ' ' + df['time'])
-    df.drop(columns=['date', 'time'], inplace=True)
-    df.rename(columns=lambda x: x[:2], inplace=True)
-
+    df.index = pd.to_datetime(df.pop('date') + ' ' + df.pop('time').str[:5])
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
     colmap = {
         'variable': 'load',
         'region': '{country}',
-        'attribute': 'entsoe_power_statistics',
+        'attribute': 'entsoe_power_statistics_actual',
         'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
@@ -544,58 +532,41 @@ def read_entso_e_statistics(filepath, url, headers):
 
 
 def read_entso_e_portal(filepath, url, headers):
-    '''Read a file from ENTSO-E into a DataFrame'''
+    '''Read a file from the old ENTSO-E Data Portal into a DataFrame'''
     df = pd.read_excel(
-        io=xlrd.open_workbook(filepath, logfile=open(os.devnull, 'w')),
-        header=9,  # 0 indexed, so the column names are actually in the 10th row
+        io=filepath,
+        header=3,  # 0 indexed, so the column names are actually in the 4th row
         skiprows=None,
-        # create MultiIndex from first 2 columns ['Country', 'Day']
+        # create MultiIndex from first 2 columns ['date', 'Country']
         index_col=[0, 1],
+        parse_dates={'date': ['Year', 'Month', 'Day']},
+        dayfirst=False,
         usecols=None,  # None means: parse all columns
-        na_values=['n.a.'],
-        engine='xlrd'
     )
 
-    df.columns.names = ['raw_hour']
+    # The "Coverage ratio"-column specifies for some countries scaling factor
+    # with which we should upscale the reported values
+    df = df.divide(df.pop('Coverage ratio'), axis='index') * 100
 
     # The original data has days and countries in the rows and hours in the
     # columns.  This rearranges the table, mapping hours on the rows and
     # countries on the columns.
-    df = df.stack(level='raw_hour').unstack(level='Country').reset_index()
+    df.columns.names = ['hour']
+    df = df.stack(level='hour').unstack(level='Country').reset_index()
 
-    # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc.
-    # during the year, but 3A:00:00, 3B:00:00 for the (possibely
-    # DST-transgressing) 3rd hour of every day in October, we truncate the
-    # hours column after 2 characters and replace letters which are there to
-    # indicate the order during fall DST-transition.
-    df['hour'] = df['raw_hour'].str[:2].str.replace(
-        'A', '').str.replace('B', '')
-    # Hours are indexed 1-24 by ENTSO-E, but pandas requires 0-23, so we
-    # deduct 1, i.e. the 3rd hour will be indicated by "2:00" rather than
-    # "3:00"
-    df['hour'] = (df['hour'].astype(int) - 1).astype(str)
-
-    df['timestamp'] = pd.to_datetime(df['Day'] + ' ' + df['hour'] + ':00')
+    # Create the timestamp column and set as index
+    df['timestamp'] = df.pop('date') + pd.to_timedelta(df.pop('hour'), unit='h')
     df.set_index('timestamp', inplace=True)
 
-    # Create a list of daylight savings time (DST)-transitions
-    dst_transitions = [
-        d.replace(hour=2)
-        for d in pytz.timezone('Europe/Berlin')._utc_transition_times
-        if d.year >= 2000]
+    # Delete values in DK and FR that should not exist 
+    df = df.loc[df.index!='2015-03-29 02:00', :]
 
-    # Drop 2nd occurence of 3rd hour appearing in October file
-    # except for the day of the actual autumn DST-transition.
-    df = df[~((df['raw_hour'] == '3B:00:00') & ~
-              (df.index.isin(dst_transitions)))]
+    # Delete values in DK that are obviously twice as high as they should be
+    df.loc[df.index.isin(['2014-10-26 02:00:00', '2015-10-25 02:00:00']),
+           'DK'] = np.nan
 
-    # Drop 3rd hour for (spring) DST-transition. October data
-    # is unaffected the format is 3A:00:00/3B:00:00.
-    df = df[~((df['raw_hour'] == '03:00:00') &
-              (df.index.isin(dst_transitions)))]
-
-    df.drop(['Day', 'hour', 'raw_hour'], axis=1, inplace=True)
-    df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
+    dst_arr = np.ones(len(df.index), dtype=bool)
+    df.index = df.index.tz_localize('CET', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
     renamer = {'DK_W': 'DK_1', 'UA_W': 'UA_west', 'NI': 'GB_NIR'}
@@ -604,7 +575,7 @@ def read_entso_e_portal(filepath, url, headers):
     colmap = {
         'variable': 'load',
         'region': '{country}',
-        'attribute': 'entsoe_power_statistics',
+        'attribute': 'entsoe_power_statistics_actual',
         'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
