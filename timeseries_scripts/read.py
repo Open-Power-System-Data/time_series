@@ -25,7 +25,6 @@ logger.setLevel('DEBUG')
 def read_entso_e_transparency(
         areas, filepath, variable_name, url, headers, res_key, cols, stacked,
         unstacked, geo, append_headers, **kwargs):
-    """
     Read a .csv file from ENTSO-E TRansparency into a DataFrame.
     Parameters
     ----------
@@ -62,7 +61,6 @@ def read_entso_e_transparency(
     ----------
     df: pandas.DataFrame
         The content of one file from PSE
-    """
 
     df_raw = pd.read_csv(
         filepath,
@@ -94,8 +92,7 @@ def read_entso_e_transparency(
     if variable_name == 'Day-ahead Prices':
         # Omit polish price data reported in EUR (keeping PLN prices)
         # (Before 2017-03-02, the data is very messy)
-        no_polish_euro = ~((df_raw['AreaName'] == 'PSE SA BZ') &
-                           (df_raw.index < pd.to_datetime('2017-03-02 00:00:00')))
+        no_polish_euro = ~(
         df_raw = df_raw.loc[no_polish_euro]
 
     # keep only entries for selected geographic entities as specified in
@@ -196,16 +193,13 @@ def read_pse(filepath, variable_name, url, headers):
     # Account for an error where an hour is jumped in the data, incrementing
     # the hour by one
     #time_int = df['Time'].str[:-3].astype(int)
-    #if (time_int time_int.shift(1) - 1).
-    #if (time_int == 24).any():
+    # if (time_int time_int.shift(1) - 1).
     #    logger.info(filepath)
     #    df = df[time_int != 24]
     if df['Date'][0] == 20130324:
         df['Time'] = [str(num) + ':00' for num in range(24)]
 
     # The hour from 01:00 - 02:00 (CET) should by PSE's logic be indexed
-    # by "02:00" (the endpoint), but at DST day in spring they use "03:00" in
-    # the files. Our routine requires it to be "01:00" (the start point).
     df['proto_timestamp'] = pd.to_datetime(
         df['Date'].astype(str) + ' ' + df['Time'])
     slicer = df['proto_timestamp'].isin(dst_transitions_spring)
