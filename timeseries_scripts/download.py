@@ -533,19 +533,25 @@ def download_request(
             u_end=end,
         )
 
-    for i in range(10):
+    if source_name == 'PSE':
+        attempts = 10
+    else:
+        attempts = 1
+
+    # For polish TSO PSE, sometimes the first attempt to download does not work,
+    # but later attempts will.
+    for i in range(attempts):
         resp = session.get(url, params=url_params)
-        if source_name == 'Terna':
-            break
         if resp.status_code == 200:
             break
-        else:
+        elif i == tries - 1:
+            downloaded = False
+            return downloaded, session
+        elif source_name == 'PSE':
             logger.warning(
-                'http status code %s, attempt %s, trying again in 1:10 minutes...', resp.status_code, i + 1)
+                'http status %s, attempt %s, trying again in 1:10 minutes...',
+                resp.status_code, i + 1)
             time.sleep(70)
-            if i == 9:
-                downloaded = False
-                return downloaded, session
 
     # Get the original filename
     try:
