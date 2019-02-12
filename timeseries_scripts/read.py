@@ -91,7 +91,7 @@ def read_entso_e_transparency(
         df_raw = df_raw[df_raw['ProductionType_Name'].isin(renewables.keys())]
         df_raw.replace({'ProductionType_Name': renewables}, inplace=True)
 
-    if variable_name == 'Day Ahead Prices':
+    if variable_name == 'Day-ahead Prices':
         # Omit polish price data reported in EUR (keeping PLN prices)
         # (Before 2017-03-02, the data is very messy)
         no_polish_euro = ~((df_raw['AreaName'] == 'PSE SA BZ') &

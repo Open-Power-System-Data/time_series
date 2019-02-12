@@ -60,11 +60,37 @@ ENTSO-E Transparency FTP:
             - region
         unstacked: variable
         append_headers:
-            attribute: entsoe_transparency
+            attribute: entsoe_transparency_actual
             source: ENTSO-E Transparency
             unit: MW
         geo: country
-    Day Ahead Prices:
+    Day-ahead Total Load Forecast:
+        host: 'sftp-transparency.entsoe.eu'
+        port: 22
+        path: TP_export/DayAheadTotalLoadForecast/
+        filename: '{u_start.year}_{u_start.month}_DayAheadTotalLoadForecast.csv'
+        frequency: monthly
+        start: 2014-12-01
+        end: recent
+        filetype: csv
+        resolution:
+            - 15min
+            - 30min
+            - 60min
+        web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
+        cols:
+            DateTime: None
+            AreaName: None
+            TotalLoadValue: load
+        stacked:
+            - region
+        unstacked: variable
+        append_headers:
+            attribute: entsoe_transparency_day_ahead_forecast
+            source: ENTSO-E Transparency
+            unit: MW
+        geo: country
+    Day-ahead Prices:
         host: 'sftp-transparency.entsoe.eu'
         port: 22
         path: TP_export/DayAheadPrices/
