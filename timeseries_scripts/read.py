@@ -1,11 +1,11 @@
-"""
+'''
 Open Power System Data
 
 Timeseries Datapackage
 
 read.py : read time series files
 
-"""
+'''
 import pytz
 import yaml
 import os
@@ -25,6 +25,7 @@ logger.setLevel('DEBUG')
 def read_entso_e_transparency(
         areas, filepath, variable_name, url, headers, res_key, cols, stacked,
         unstacked, geo, append_headers, **kwargs):
+    '''
     Read a .csv file from ENTSO-E TRansparency into a DataFrame.
     Parameters
     ----------
@@ -61,6 +62,7 @@ def read_entso_e_transparency(
     ----------
     df: pandas.DataFrame
         The content of one file from PSE
+    '''
 
     df_raw = pd.read_csv(
         filepath,
@@ -93,6 +95,8 @@ def read_entso_e_transparency(
         # Omit polish price data reported in EUR (keeping PLN prices)
         # (Before 2017-03-02, the data is very messy)
         no_polish_euro = ~(
+            (df_raw['AreaName'] == 'PSE SA BZ') &
+            (df_raw.index < pd.to_datetime('2017-03-02 00:00:00')))
         df_raw = df_raw.loc[no_polish_euro]
 
     # keep only entries for selected geographic entities as specified in
@@ -132,7 +136,7 @@ def read_entso_e_transparency(
     df.sort_index(axis=1, inplace=True)
 
     # throw out obs with wrong timestamp
-    #no_gaps = pd.DatetimeIndex(start=df.index[0],
+    # no_gaps = pd.DatetimeIndex(start=df.index[0],
     #                           end=df.index[-1],
     #                           freq=res_key)
     #df = df.reindex(index=no_gaps)
@@ -141,7 +145,7 @@ def read_entso_e_transparency(
 
 
 def read_pse(filepath, variable_name, url, headers):
-    """
+    '''
     Read a .csv file from PSE into a DataFrame.
 
     Parameters
@@ -161,7 +165,7 @@ def read_pse(filepath, variable_name, url, headers):
     df: pandas.DataFrame
         The content of one file from PSE
 
-    """
+    '''
 
     df = pd.read_csv(
         filepath,
@@ -194,12 +198,15 @@ def read_pse(filepath, variable_name, url, headers):
     # the hour by one
     #time_int = df['Time'].str[:-3].astype(int)
     # if (time_int time_int.shift(1) - 1).
+    # if (time_int == 24).any():
     #    logger.info(filepath)
     #    df = df[time_int != 24]
     if df['Date'][0] == 20130324:
         df['Time'] = [str(num) + ':00' for num in range(24)]
 
     # The hour from 01:00 - 02:00 (CET) should by PSE's logic be indexed
+    # by "02:00" (the endpoint), but at DST day in spring they use "03:00" in
+    # the files. Our routine requires it to be "01:00" (the start point).
     df['proto_timestamp'] = pd.to_datetime(
         df['Date'].astype(str) + ' ' + df['Time'])
     slicer = df['proto_timestamp'].isin(dst_transitions_spring)
@@ -281,6 +288,7 @@ def read_ceps(filepath, variable_name, url, headers):
     df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
     return df
+
 
 def read_elia(filepath, variable_name, url, headers):
     '''Read a file from Elia into a DataFrame'''
@@ -552,8 +560,8 @@ def read_entso_e_portal(filepath, url, headers):
     df['timestamp'] = df.pop('date') + pd.to_timedelta(df.pop('hour'), unit='h')
     df.set_index('timestamp', inplace=True)
 
-    # Delete values in DK and FR that should not exist 
-    df = df.loc[df.index!='2015-03-29 02:00', :]
+    # Delete values in DK and FR that should not exist
+    df = df.loc[df.index != '2015-03-29 02:00', :]
 
     # Delete values in DK that are obviously twice as high as they should be
     df.loc[df.index.isin(['2014-10-26 02:00:00', '2015-10-25 02:00:00']),
@@ -1165,8 +1173,9 @@ def read_rte(filepath, variable_name, url, headers):
 
     return df
 
+
 def terna_file_to_initial_dataframe(filepath):
-    """
+    '''
     Parse the xml or read excel directly, 
     returning the data from the file in a simple-index dataframe.
 
@@ -1183,17 +1192,18 @@ def terna_file_to_initial_dataframe(filepath):
     df: pandas.DataFrame
         A pandas dataframe containing the data from the specified file.
 
-    """
+    '''
     # First, we'll try to parse the file as if it is xml.
     try:
         excelHandler = ExcelHandler()
         parse(filepath, excelHandler)
 
         # Create the dataframe from the parsed data
-        df = pd.DataFrame(excelHandler.tables[0][2:], columns=excelHandler.tables[0][1])
+        df = pd.DataFrame(excelHandler.tables[0][2:],
+                          columns=excelHandler.tables[0][1])
 
-        # Convert the "Generation [MWh]" column to numeric
-        df["Generation [MWh]"] = pd.to_numeric(df["Generation [MWh]"])
+        # Convert the "Generation [MWh]"-column to numeric
+        df['Generation [MWh]'] = pd.to_numeric(df['Generation [MWh]'])
     except:
         # In the case of an exception, treat the file as excel.
         try:
@@ -1204,10 +1214,8 @@ def terna_file_to_initial_dataframe(filepath):
     return df
 
 
-
-
 def read_terna(filepath, url, headers):
-    """
+    '''
     Read a file from Terna into a dataframe
 
     Parameters:
@@ -1222,9 +1230,10 @@ def read_terna(filepath, url, headers):
     Returns:
     ----------
     df: pandas.DataFrame
-        A pandas multi-index dataframe containing the data from the specified file.
+        A pandas multi-index dataframe containing the data from the specified
+        file.
 
-    """
+    '''
     # Files from 2010-2011 are in tsv format, we ignore them
     filedate = datetime.strptime(filepath.split(os.sep)[-1].split('_')[0],
                                  '%Y-%m-%d').date()
@@ -1247,27 +1256,27 @@ def read_terna(filepath, url, headers):
     df.rename(columns=renamer, inplace=True)
 
     # Casting the timestamp column to datetime and set it as index
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
     df.set_index('timestamp', append=False, inplace=True)
 
     # Some files contain data for different date than they should, in which
-    # case the link to the file had a different date than what we see after 
-    # opening the file. So for the day they are supposed to represent there is 
+    # case the link to the file had a different date than what we see after
+    # opening the file. So for the day they are supposed to represent there is
     # no data and for the day they contain there is duplicate data.
     # We skip these files alltogether.
     if not (df.index.date == filedate).all():
         return pd.DataFrame()
 
     # Renaming the bidding area names to conform to the codes from areas.csv
-    df["region"] = "IT_" + df["region"]
+    df['region'] = 'IT_' + df['region']
 
     # Renaming and filtering out wind and solar
     # "PV Estimated" are solar panels connected to the distribution grid
     # "PV Measured" are those connected to transmission grid
     renewables = {
-        "Wind" : ("wind_onshore", "generation_actual"),
-        "Photovoltaic Estimated" : ("solar", "generation_actual_tso"),
-        "Photovoltaic Measured" : ("solar", "generation_actual_dso")
+        'Wind': ('wind_onshore', 'generation_actual'),
+        'Photovoltaic Estimated': ('solar', 'generation_actual_tso'),
+        'Photovoltaic Measured': ('solar', 'generation_actual_dso')
     }
 
     df = df.loc[df['variable'].isin(renewables.keys()), :]
@@ -1277,13 +1286,14 @@ def read_terna(filepath, url, headers):
         df.loc[df['variable'] == k, 'variable'] = v[0]
 
     # Reshaping the data so that each combination of a bidding area and type
-    # is represented as a column of its own. 
+    # is represented as a column of its own.
     stacked = ['region', 'variable', 'attribute']
     df.set_index(stacked, append=True, inplace=True)
     df = df['values'].unstack(stacked)
 
-    # drop autumn dst hours as they contain inconsistent data (apparently 2:00 and 3:00 are
-    # added up and reported as value for 2:00). The 2 hours will later be interpolated
+    # drop autumn dst hours as they contain inconsistent data
+    # (apparently 2:00 and 3:00 are added up and reported as value for 2:00).
+    # The 2 hours will later be interpolated
     dst_transitions_autumn = [
         d.replace(hour=2)
         for d in pytz.timezone('Europe/Rome')._utc_transition_times
@@ -1311,7 +1321,7 @@ def read_terna(filepath, url, headers):
 
 def read(data_path, areas, source_name, variable_name, res_key,
          headers, param_dict, start_from_user=None, end_from_user=None):
-    """
+    '''
     For the sources specified in the sources.yml file, pass each downloaded
     file to the correct read function.
 
@@ -1341,7 +1351,7 @@ def read(data_path, areas, source_name, variable_name, res_key,
     data_set: pandas.DataFrame
         A DataFrame containing the combined data for variable_name 
 
-    """
+    '''
     data_set = pd.DataFrame()
 
     variable_dir = os.path.join(data_path, source_name, variable_name)
@@ -1436,7 +1446,7 @@ def read(data_path, areas, source_name, variable_name, res_key,
                     filepath, variable_name, url, headers)
             elif source_name == 'APG':
                 data_to_add = read_apg(filepath, url, headers)
-            elif source_name == "Terna":
+            elif source_name == 'Terna':
                 data_to_add = read_terna(filepath, url, headers)
 
             if data_to_add.empty:
@@ -1493,7 +1503,7 @@ def update_progress(count, total):
     count : int
         number of files that have been read so far
     total : int
-        total number aif files
+        total number of files
 
     Returns
     ----------
@@ -1502,16 +1512,16 @@ def update_progress(count, total):
     '''
 
     barLength = 50  # Modify this to change the length of the progress bar
-    status = ""
+    status = ''
     progress = count / total
     if isinstance(progress, int):
         progress = float(progress)
     if progress >= 1:
         progress = 1
-        status = "Done...\r\n"
+        status = 'Done...\r\n'
     block = int(round(barLength * progress))
-    text = "\rProgress: {0} {1}/{2} files {3}".format(
-        "░" * block + "█" * (barLength - block), count, total, status)
+    text = '\rProgress: {0} {1}/{2} files {3}'.format(
+        '░' * block + '█' * (barLength - block), count, total, status)
     sys.stdout.write(text)
     sys.stdout.flush()
 

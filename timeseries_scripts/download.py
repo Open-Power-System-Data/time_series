@@ -1,11 +1,11 @@
-"""
+'''
 Open Power System Data
 
 Timeseries Datapackage
 
 download.py : download time series files
 
-"""
+'''
 
 import argparse
 from datetime import datetime, date, time, timedelta
@@ -28,10 +28,16 @@ logger = logging.getLogger(__name__)
 logger.setLevel('DEBUG')
 
 
-def download(sources, data_path, input_path, auth, archive_version=None,
-             start_from_user=None, end_from_user=None,
-             testmode=False):
-    """
+def download(
+    sources,
+    data_path,
+    input_path,
+    auth,
+    archive_version=None,
+    start_from_user=None,
+    end_from_user=None,
+    testmode=False):
+    '''
     Load YAML file with sources from disk, and download all files for each
     source into the given data_path.
 
@@ -47,20 +53,21 @@ def download(sources, data_path, input_path, auth, archive_version=None,
         Start of period for which to download the data.
     end_from_user : datetime.date, default None
         End of period for which to download the data.
-    testmode: only download 1 file per source to check if the URLs still still work
+    testmode: only download 1 file per source to check if the URLs still still
+        work
 
     Returns
     ----------
     None
 
-    """
+    '''
 
     for name, date in {'end_from_user': end_from_user,
                        'start_from_user': start_from_user}.items():
         if date and date > datetime.now().date():
             logger.warning('%s given was %s, must be smaller than %s, '
-                        'we have no data for the future!',
-                        name, date, datetime.today().date())
+                           'we have no data for the future!',
+                           name, date, datetime.today().date())
             return
 
     if archive_version:
@@ -72,24 +79,24 @@ def download(sources, data_path, input_path, auth, archive_version=None,
             if source_name in no_download:
                 continue
 
-            if source_name in auth.keys(): 
+            if source_name in auth.keys():
                 source_auth = auth[source_name]
             else:
-                source_auth=None
+                source_auth = None
 
             download_source(
                 source_name, source_dict, data_path, input_path, source_auth,
                 start_from_user, end_from_user, testmode=testmode)
-        
-    return 
+
+    return
 
 
 def download_archive(archive_version, data_path):
-    """
+    '''
     Download archived data from the OPSD server. See download()
     for info on parameters.
 
-    """
+    '''
 
     filepath = os.path.join(data_path, 'original_data.zip')
 
@@ -107,16 +114,23 @@ def download_archive(archive_version, data_path):
         logger.info('Extracted data to {}'.format(data_path))
 
     else:
-        logger.warning('%s already exists. Delete it if you want to download again',
-                    filepath)
+        logger.warning(
+            '%s already exists. Delete it if you want to download again',
+            filepath)
 
     return
 
 
-def download_source(source_name, source_dict, data_path, input_path, source_auth,
-                    start_from_user=None, end_from_user=None,
-                    testmode=False):
-    """
+def download_source(
+    source_name,
+    source_dict,
+    data_path,
+    input_path,
+    source_auth,
+    start_from_user=None,
+    end_from_user=None,
+    testmode=False):
+    '''
     Download all files for source_name as specified by the given
     source_dict into data_path.
 
@@ -137,7 +151,7 @@ def download_source(source_name, source_dict, data_path, input_path, source_auth
     ----------
     None
 
-    """
+    '''
 
     session = None
 
@@ -161,18 +175,21 @@ def download_source(source_name, source_dict, data_path, input_path, source_auth
             elif start_server < start_from_user < end_server:
                 start_server = start_from_user  # replace start_server
             else:
-                continue  # skip this variable from the source dict, relevant e.g. in Sweden
+                continue 
+                # skip this variable from the source dict, e.g. in Sweden
 
         if end_from_user:
             if end_from_user <= start_server:
-                continue  # skip this variable from the source dict, relevant e.g. in Sweden
+                continue 
+                # skip this variable from the source dict, e.g. in Sweden
             elif start_server < end_from_user < end_server:
                 end_server = end_from_user  # replace  end_server
             else:
                 pass  # do nothing
-            
-        if "method" in param_dict and param_dict["method"] == "scrape":
-            # In this case, the data have to be scraped from the website in a source-specific way.
+
+        if 'method' in param_dict and param_dict['method'] == 'scrape':
+            # In this case, the data have to be scraped from the website in a
+            # source-specific way.
             downloaded = download_with_driver(
                 source_name,
                 variable_name,
@@ -196,8 +213,8 @@ def download_source(source_name, source_dict, data_path, input_path, source_auth
                 filename=filename
             )
         else:
-            # In all other cases, the files on the servers usually contain the data for subperiods
-            # of some regular length (i.e. months or years available
+            # In all other cases, the files on the servers usually contain the
+            # data for subperiods of some regular length (i.e. months or years) 
             # Create lists of start- and enddates of periods represented in
             # individual files to be downloaded.
 
@@ -223,13 +240,13 @@ def download_source(source_name, source_dict, data_path, input_path, source_auth
                 ends = pd.DatetimeIndex([end_server])
 
             if starts[0].date() > start_server:
-                # make sure to include full first period, i.e. if start_server is 2014-12-14,
-                # set first start to 2014-01-01
+                # make sure to include full first period, i.e. if start_server
+                # is 2014-12-14, set first start to 2014-01-01
                 starts = starts.union([starts[0] - 1])
 
             if ends[-1].date() < end_server:
-                # make sure to include full last period, i.e. if end_server is 2018-01-14,
-                # set last end to 2018-01-31
+                # make sure to include full last period, i.e. if end_server
+                # is 2018-01-14, set last end to 2018-01-31
                 ends = ends.union([ends[-1] + 1])
 
             # else:
@@ -237,6 +254,31 @@ def download_source(source_name, source_dict, data_path, input_path, source_auth
             #    # Reasoning: The last hour of the year in UTC is already the first hour of the new year in CET
             #    starts = starts.union([starts[-1] + 1])
             #    ends = ends.union([ends[-1] + 1])
+
+            if source_name == 'ENTSO-E Transparency FTP':
+                transport = paramiko.Transport(
+                    param_dict['host'], param_dict['port'])
+                transport.connect(username=source_auth[
+                                  'username'], password=source_auth['password'])
+                sftp = paramiko.SFTPClient.from_transport(transport)
+
+            else:
+                sftp = None
+
+            for s, e in zip(starts, ends):
+                downloaded, session = download_file(
+                    source_name,
+                    variable_name,
+                    data_path,
+                    param_dict,
+                    start=s,
+                    end=e,
+                    filename=filename,
+                    session=session,
+                    sftp=sftp
+                )
+                if testmode:
+                    break
 
             if 'deviant_params' in param_dict:
                 for deviant in param_dict['deviant_params']:
@@ -249,31 +291,11 @@ def download_source(source_name, source_dict, data_path, input_path, source_auth
                             start=deviant['start'],
                             end=deviant['end'],
                         )
-            if source_name == 'ENTSO-E Transparency FTP':
-                transport = paramiko.Transport(param_dict['host'], param_dict['port'])
-                transport.connect(username=source_auth['username'], password=source_auth['password'])
-                sftp = paramiko.SFTPClient.from_transport(transport)
-
-            else:
-                sftp=None
-
-            for s, e in zip(starts, ends):
-                downloaded, session = download_file(
-                    source_name,
-                    variable_name,
-                    data_path,
-                    param_dict,
-                    start=s,
-                    end=e,
-                    filename=filename,
-                    session=session
-                )
-                if testmode:
-                    break
 
             if source_name == 'ENTSO-E Transarency FTP':
                 sftp.close()
     return
+
 
 def download_with_driver(
     source_name,
@@ -284,9 +306,9 @@ def download_with_driver(
     start,
     end,
     filename=None):
-    """
+    '''
     Decide which scraping function should download the data.
-   
+
 
     Parameters
     ----------
@@ -310,22 +332,23 @@ def download_with_driver(
     downloaded: bool
         True if all the files were downloaded, False otherwise
 
-    """
-   
-    if source_name == "Terna":
+    '''
+
+    if source_name == 'Terna':
         return download_Terna(variable_name, data_path, input_path, param_dict, start, end, filename)
 
+
 def download_Terna(
-        variable_name,
-        data_path,
-        input_path,
-        param_dict,
-        start,
-        end,
-        filename):
-    """
+    variable_name,
+    data_path,
+    input_path,
+    param_dict,
+    start,
+    end,
+    filename):
+    '''
     Download the files from the Tera page one by one
-    
+
     Extract the links from the database of recorded links.
     If that does not cover the paeriod [start, end],
     if extract_new_terna_links is set to False in processing.ipynb, stop,
@@ -350,18 +373,20 @@ def download_Terna(
     ----------
     None
 
-    """
-    
-    # If extract_new_terna_urls was set to False or not set at all, treat it as a False.
+    '''
+
+    # If extract_new_terna_urls was set to False or not set at all, treat it
+    # as a False.
     try:
-        extract_new = pickle.load(open("extract_new_terna_urls.pickle", "rb"))
+        extract_new = pickle.load(open('extract_new_terna_urls.pickle', 'rb'))
     except:
         extract_new = False
-    
+
     # First consult the database
     recorded_path = os.path.join(input_path, 'recorded_terna_urls.csv')
-    date_url_dictionary, start, end = terna.read_recorded(recorded_path, start, end)
-    
+    date_url_dictionary, start, end = terna.read_recorded(
+        recorded_path, start, end)
+
     # If the user wants to add the links not covered in the database
     if extract_new:
         # and such links do exist
@@ -382,34 +407,36 @@ def download_Terna(
             df.index.rename('date', inplace=True)
             df.to_csv(os.path.join(input_path, 'recorded_terna_urls.csv'),
                       date_format='%Y-%m-%d')
-    
+
     # Now, download the files from the links
     session = None
     all_downloaded = True
     for date_key in date_url_dictionary:
         url = date_url_dictionary[date_key]
-        param_dict["url_template"] = url
-        param_dict["url_params_template"] = None
+        param_dict['url_template'] = url
+        param_dict['url_params_template'] = None
         year, month, day = date_key
         the_date = date(year=year, month=month, day=day)
-        #print("download for: {}".format(the_date))
-        downloaded, session = download_file("Terna", variable_name, data_path, param_dict, the_date, the_date, filename, session)
-        #print("\t", downloaded)
+        #print('download for: {}'.format(the_date))
+        downloaded, session = download_file(
+            'Terna', variable_name, data_path, param_dict, the_date, the_date, filename, session)
+        #print('\t', downloaded)
         all_downloaded = downloaded and all_downloaded
 
     return
-        
+
+
 def download_file(
-        source_name,
-        variable_name,
-        data_path,
-        param_dict,
-        start,
-        end,
-        filename=None,
-        session=None,
-        sftp=None):
-    """
+    source_name,
+    variable_name,
+    data_path,
+    param_dict,
+    start,
+    end,
+    filename=None,
+    session=None,
+    sftp=None):
+    '''
     Prepare the Download of a single file.
     Make a directory to save the file to and check if it might have been
     downloaded already
@@ -439,7 +466,7 @@ def download_file(
         True if download successful, False otherwise.
     session : requests.session
 
-    """
+    '''
     if session is None:
         session = requests.session()
 
@@ -467,16 +494,6 @@ def download_file(
     count_files = len(os.listdir(container))
     if count_files == 0:
         if source_name == 'ENTSO-E Transparency FTP':
-            downloaded = download_ftp(
-                start,
-                end,
-                filename,
-                container,
-                address=param_dict['address'],
-                user=param_dict['user'],
-                passwd=param_dict['passwd'],
-                path=param_dict['path']
-            )
             filename = filename.format(u_start=start, u_end=end)
             filepath = os.path.join(container, filename)
             sftp.get(param_dict['path'] + filename, filepath)
@@ -512,15 +529,15 @@ def download_file(
 
 
 def download_request(
-        source_name,
-        start,
-        end,
-        session,
-        filename,
-        container,
-        url_template,
-        url_params_template):
-    """
+    source_name,
+    start,
+    end,
+    session,
+    filename,
+    container,
+    url_template,
+    url_params_template):
+    '''
     Download a single file via HTTP get.
     Build the url from parameters and save the file to disk under it's original
     filename 
@@ -540,7 +557,7 @@ def download_request(
         True if download successful, False otherwise.
     session : requests.session
 
-    """
+    '''
     url_params = {}  # A dict for URL-parameters
 
     # For most sources, we can use HTTP get method with parameters-dict
