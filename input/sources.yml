@@ -60,7 +60,7 @@ ENTSO-E Transparency FTP:
             - region
         unstacked: variable
         append_headers:
-            attribute: entsoe_transparency_actual
+            attribute: actual_entsoe_transparency
             source: ENTSO-E Transparency
             unit: MW
         geo: country

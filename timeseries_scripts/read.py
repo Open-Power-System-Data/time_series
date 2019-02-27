@@ -456,7 +456,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK-Vest: Bruttoforbrug': {
             'variable': 'load',
             'region': 'DK_1',
-            'attribute': 'tso_actual',
+            'attribute': 'actual_tso',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -480,7 +480,7 @@ def read_energinet_dk(filepath, url, headers):
         'DK-Øst: Bruttoforbrug': {
             'variable': 'load',
             'region': 'DK_2',
-            'attribute': 'tso_actual',
+            'attribute': 'actual_tso',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -534,7 +534,7 @@ def read_entso_e_statistics(filepath, url, headers):
     colmap = {
         'variable': 'load',
         'region': '{country}',
-        'attribute': 'entsoe_power_statistics_actual',
+        'attribute': 'actual_entsoe_power_statistics',
         'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
@@ -1019,7 +1019,7 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
         'load': {
             'variable': 'load',
             'region': 'SE',
-            'attribute': 'tso_actual',
+            'attribute': 'actual_tso',
             'source': 'Svenska Kraftnaet',
             'web': url,
             'unit': 'MW'
@@ -1156,7 +1156,7 @@ def read_rte(filepath, variable_name, url, headers):
         'Consommation (MW)': {
             'variable': 'load',
             'region': 'FR',
-            'attribute': 'tso_actual',
+            'attribute': 'actual_tso',
             'source': 'RTE',
             'web': url,
             'unit': 'MW'
