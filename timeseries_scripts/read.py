@@ -107,8 +107,7 @@ def read_entso_e_transparency(
     # based on the AreaName column, map the area names used throughout OPSD
     lookup = areas.set_index(geo)['area ID'].dropna()
     lookup = lookup[~lookup.index.duplicated()]
-    df_raw['region'] = df_raw['AreaName'].map(lookup)
-    df_raw.drop('AreaName', axis=1, inplace=True)
+    df_raw['region'] = df_raw.pop('AreaName').map(lookup)
 
     # rename columns to comply with other data
     df_raw.rename(columns=cols, inplace=True)
@@ -777,7 +776,7 @@ def read_tennet(filepath, variable_name, url, headers):
                                      df['minute'], dayfirst=True)
     df.set_index('timestamp', inplace=True)
 
-    df.drop(['pos', 'date', 'hour', 'minute'], axis=1, inplace=True)
+    df.drop(columns=['pos', 'date', 'hour', 'minute'], inplace=True)
 
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
@@ -981,11 +980,12 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
         # want to read in
         df = df[df['date'].notnull()]
         df['timestamp'] = pd.to_datetime(
-            df['date'].astype(int).astype(str) + ' ' +
-            df['hour'].astype(int).astype(str).str.replace('00', '') + ':00',
+            df.pop('date').astype(int).astype(str) + ' ' +
+            df.pop('hour').astype(int).astype(
+                str).str.replace('00', '') + ':00',
             dayfirst=False,
             infer_datetime_format=True)
-        df.drop(['date', 'hour'], axis=1, inplace=True)
+
     else:
         # in 2011 there is a row below the table for the sums that we don't
         # want to read in
