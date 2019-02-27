@@ -453,6 +453,14 @@ def read_energinet_dk(filepath, url, headers):
             'web': url,
             'unit': 'MW'
         },
+        'DK-Vest: Bruttoforbrug': {
+            'variable': 'load',
+            'region': 'DK_1',
+            'attribute': 'tso_actual',
+            'source': source,
+            'web': url,
+            'unit': 'MW'
+        },
         'DK-Øst: Vindproduktion': {
             'variable': 'wind',
             'region': 'DK_2',
@@ -465,6 +473,14 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'solar',
             'region': 'DK_2',
             'attribute': 'generation_actual',
+            'source': source,
+            'web': url,
+            'unit': 'MW'
+        },
+        'DK-Øst: Bruttoforbrug': {
+            'variable': 'load',
+            'region': 'DK_2',
+            'attribute': 'tso_actual',
             'source': source,
             'web': url,
             'unit': 'MW'
@@ -951,15 +967,15 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
     '''Read a file from Svenska Kraftnät into a DataFrame'''
     if variable_name in ['wind_solar_1', 'wind_solar_2']:
         skip = 4
-        cols = [0, 1, 3]
-        colnames = ['date', 'hour', 'wind']
+        cols = [0, 1, 2, 3]
+        colnames = ['date', 'hour', 'load', 'wind']
     else:
         if variable_name == 'wind_solar_4':
             skip = 5
         else:
             skip = 7
-        cols = [0, 2, 8]
-        colnames = ['timestamp', 'wind', 'solar']
+        cols = [0, 1, 2, 8]
+        colnames = ['timestamp', 'load', 'wind', 'solar']
 
     df = pd.read_excel(
         io=filePath,
@@ -1000,6 +1016,14 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
     df.index = df.index + pd.offsets.Hour(-1)
 
     colmap = {
+        'load': {
+            'variable': 'load',
+            'region': 'SE',
+            'attribute': 'tso_actual',
+            'source': 'Svenska Kraftnaet',
+            'web': url,
+            'unit': 'MW'
+        },
         'wind': {
             'variable': 'wind',
             'region': 'SE',
