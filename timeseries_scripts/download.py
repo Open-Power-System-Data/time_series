@@ -29,14 +29,14 @@ logger.setLevel('DEBUG')
 
 
 def download(
-    sources,
-    data_path,
-    input_path,
-    auth,
-    archive_version=None,
-    start_from_user=None,
-    end_from_user=None,
-    testmode=False):
+        sources,
+        data_path,
+        input_path,
+        auth,
+        archive_version=None,
+        start_from_user=None,
+        end_from_user=None,
+        testmode=False):
     '''
     Load YAML file with sources from disk, and download all files for each
     source into the given data_path.
@@ -85,8 +85,14 @@ def download(
                 source_auth = None
 
             download_source(
-                source_name, source_dict, data_path, input_path, source_auth,
-                start_from_user, end_from_user, testmode=testmode)
+                source_name,
+                source_dict,
+                data_path,
+                input_path,
+                source_auth,
+                start_from_user,
+                end_from_user,
+                testmode=testmode)
 
     return
 
@@ -122,14 +128,14 @@ def download_archive(archive_version, data_path):
 
 
 def download_source(
-    source_name,
-    source_dict,
-    data_path,
-    input_path,
-    source_auth,
-    start_from_user=None,
-    end_from_user=None,
-    testmode=False):
+        source_name,
+        source_dict,
+        data_path,
+        input_path,
+        source_auth,
+        start_from_user=None,
+        end_from_user=None,
+        testmode=False):
     '''
     Download all files for source_name as specified by the given
     source_dict into data_path.
@@ -175,12 +181,12 @@ def download_source(
             elif start_server < start_from_user < end_server:
                 start_server = start_from_user  # replace start_server
             else:
-                continue 
+                continue
                 # skip this variable from the source dict, e.g. in Sweden
 
         if end_from_user:
             if end_from_user <= start_server:
-                continue 
+                continue
                 # skip this variable from the source dict, e.g. in Sweden
             elif start_server < end_from_user < end_server:
                 end_server = end_from_user  # replace  end_server
@@ -214,7 +220,7 @@ def download_source(
             )
         else:
             # In all other cases, the files on the servers usually contain the
-            # data for subperiods of some regular length (i.e. months or years) 
+            # data for subperiods of some regular length (i.e. months or years)
             # Create lists of start- and enddates of periods represented in
             # individual files to be downloaded.
 
@@ -258,8 +264,8 @@ def download_source(
             if source_name == 'ENTSO-E Transparency FTP':
                 transport = paramiko.Transport(
                     param_dict['host'], param_dict['port'])
-                transport.connect(username=source_auth[
-                                  'username'], password=source_auth['password'])
+                transport.connect(username=source_auth['username'],
+                                  password=source_auth['password'])
                 sftp = paramiko.SFTPClient.from_transport(transport)
 
             else:
@@ -280,32 +286,20 @@ def download_source(
                 if testmode:
                     break
 
-            if 'deviant_params' in param_dict:
-                for deviant in param_dict['deviant_params']:
-                    if start_server <= deviant['start'] <= end_server:
-                        downloaded, session = download_file(
-                            source_name,
-                            variable_name,
-                            data_path,
-                            param_dict,
-                            start=deviant['start'],
-                            end=deviant['end'],
-                        )
-
             if source_name == 'ENTSO-E Transarency FTP':
                 sftp.close()
     return
 
 
 def download_with_driver(
-    source_name,
-    variable_name,
-    data_path,
-    input_path,
-    param_dict,
-    start,
-    end,
-    filename=None):
+        source_name,
+        variable_name,
+        data_path,
+        input_path,
+        param_dict,
+        start,
+        end,
+        filename=None):
     '''
     Decide which scraping function should download the data.
 
@@ -339,13 +333,13 @@ def download_with_driver(
 
 
 def download_Terna(
-    variable_name,
-    data_path,
-    input_path,
-    param_dict,
-    start,
-    end,
-    filename):
+        variable_name,
+        data_path,
+        input_path,
+        param_dict,
+        start,
+        end,
+        filename):
     '''
     Download the files from the Tera page one by one
 
@@ -410,32 +404,38 @@ def download_Terna(
 
     # Now, download the files from the links
     session = None
-    all_downloaded = True
     for date_key in date_url_dictionary:
         url = date_url_dictionary[date_key]
-        param_dict['url_template'] = url
-        param_dict['url_params_template'] = None
         year, month, day = date_key
         the_date = date(year=year, month=month, day=day)
-        #print('download for: {}'.format(the_date))
         downloaded, session = download_file(
-            'Terna', variable_name, data_path, param_dict, the_date, the_date, filename, session)
-        #print('\t', downloaded)
-        all_downloaded = downloaded and all_downloaded
+            'Terna',
+            variable_name,
+            data_path,
+            param_dict,
+            the_date,
+            the_date,
+            url=date_url_dictionary[date_key],
+            filename=filename,
+            session=session
+        )
 
     return
 
 
 def download_file(
-    source_name,
-    variable_name,
-    data_path,
-    param_dict,
-    start,
-    end,
-    filename=None,
-    session=None,
-    sftp=None):
+        source_name,
+        variable_name,
+        data_path,
+        param_dict,
+        start,
+        end,
+        url,
+        url_params=None,
+        filename=None,
+        session=None,
+        cookies=None,
+        sftp=None):
     '''
     Prepare the Download of a single file.
     Make a directory to save the file to and check if it might have been
@@ -507,9 +507,10 @@ def download_file(
                 session,
                 filename,
                 container,
-                url_template=param_dict['url_template'],
-                url_params_template=param_dict['url_params_template'],
-            )
+                url_template=url,
+                url_params_template=url_params,
+                cookies=cookies)
+
         if downloaded:
             logger.info(message + 'download successful')
         else:
@@ -529,14 +530,15 @@ def download_file(
 
 
 def download_request(
-    source_name,
-    start,
-    end,
-    session,
-    filename,
-    container,
-    url_template,
-    url_params_template):
+        source_name,
+        start,
+        end,
+        session,
+        filename,
+        container,
+        url_template,
+        url_params_template=None,
+        cookies=None):
     '''
     Download a single file via HTTP get.
     Build the url from parameters and save the file to disk under it's original
