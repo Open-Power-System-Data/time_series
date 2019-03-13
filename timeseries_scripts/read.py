@@ -233,13 +233,8 @@ def read_pse(filepath, variable_name, url, headers):
         }
     }
 
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -283,9 +278,7 @@ def read_ceps(filepath, variable_name, url, headers):
     }
 
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -303,15 +296,15 @@ def read_elia(filepath, dataset_name, url, headers):
     colmap = {
         'Day-Ahead forecast [MW]': {
             'region': 'BE',
-            'variable': variable,
             'attribute': 'generation_forecast',
+            'variable': '{variable}',
             'source': 'Elia',
             'web': url,
             'unit': 'MW'
         },
         'Corrected Upscaled Measurement [MW]': {
             'region': 'BE',
-            'variable': variable,
+            'variable': '{variable}',
             'attribute': 'generation_actual',
             'source': 'Elia',
             'web': url,
@@ -319,7 +312,7 @@ def read_elia(filepath, dataset_name, url, headers):
         },
         'Monitored Capacity [MWp]': {
             'region': 'BE',
-            'variable': variable,
+            'variable': '{variable}',
             'attribute': 'capacity',
             'source': 'Elia',
             'web': url,
@@ -327,18 +320,11 @@ def read_elia(filepath, dataset_name, url, headers):
         }
     }
 
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
-
-    df.index = pd.to_datetime(df.index.rename('timestamp'))
-
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
 
@@ -504,14 +490,8 @@ def read_energinet_dk(filepath, url, headers):
         },
     }
 
-    # Drop any column not in colmap
-    colmap = {k: v for k, v in colmap.items() if k in df.columns}
-    df = df[list(colmap.keys())]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -532,19 +512,18 @@ def read_entso_e_statistics(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    colmap = {
+    colmap_template = {
         'variable': 'load',
-        'region': '{country}',
+        'region': '{region_from_col}',
         'attribute': 'actual_entsoe_power_statistics',
         'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
     }
+    colmap = {col: colmap_template for col in df.columns}
 
     # Create the MultiIndex
-    tuples = [tuple(colmap[level].format(country=col)
-                    for level in headers) for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -590,19 +569,18 @@ def read_entso_e_portal(filepath, url, headers):
     renamer = {'DK_W': 'DK_1', 'UA_W': 'UA_west', 'NI': 'GB_NIR'}
     df.rename(columns=renamer, inplace=True)
 
-    colmap = {
+    colmap_template = {
         'variable': 'load',
-        'region': '{country}',
         'attribute': 'entsoe_power_statistics_actual',
+        'region': '{region_from_col}',
         'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
     }
+    colmap = {col: colmap_template for col in df.columns}
 
     # Create the MultiIndex
-    tuples = [tuple(colmap[level].format(country=col)
-                    for level in headers) for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -673,13 +651,8 @@ def read_hertz(filepath, dataset_name, url, headers):
     # 50Hertz-Wind data pre-2016 is only onshore. Maybe we can ask at
     # 50Hertz directly.
 
-    # Drop any column not in colmap
-    df = df[[key for key in colmap.keys() if key in df.columns]]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level].format(tech=tech, attribute=attribute)
-                    for level in headers) for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers, variable, attribute)
 
     return df
 
@@ -732,13 +705,8 @@ def read_amprion(filepath, dataset_name, url, headers):
         }
     }
 
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level].format(tech=tech) for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
 
@@ -870,13 +838,13 @@ def read_transnetbw(filepath, dataset_name, url, headers):
         'Prognose (MW)': {
             'variable': '{variable}',
             'region': 'DE_transnetbw',
-            'attribute': 'generation_forecast',
+            'attribute': 'day_ahead_generation_forecast',
             'source': 'TransnetBW',
             'web': url,
             'unit': 'MW'
         },
         'Ist-Wert (MW)': {
-            'variable': '{tech}',
+            'variable': '{variable}',
             'region': 'DE_transnetbw',
             'attribute': 'generation_actual',
             'source': 'TransnetBW',
@@ -949,14 +917,8 @@ def read_opsd(filepath, url, headers):
             'unit': 'MW'
         }
     }
-
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers, region=region)
 
     return df
 
@@ -1041,9 +1003,7 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
     }
 
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -1106,13 +1066,8 @@ def read_apg(filepath, url, headers):
         }
     }
 
-    # Drop any column not in colmap
-    df = df[[key for key in colmap.keys() if key in df.columns]]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -1185,13 +1140,9 @@ def read_rte(filepath, url, headers):
         }
     }
 
-    # Drop any column not in colmap
-    df = df[[key for key in colmap.keys() if key in df.columns]]
 
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level] for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -1548,3 +1499,49 @@ def update_progress(count, total):
     sys.stdout.flush()
 
     return
+
+
+def make_multiindex(
+        df,
+        colmap,
+        headers,
+        region=None,
+        variable=None,
+        attribute=None,
+        url=None):
+    '''
+    Create a pandas.MultiIndex contanining metadata for a parsed dataset.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        data parsed from a file
+    colmap : dict
+        maps the existing columnnameds to the values of the MultiIndex levels
+    headers : list
+        List of strings indicating the level names of the pandas.MultiIndex
+        for the columns of the dataframe
+    region: string
+        value for header
+    variable: string
+        value for header
+    attribute: string
+        value for header
+    url: string
+        value for header
+
+    Returns
+    multiindex : pandas.MultiIndex
+        contanins metadata for a parsed dataset
+    '''
+
+    # Drop any column not in colmap
+    df = df[[key for key in colmap.keys() if key in df.columns]]
+
+    # Create the MultiIndex
+    tuples = [tuple(colmap[col][level]
+                    .format(region=region, variable=variable, attribute=attribute, region_from_col=col)
+                    for level in headers) for col in df.columns]
+    multiindex = pd.MultiIndex.from_tuples(tuples, names=headers)
+
+    return multiindex
