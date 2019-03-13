@@ -21,9 +21,10 @@ ENTSO-E Transparency FTP:
             - 60min
         web: https://transparency.entsoe.eu/generation/r2/actualGenerationPerProductionType/show
         cols:
-            DateTime: None
-            AreaName: None
-            ProductionType_Name: variable
+            DateTime: timestamp
+            ResolutionCode: resolution
+            AreaName: region
+            ProductionType: variable
             ActualGenerationOutput: generation_actual 
             # not used: 'ActualConsumption'
         renewables:
@@ -37,7 +38,6 @@ ENTSO-E Transparency FTP:
         append_headers:
             source: ENTSO-E Transparency
             unit: MW
-        geo: country
     Actual Total Load:
         host: 'sftp-transparency.entsoe.eu'
         port: 22
@@ -53,8 +53,9 @@ ENTSO-E Transparency FTP:
             - 60min
         web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
         cols:
-            DateTime: None
-            AreaName: None
+            DateTime: timestamp
+            ResolutionCode: resolution
+            AreaName: region
             TotalLoadValue: load
         stacked:
             - region
@@ -63,7 +64,6 @@ ENTSO-E Transparency FTP:
             attribute: actual_entsoe_transparency
             source: ENTSO-E Transparency
             unit: MW
-        geo: country
     Day-ahead Total Load Forecast:
         host: 'sftp-transparency.entsoe.eu'
         port: 22
@@ -79,17 +79,17 @@ ENTSO-E Transparency FTP:
             - 60min
         web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
         cols:
-            DateTime: None
-            AreaName: None
+            DateTime: timestamp
+            ResolutionCode: resolution
+            AreaName: region
             TotalLoadValue: load
         stacked:
             - region
         unstacked: variable
         append_headers:
-            attribute: entsoe_transparency_day_ahead_forecast
+            attribute: day_ahead_forecast_entsoe_transparency
             source: ENTSO-E Transparency
             unit: MW
-        geo: country
     Day-ahead Prices:
         host: 'sftp-transparency.entsoe.eu'
         port: 22
@@ -100,13 +100,16 @@ ENTSO-E Transparency FTP:
         end: recent
         filetype: csv
         resolution:
+            - 15min
+            - 30min
             - 60min
         web: https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
         cols:
-            DateTime: None
-            AreaName: None
+            DateTime: timestamp
+            ResolutionCode: resolution
+            AreaName: region
             Price: price
-            Currency_IsoCode: unit
+            Currency: unit
         stacked:
             - region
             - unit
@@ -114,7 +117,6 @@ ENTSO-E Transparency FTP:
         append_headers:
             attribute: day_ahead
             source: ENTSO-E Transparency
-        geo: bidding zone
 OPSD:
     capacity:
         url_template: http://data.open-power-system-data.org/renewable_power_plants/2018-02-27/renewable_capacity_timeseries_DE.csv
