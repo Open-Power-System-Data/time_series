@@ -23,8 +23,16 @@ logger.setLevel('DEBUG')
 
 
 def read_entso_e_transparency(
-        areas, filepath, variable_name, url, headers, res_key, cols, stacked,
-        unstacked, geo, append_headers, **kwargs):
+        areas,
+        filepath,
+        dataset_name,
+        url,
+        headers,
+        cols,
+        stacked,
+        unstacked,
+        append_headers,
+        **kwargs):
     '''
     Read a .csv file from ENTSO-E TRansparency into a DataFrame.
     Parameters
@@ -38,8 +46,6 @@ def read_entso_e_transparency(
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe
-    res_key : str
-        Resolution of the source data. Must be one of ['15min', '30min', 60min']
     cols : dict
         A mapping of of columnnames to use from input file and a new name to
         rename them to. The new name is the header level whose corresponding
@@ -50,10 +56,6 @@ def read_entso_e_transparency(
     unstacked
         One strings indicating the header level that is reported row-wise in the
         input files
-    geo: string
-        The geographical concept (i.e. ``country`` or ``bidding zone`` for which
-        data should be extracted.
-        Records for other concepts (i.e. ``control areas``)) will be ignored.
     append_headers: dict
         Map of header levels and values to append to Multiindex
     kwargs: dict
@@ -61,7 +63,7 @@ def read_entso_e_transparency(
     Returns
     ----------
     df: pandas.DataFrame
-        The content of one file from PSE
+        The content of one file from ENTSO-E Transparency
     '''
 
     df_raw = pd.read_csv(
@@ -75,10 +77,7 @@ def read_entso_e_transparency(
         dayfirst=False,
         decimal='.',
         thousands=None,
-        usecols=['DateTime', *cols.keys()],
-        # the column specifying the technology has a trailing space, which we
-        # cut off
-        converters={'ProductionType_Name': lambda x: x[:-1]},
+        usecols=cols.keys(),
     )
 
     # rename columns to comply with other data
@@ -91,49 +90,54 @@ def read_entso_e_transparency(
             'Wind Onshore': 'wind_onshore',
             'Wind Offshore': 'wind_offshore'
         }
-        df_raw = df_raw[df_raw['ProductionType_Name'].isin(renewables.keys())]
-        df_raw.replace({'ProductionType_Name': renewables}, inplace=True)
+        df_raw = df_raw[df_raw['variable'].isin(renewables.keys())]
+        df_raw.replace({'variable': renewables}, inplace=True)
 
     if dataset_name == 'Day-ahead Prices':
         # Omit polish price data reported in EUR (keeping PLN prices)
         # (Before 2017-03-02, the data is very messy)
         no_polish_euro = ~(
-            (df_raw['AreaName'] == 'PSE SA BZ') &
+            (df_raw['region'] == 'PSE SA BZ') &
             (df_raw.index < pd.to_datetime('2017-03-02 00:00:00')))
         df_raw = df_raw.loc[no_polish_euro]
 
     # keep only entries for selected geographic entities as specified in
-    # areas.csv + select regions whith same temporal resolution
-    time_and_place = areas[geo].loc[areas[res_key] == True].dropna()
-    df_raw = df_raw.loc[df_raw['AreaName'].isin(time_and_place)]
+    # areas.csv
+    area_filter = areas['primary AreaName ENTSO-E'].dropna()
+    df_raw = df_raw.loc[df_raw['region'].isin(area_filter)]
 
     # based on the AreaName column, map the area names used throughout OPSD
-    lookup = areas.set_index(geo)['area ID'].dropna()
+    lookup = areas.set_index('primary AreaName ENTSO-E')['area ID'].dropna()
     lookup = lookup[~lookup.index.duplicated()]
-    df_raw['region'] = df_raw.pop('AreaName').map(lookup)
+    df_raw['region'] = df_raw['region'].map(lookup)
 
+    dfs = {}
+    for res in ['15', '30', '60']:
+        df = (df_raw.loc[df_raw['resolution'] == 'PT' + res + 'M', :]
+                    .copy().sort_index(axis='columns'))
+        df.drop(columns=['resolution'], inplace=True)
 
-    # juggle the index and columns
-    df = df_raw
-    df.set_index(stacked, append=True, inplace=True)
-    # at this point, only the values we are intereseted in are are left as
-    # columns
-    df.columns.rename(unstacked, inplace=True)
-    df = df.unstack(stacked)
+        # juggle the index and columns
+        df.set_index(stacked, append=True, inplace=True)
+        # at this point, only the values we are intereseted in are are left as
+        # columns
+        df.columns.rename(unstacked, inplace=True)
+        df = df.unstack(stacked)
 
-    # keep only columns that have at least some nonzero values
-    df = df.loc[:, (df > 0).any(axis=0)]
+        # keep only columns that have at least some nonzero values
+        df = df.loc[:, (df > 0).any(axis=0)]
 
-    # add source and url to the columns.
-    # Note: pd.concat inserts new MultiIndex values infront of the old ones
-    df = pd.concat([df],
-                   keys=[tuple([*append_headers.values(), url])],
-                   names=[*append_headers.keys(), 'web'],
-                   axis='columns')
+        # add source and url to the columns.
+        # Note: pd.concat inserts new MultiIndex values infront of the old ones
+        df = pd.concat([df],
+                       keys=[tuple([*append_headers.values(), url])],
+                       names=[*append_headers.keys(), 'web'],
+                       axis='columns')
 
-    # reorder and sort columns
-    df = df.reorder_levels(headers, axis=1)
-    df.sort_index(axis=1, inplace=True)
+        # reorder and sort columns
+        df = df.reorder_levels(headers, axis=1)
+
+        dfs[res + 'min'] = df
 
     # throw out obs with wrong timestamp
     # no_gaps = pd.DatetimeIndex(start=df.index[0],
@@ -141,7 +145,7 @@ def read_entso_e_transparency(
     #                           freq=res_key)
     #df = df.reindex(index=no_gaps)
 
-    return df
+    return dfs
 
 
 def read_pse(filepath, variable_name, url, headers):
