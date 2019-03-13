@@ -1292,8 +1292,45 @@ def read_terna(filepath, url, headers):
     return df
 
 
-def read(data_path, areas, source_name, variable_name, res_key,
-         headers, param_dict, start_from_user=None, end_from_user=None):
+def read(
+        sources,
+        data_path,
+        parsed_path,
+        areas,
+        headers,
+        start_from_user,
+        end_from_user,
+        testmode=False):
+
+    # For each source in the source dictionary
+    for source_name, source_dict in sources.items():
+        # For each dataset from source_name
+        for dataset_name, param_dict in source_dict.items():
+            read_dataset(
+                source_name,
+                dataset_name,
+                param_dict,
+                data_path,
+                parsed_path,
+                areas,
+                headers,
+                start_from_user=start_from_user,
+                end_from_user=end_from_user,
+                testmode=False)
+    return
+
+
+def read_dataset(
+        source_name,
+        dataset_name,
+        param_dict,
+        data_path,
+        parsed_path,
+        areas,
+        headers,
+        start_from_user=None,
+        end_from_user=None,
+        testmode=False):
     '''
     For the sources specified in the sources.yml file, pass each downloaded
     file to the correct read function.
@@ -1302,47 +1339,64 @@ def read(data_path, areas, source_name, variable_name, res_key,
     ----------
     source_name : str
         Name of source to read files from
-    variable_name : str
+    dataset_name : str
         Indicator for subset of data available together in the same files
     param_dict : dict
         Dictionary of further parameters, i.e. the URL of the Source to be
         placed in the column-MultiIndex
-    res_key : str
-        Resolution of the source data. Must be one of ['15min', '30min', 60min']
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe
     data_path : str, default: 'original_data'
         Base download directory in which to save all downloaded files
+    parsed_path : str
+        Directory where to store parsed data as pickle files
+    areas : pandas.DataFrame
+        Contains mapping of available geographical areas showing how
+        countries, bidding zones, control areas relate to each other
     start_from_user : datetime.date, default None
         Start of period for which to read the data
     end_from_user : datetime.date, default None
         End of period for which to read the data
+    testmode : bool
+        If True, only read one file per source. Use for testing purposes.
 
     Returns
     ----------
     data_set: pandas.DataFrame
-        A DataFrame containing the combined data for variable_name 
+        A DataFrame containing the combined data for dataset_name 
 
     '''
-    data_set = pd.DataFrame()
+    cumulated = {'15min': pd.DataFrame(),
+                 '30min': pd.DataFrame(),
+                 '60min': pd.DataFrame()}
 
-    variable_dir = os.path.join(data_path, source_name, variable_name)
+    dataset_dir = os.path.join(data_path, source_name, dataset_name)
 
-    logger.info('reading %s - %s', source_name, variable_name)
+    logger.info(' {:20.20} | {:20.20} | reading...'
+                .format(source_name, dataset_name))
 
-    files_existing = sum([len(files) for r, d, files in os.walk(variable_dir)])
+    files_existing = sum([len(files) for r, d, files in os.walk(dataset_dir)])
     files_success = 0
+
+    # Check there are files for dataset_name
+    if files_existing == 0:
+        logger.warning('no files found')
+        return
+
+    # Check if there are folders for dataset_name
+    if not os.path.exists(dataset_dir):
+        logger.warning('folder not found')
+        return
+
     update_progress(files_success, files_existing)
 
-    # Check if there are folders for variable_name
-    if not os.path.exists(variable_dir):
-        logger.warning('folder not found for %s, %s',
-                       source_name, variable_name)
-        return data_set
+    # For each file downloaded for that dataset
+    for container in sorted(os.listdir(dataset_dir)):
+        files = os.listdir(os.path.join(dataset_dir, container))
+        source_dataset_timerange = ' {:20.20} | {:20.20} | {:21.21} | '.format(
+            source_name, dataset_name, container)
 
-    # For each file downloaded for that variable
-    for container in sorted(os.listdir(variable_dir)):
         # Skip this file if period covered excluded by user
         if start_from_user:
             # start lies after file end => filecontent is too old
@@ -1354,97 +1408,151 @@ def read(data_path, areas, source_name, variable_name, res_key,
             if end_from_user < yaml.load(container.split('_')[0]) - timedelta(days=1):
                 continue  # go to next container
 
-        files = os.listdir(os.path.join(variable_dir, container))
-
         # Check if there is only one file per folder
         if len(files) == 0:
-            logger.warning('found no file in %s %s %s',
-                           source_name, variable_name, container)
+            logger.warning(source_dataset_timerange + 'no file found')
             continue
 
         elif len(files) > 1:
-            logger.warning('found more than one file in %s %s %s',
-                           source_name, variable_name, container)
+            logger.warning(source_dataset_timerange + '> 1 file found')
             continue
 
-        filepath = os.path.join(variable_dir, container, files[0])
+        filepath = os.path.join(dataset_dir, container, files[0])
 
         # Check if file is not empty
         if os.path.getsize(filepath) < 128:
-            logger.warning('%s \n file is smaller than 128 Byte. It is probably'
-                           ' empty and will thus be skipped from reading',
-                           files[0])
-        else:
-            logger.debug('reading data:\n\t '
-                         'Source:   %s\n\t '
-                         'Variable: %s\n\t '
-                         'Filename: %s',
-                         source_name, variable_name, files[0])
+            logger.warning(source_dataset_timerange + 'file too small')
+            continue
 
-            url = param_dict['web']
+        logger.debug(source_dataset_timerange + 'reading...')
+        url = param_dict['web']
 
-            if source_name == 'OPSD':
-                data_to_add = read_opsd(filepath, url, headers)
-            elif source_name == 'CEPS':
-                data_to_add = read_ceps(filepath, variable_name, url, headers)
-            elif source_name == 'ENTSO-E Transparency FTP':
-                data_to_add = read_entso_e_transparency(
-                    areas, filepath, variable_name, url, headers, res_key,
-                    **param_dict)
-            elif source_name == 'ENTSO-E Data Portal':
-                data_to_add = read_entso_e_portal(filepath, url, headers)
-            elif source_name == 'ENTSO-E Power Statistics':
-                data_to_add = read_entso_e_statistics(filepath, url, headers)
-            elif source_name == 'Energinet.dk':
-                data_to_add = read_energinet_dk(filepath, url, headers)
-            elif source_name == 'Elia':
-                data_to_add = read_elia(filepath, variable_name, url, headers)
-            elif source_name == 'PSE':
-                data_to_add = read_pse(filepath, variable_name, url, headers)
-            elif source_name == 'RTE':
-                data_to_add = read_rte(filepath, variable_name, url, headers)
-            elif source_name == 'Svenska Kraftnaet':
-                data_to_add = read_svenska_kraftnaet(
-                    filepath, variable_name, url, headers)
-            elif source_name == '50Hertz':
-                data_to_add = read_hertz(filepath, variable_name, url, headers)
-            elif source_name == 'Amprion':
-                data_to_add = read_amprion(
-                    filepath, variable_name, url, headers)
-            elif source_name == 'TenneT':
-                data_to_add = read_tennet(
-                    filepath, variable_name, url, headers)
-            elif source_name == 'TransnetBW':
-                data_to_add = read_transnetbw(
-                    filepath, variable_name, url, headers)
-            elif source_name == 'APG':
-                data_to_add = read_apg(filepath, url, headers)
-            elif source_name == 'Terna':
-                data_to_add = read_terna(filepath, url, headers)
-
-            if data_to_add.empty:
-                logger.warning('Cannot read file %s', files[0])
+        # Select read function for source
+        if dataset_name == 'capacity DE':
+            parsed = {'15min': read_opsd(filepath, url, headers, region='DE')}
+        if dataset_name == 'capacity GB':
+            parsed = {'30min': read_opsd(filepath, url, headers, region='GB')}
+        elif source_name == 'CEPS':
+            parsed = {'60min': read_ceps(filepath, url, headers)}
+        elif source_name == 'ENTSO-E Transparency FTP':
+            parsed = read_entso_e_transparency(
+                areas, filepath, dataset_name, url, headers, **param_dict)
+        elif source_name == 'ENTSO-E Data Portal':
+            parsed = {'60min': read_entso_e_portal(filepath, url, headers)}
+        elif source_name == 'ENTSO-E Power Statistics':
+            parsed = {'60min': read_entso_e_statistics(
+                filepath, url, headers)}
+        elif source_name == 'Energinet.dk':
+            parsed = {'60min': read_energinet_dk(filepath, url, headers)}
+        elif source_name == 'Elia':
+            parsed = {'15min': read_elia(filepath, dataset_name, url, headers)}
+        elif source_name == 'PSE':
+            parsed = {'60min': read_pse(filepath, url, headers)}
+        elif source_name == 'RTE':
+            parsed = {'30min': read_rte(filepath, url, headers)}
+        elif source_name == 'Svenska Kraftnaet':
+            parsed = {'60min': read_svenska_kraftnaet(
+                filepath, dataset_name, url, headers)}
+        elif source_name == '50Hertz':
+            parsed = {'15min': read_hertz(
+                filepath, dataset_name, url, headers)}
+        elif source_name == 'Amprion':
+            parsed = {'15min': read_amprion(
+                filepath, dataset_name, url, headers)}
+        elif source_name == 'TenneT':
+            parsed = {'15min': read_tennet(
+                filepath, dataset_name, url, headers)}
+        elif source_name == 'TransnetBW':
+            parsed = {'15min': read_transnetbw(
+                filepath, dataset_name, url, headers)}
+        elif source_name == 'APG':
+            parsed = {'15min': read_apg(filepath, url, headers)}
+        elif source_name == 'Terna':
+            # Files from 2010-2011 are in tsv format, we ignore them
+            filedate = datetime.strptime(
+                filepath.split(os.sep)[-1].split('_')[0], '%Y-%m-%d').date()
+            if filedate < date(2011, 2, 1):
                 continue
-
-            if data_set.empty:
-                data_set = data_to_add
             else:
-                data_set = data_set.combine_first(data_to_add)
+                parsed = {'60min': read_terna(
+                    filepath, filedate, url, headers)}
 
-            files_success += 1
-            update_progress(files_success, files_existing)
+        # combine with previously parsed DataFrames of same resolution
+        for res_key, df in parsed.items():
+            if res_key in param_dict['resolution'] and df.empty:
+                logger.warning('%s | %s | empty DataFrame: ',
+                               files[0], res_key)
+                continue
+            if cumulated[res_key].empty:
+                cumulated[res_key] = df
+            else:
+                cumulated[res_key] = cumulated[res_key].combine_first(df)
 
-    if data_set.empty:
-        logger.warning('returned empty DataFrame for %s, %s',
-                       source_name, variable_name)
-        return data_set
+        files_success += 1
+        update_progress(files_success, files_existing)
+        if testmode:
+            break
 
+    if all([df.empty for df in cumulated.values()]):
+        logger.warning(' {:20.20} | {:20.20} | All empty DataFrames'
+                       .format(source_name, dataset_name))
+        return
+
+    # Finally, trim the DataFrames and save them on disk
+    for res_key, df in cumulated.items():
+        if not df.empty:
+            df = trim_df(
+                df,
+                res_key,
+                source_name,
+                dataset_name,
+                start_from_user,
+                end_from_user)
+
+            filename = '_'.join(
+                [res_key, source_name, dataset_name]) + '.pickle'
+            df.to_pickle(os.path.join(parsed_path, filename))
+
+    return
+
+
+def trim_df(
+        df,
+        res_key,
+        source_name,
+        dataset_name,
+        start_from_user=None,
+        end_from_user=None):
+    '''
+    Reindex a DataFrame with a new index that is sure to be continuous in order
+    to expose gaps in the data and 
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        DataFrame to be trimmed
+    res_key : str
+        Resolution of the source data. Must be one of ['15min', '30min', 60min']
+    source_name : str
+        Name of the source
+    dataset_name : str
+        Name of the dataset
+    Returns
+    ----------
+    None    
+    '''
+
+    # sort the index
+    df.sort_index(axis='index', inplace=True)
     # Reindex with a new index that is sure to be continous in order to later
     # expose gaps in the data.
-    no_gaps = pd.DatetimeIndex(start=data_set.index[0],
-                               end=data_set.index[-1],
-                               freq=res_key)
-    data_set = data_set.reindex(index=no_gaps)
+    no_gaps = pd.date_range(start=df.index[0],
+                            end=df.index[-1],
+                            freq=res_key)
+    df = df.reindex(index=no_gaps)
+    missing_rows = df.shape[0] - df.shape[0]
+    if not missing_rows == 0:
+        logger.info(' {:20.20} | {:20.20} | {} missing rows'
+                    .format(source_name, dataset_name, missing_rows))
 
     # Cut off the data outside of [start_from_user:end_from_user]
     # In order to make sure that the respective time period is covered in both
@@ -1461,10 +1569,10 @@ def read(data_path, areas, source_name, variable_name, res_key,
             # Appropriate offset to include the end of period (23:45 for the
             # same day)
             + timedelta(days=1, minutes=-int(res_key[:2])))
-    # Then cut off the data_set
-    data_set = data_set.loc[start_from_user:end_from_user, :]
+    # Then cut off the data
+    df = df.loc[start_from_user:end_from_user, :]
 
-    return data_set
+    return df
 
 
 def update_progress(count, total):
