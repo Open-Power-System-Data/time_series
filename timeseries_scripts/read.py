@@ -1510,29 +1510,32 @@ def make_multiindex(
         attribute=None,
         url=None):
     '''
-    Create a pandas.MultiIndex contanining metadata for a parsed dataset.
+    Filter out unneeded columns from a DataFrame and create a pandas.MultiIndex
+    contanining metadata for the parsed data.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        data parsed from a file
+        Data parsed from a file
     colmap : dict
-        maps the existing columnnameds to the values of the MultiIndex levels
+        Maps the existing columnnameds to the values of the MultiIndex levels
     headers : list
         List of strings indicating the level names of the pandas.MultiIndex
         for the columns of the dataframe
-    region: string
-        value for header
-    variable: string
-        value for header
-    attribute: string
-        value for header
-    url: string
-        value for header
+    region : string
+        Value for header
+    variable : string
+        Value for header
+    attribute : string
+        Value for header
+    url : string
+        Value for header
 
     Returns
-    multiindex : pandas.MultiIndex
-        contanins metadata for a parsed dataset
+    ----------
+    df : pandas.DataFrame
+        The input DataFrame with unneeded columns removed and new MultiIndex
+        contaning metadata for the parsed data
     '''
 
     # Drop any column not in colmap
@@ -1542,6 +1545,8 @@ def make_multiindex(
     tuples = [tuple(colmap[col][level]
                     .format(region=region, variable=variable, attribute=attribute, region_from_col=col)
                     for level in headers) for col in df.columns]
-    multiindex = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
 
-    return multiindex
+    return df
+
+
