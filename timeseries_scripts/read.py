@@ -31,7 +31,7 @@ def read_entso_e_transparency(
     ----------
     filepath : str
         Directory path of file to be read
-    variable_name : str
+    dataset_name : str
         Name of variable, e.g. ``solar``
     url : str
         URL linking to the source website where this data comes from
@@ -81,7 +81,10 @@ def read_entso_e_transparency(
         converters={'ProductionType_Name': lambda x: x[:-1]},
     )
 
-    if variable_name == 'Actual Generation per Production Type':
+    # rename columns to comply with other data
+    df_raw.rename(columns=cols, inplace=True)
+
+    if dataset_name == 'Actual Generation per Production Type':
         # keep only renewables columns
         renewables = {
             'Solar': 'solar',
@@ -91,7 +94,7 @@ def read_entso_e_transparency(
         df_raw = df_raw[df_raw['ProductionType_Name'].isin(renewables.keys())]
         df_raw.replace({'ProductionType_Name': renewables}, inplace=True)
 
-    if variable_name == 'Day-ahead Prices':
+    if dataset_name == 'Day-ahead Prices':
         # Omit polish price data reported in EUR (keeping PLN prices)
         # (Before 2017-03-02, the data is very messy)
         no_polish_euro = ~(
@@ -109,8 +112,6 @@ def read_entso_e_transparency(
     lookup = lookup[~lookup.index.duplicated()]
     df_raw['region'] = df_raw.pop('AreaName').map(lookup)
 
-    # rename columns to comply with other data
-    df_raw.rename(columns=cols, inplace=True)
 
     # juggle the index and columns
     df = df_raw
@@ -289,7 +290,7 @@ def read_ceps(filepath, variable_name, url, headers):
     return df
 
 
-def read_elia(filepath, variable_name, url, headers):
+def read_elia(filepath, dataset_name, url, headers):
     '''Read a file from Elia into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
@@ -606,7 +607,7 @@ def read_entso_e_portal(filepath, url, headers):
     return df
 
 
-def read_hertz(filepath, variable_name, url, headers):
+def read_hertz(filepath, dataset_name, url, headers):
     '''Read a file from 50Hertz into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -629,7 +630,7 @@ def read_hertz(filepath, variable_name, url, headers):
     # dst_arr is a boolean array consisting only of "False" entries, telling
     # python to treat the hour from 2:00 to 2:59 as wintertime.
     if (pd.to_datetime(df.index.values[0]).year not in [2005, 2006, 2015] or
-            (variable_name == 'wind generation_actual pre-offshore' and
+            (dataset_name == 'wind generation_actual pre-offshore' and
              pd.to_datetime(df.index.values[0]).year == 2015)):
         df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     else:
@@ -638,11 +639,11 @@ def read_hertz(filepath, variable_name, url, headers):
 
     df.index = df.index.tz_convert(None)
 
-    tech, attribute = variable_name.split(' ')[:2]
+    variable, attribute = dataset_name.split(' ')[:2]
 
     colmap = {
         'MW': {
-            'variable': '{tech}',
+            'variable': '{variable}',
             'region': 'DE_50hertz',
             'attribute': '{attribute}',
             'source': '50Hertz',
@@ -683,7 +684,7 @@ def read_hertz(filepath, variable_name, url, headers):
     return df
 
 
-def read_amprion(filepath, variable_name, url, headers):
+def read_amprion(filepath, dataset_name, url, headers):
     '''Read a file from Amprion into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -712,10 +713,9 @@ def read_amprion(filepath, variable_name, url, headers):
     df.index = index1.append(index2)
     df.index = df.index.tz_convert(None)
 
-    tech = variable_name
     colmap = {
         '8:00 Uhr Prognose [MW]': {
-            'variable': '{tech}',
+            'variable': '{variable}',
             'region': 'DE_amprion',
             'attribute': 'generation_forecast',
             'source': 'Amprion',
@@ -723,7 +723,7 @@ def read_amprion(filepath, variable_name, url, headers):
             'unit': 'MW'
         },
         'Online Hochrechnung [MW]': {
-            'variable': '{tech}',
+            'variable': '{variable}',
             'region': 'DE_amprion',
             'attribute': 'generation_actual',
             'source': 'Amprion',
@@ -743,7 +743,7 @@ def read_amprion(filepath, variable_name, url, headers):
     return df
 
 
-def read_tennet(filepath, variable_name, url, headers):
+def read_tennet(filepath, dataset_name, url, headers):
     '''Read a file from TenneT into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -797,10 +797,9 @@ def read_tennet(filepath, variable_name, url, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    tech = variable_name
     colmap = {
         'prognostiziert [MW]': {
-            'variable': '{tech}',
+            'variable': '{variable}',
             'region': 'DE_tennet',
             'attribute': 'generation_forecast',
             'source': 'TenneT',
@@ -808,7 +807,7 @@ def read_tennet(filepath, variable_name, url, headers):
             'unit': 'MW'
         },
         'tatsächlich [MW]': {
-            'variable': '{tech}',
+            'variable': '{variable}',
             'region': 'DE_tennet',
             'attribute': 'generation_actual',
             'source': 'TenneT',
@@ -836,7 +835,7 @@ def read_tennet(filepath, variable_name, url, headers):
     return df
 
 
-def read_transnetbw(filepath, variable_name, url, headers):
+def read_transnetbw(filepath, dataset_name, url, headers):
     '''Read a file from TransnetBW into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -867,10 +866,9 @@ def read_transnetbw(filepath, variable_name, url, headers):
     # index and shift the data back by 1 period.
     df = df.shift(periods=-1, freq='15min', axis='index')
 
-    tech = variable_name
     colmap = {
         'Prognose (MW)': {
-            'variable': '{tech}',
+            'variable': '{variable}',
             'region': 'DE_transnetbw',
             'attribute': 'generation_forecast',
             'source': 'TransnetBW',
@@ -963,14 +961,14 @@ def read_opsd(filepath, url, headers):
     return df
 
 
-def read_svenska_kraftnaet(filePath, variable_name, url, headers):
+def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
     '''Read a file from Svenska Kraftnät into a DataFrame'''
-    if variable_name in ['wind_solar_1', 'wind_solar_2']:
+    if dataset_name in ['wind_solar_1', 'wind_solar_2']:
         skip = 4
         cols = [0, 1, 2, 3]
         colnames = ['date', 'hour', 'load', 'wind']
     else:
-        if variable_name == 'wind_solar_4':
+        if dataset_name == 'wind_solar_4':
             skip = 5
         else:
             skip = 7
@@ -991,7 +989,7 @@ def read_svenska_kraftnaet(filePath, variable_name, url, headers):
     # renamer = {'Tid': 'timestamp', 'DATUM': 'date', 'TID': 'hour'}
     df.columns = colnames
 
-    if variable_name in ['wind_solar_1', 'wind_solar_2']:
+    if dataset_name in ['wind_solar_1', 'wind_solar_2']:
         # in 2009 there is a row below the table for the sums that we don't
         # want to read in
         df = df[df['date'].notnull()]
@@ -1119,7 +1117,7 @@ def read_apg(filepath, url, headers):
     return df
 
 
-def read_rte(filepath, variable_name, url, headers):
+def read_rte(filepath, url, headers):
     cols = ['Date', 'Heure', 'Consommation (MW)', 'Prévision J-1 (MW)',
             'Eolien (MW)', 'Solaire (MW)']
     df = pd.read_csv(

@@ -145,7 +145,7 @@ def download_source(
     source_name : str
         Name of source dataset, e.g. ``TenneT``.
     source_dict : dict
-        Dictionary of variables and their parameters for the given source.
+        Dictionary of datasets and their parameters for the given source.
     data_path : str
         Base download directory in which to save all downloaded files.
     start_from_user : datetime.date, default None
@@ -161,7 +161,7 @@ def download_source(
 
     session = None
 
-    for variable_name, param_dict in source_dict.items():
+    for dataset_name, param_dict in source_dict.items():
         # Set up the filename structure
         if 'filename' in param_dict:
             filename = param_dict['filename']
@@ -182,12 +182,12 @@ def download_source(
                 start_server = start_from_user  # replace start_server
             else:
                 continue
-                # skip this variable from the source dict, e.g. in Sweden
+                # skip this dataset from the source dict, e.g. in Sweden
 
         if end_from_user:
             if end_from_user <= start_server:
                 continue
-                # skip this variable from the source dict, e.g. in Sweden
+                # skip this dataset from the source dict, e.g. in Sweden
             elif start_server < end_from_user < end_server:
                 end_server = end_from_user  # replace  end_server
             else:
@@ -198,7 +198,7 @@ def download_source(
             # source-specific way.
             downloaded = download_with_driver(
                 source_name,
-                variable_name,
+                dataset_name,
                 data_path,
                 input_path,
                 param_dict,
@@ -211,7 +211,7 @@ def download_source(
             # In these two cases, all data is housed in one file on the server
             downloaded, session = download_file(
                 source_name,
-                variable_name,
+                dataset_name,
                 data_path,
                 param_dict,
                 start=start_server,
@@ -274,7 +274,7 @@ def download_source(
             for s, e in zip(starts, ends):
                 downloaded, session = download_file(
                     source_name,
-                    variable_name,
+                    dataset_name,
                     data_path,
                     param_dict,
                     start=s,
@@ -293,7 +293,7 @@ def download_source(
 
 def download_with_driver(
         source_name,
-        variable_name,
+        dataset_name,
         data_path,
         input_path,
         param_dict,
@@ -308,8 +308,8 @@ def download_with_driver(
     ----------
     source_name : str
         Name of source dataset, e.g. ``Terna``
-    variable_name : str
-        Name of variable, e.g. ``solar``
+    dataset_name : str
+        Name of dataset, e.g. ``solar``
     data_path : str
         Base download directory in which to save all downloaded files
     param_dict : dict
@@ -329,11 +329,11 @@ def download_with_driver(
     '''
 
     if source_name == 'Terna':
-        return download_Terna(variable_name, data_path, input_path, param_dict, start, end, filename)
+        return download_Terna(dataset_name, data_path, input_path, param_dict, start, end, filename)
 
 
 def download_Terna(
-        variable_name,
+        dataset_name,
         data_path,
         input_path,
         param_dict,
@@ -350,8 +350,8 @@ def download_Terna(
 
     Parameters
     ----------
-    variable_name : str
-        Name of variable, e.g. ``solar``
+    dataset_name : str
+        Name of dataset, e.g. ``solar``
     data_path : str
         Base download directory in which to save all downloaded files
     param_dict : dict
@@ -410,7 +410,7 @@ def download_Terna(
         the_date = date(year=year, month=month, day=day)
         downloaded, session = download_file(
             'Terna',
-            variable_name,
+            dataset_name,
             data_path,
             param_dict,
             the_date,
@@ -425,7 +425,7 @@ def download_Terna(
 
 def download_file(
         source_name,
-        variable_name,
+        dataset_name,
         data_path,
         param_dict,
         start,
@@ -445,8 +445,8 @@ def download_file(
     ----------
     source_name : str
         Name of source dataset, e.g. ``TenneT``
-    variable_name : str
-        Name of variable, e.g. ``solar``
+    dataset_name : str
+        Name of dataset, e.g. ``solar``
     data_path : str
         Base download directory in which to save all downloaded files
     param_dict : dict
@@ -471,11 +471,11 @@ def download_file(
         session = requests.session()
 
     message = '| {:20.20} | {:20.20} | {:%Y-%m-%d} | {:%Y-%m-%d} | '.format(
-        source_name, variable_name, start, end)
+        source_name, dataset_name, start, end)
 
     # Each file will be saved in a folder of its own, this allows us to preserve
     # the original filename when saving to disk.
-    container = os.path.join(data_path, source_name, variable_name,
+    container = os.path.join(data_path, source_name, dataset_name,
                              start.strftime('%Y-%m-%d') + '_' +
                              end.strftime('%Y-%m-%d'))
     os.makedirs(container, exist_ok=True)
