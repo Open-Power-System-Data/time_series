@@ -122,13 +122,13 @@ OPSD:
         url_template: http://data.open-power-system-data.org/renewable_power_plants/2018-02-27/renewable_capacity_timeseries_DE.csv
         filename: renewable_capacity_timeseries_DE.csv
         url_params_template:
-        frequency: complete
+        frequency: single file
         start: 2005-01-01
         end: 2017-12-31
         filetype: csv
         resolution:
             - 15min
-        web: http://data.open-power-system-data.org/renewable_power_plants/
+        web: http://data.open-power-system-data.org/renewable_power_plants
 
 ENTSO-E Data Portal:
     load:
@@ -141,6 +141,7 @@ ENTSO-E Data Portal:
         resolution:
             - 60min
         web: https://www.entsoe.eu/data/power-stats/
+        filename: Monthly-hourly-load-values_2006-2015.xlsx
 
 ENTSO-E Power Statistics:  # Automatic download not implemented
     load:
@@ -421,35 +422,17 @@ Elia:
 
 Energinet.dk:  # Automatic download not implemented
     prices_wind_solar:
-        frequency: complete
+        frequency: single file
         start: 2000-01-01 # or even earlier for some data, but not useful as other sources don't go as far back
         end: recent
         filetype: xls
         resolution:
             - 60min
         web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
-#     prices_2:
-#         url_template: https://stapckanedsfiles01.blob.core.windows.net/edsprod/Elspot_Prices_Data-d2f38eb6e3a74cdab724fec1c050689f.csv
-#         frequency: complete
-#         start: 2016  # 100000 rows download limit
-#         end: recent
-#         filetype: csv
-#         resolution:
-#             - 60min
-#         web: https://www.energidataservice.dk/dataset/elspotprices/
-#     wind_solar_2:
-#         url_template: https://stapckanedsfiles01.blob.core.windows.net/edsprod/Electricity_Balance_Data-88d6261333094e56a30f8f8a94ffe509.csv
-#         frequency: complete
-#         start: 2012  # 100000 rows download limit
-#         end: recent
-#         filetype: csv
-#         resolution:
-#             - 60min
-#         web: https://www.energidataservice.dk/dataset/electricitybalance/
 
 CEPS:  # Automatic download not implemented
     wind_pv:
-        frequency: complete
+        frequency: single file
         start: 2012-01-01
         end: recent
         filetype: xls
@@ -471,7 +454,7 @@ PSE:
 
 APG:
     generation_by_source:
-        url_template: https://www.apg.at/transparency/Download.aspx?
+        url_template: https://www.apg.at/transparency/Download.aspx
         url_params_template:
             LANGUAGE: de
             PID: AGPT
@@ -509,7 +492,7 @@ Terna:
         url_params_template: 
         frequency: daily
 # In total, data is available from May 2010 until recently, but there is a large gap in 2011-2012 and since 2016, data 
-# is available from ENTSO-E transparency, so we use 2012-2016. Furthermore, the 2010-211 data wold qu a ffeent read function,
+# is available from ENTSO-E transparency, so we use 2012-2016. Furthermore, the 2010-2011 data would require a different read function,
 # as the fles arein  tsv, not xls/xml
         start: 2010-05-25
         end: recent
@@ -647,7 +630,7 @@ Elexon:
 #         filetype: csv
 #         resolution:
 #             - 60min
-#         web: https://www.energidataservice.dk/dataset/elspotprices/
+#         web: https://www.energidataservice.dk/dataset/elspotprices
 #     wind_solar_2:
 #         url_template: https://stapckanedsfiles01.blob.core.windows.net/edsprod/Electricity_Balance_Data-88d6261333094e56a30f8f8a94ffe509.csv
 #         frequency: complete
@@ -656,7 +639,7 @@ Elexon:
 #         filetype: csv
 #         resolution:
 #             - 60min
-#         web: https://www.energidataservice.dk/dataset/electricitybalance/
+#         web: https://www.energidataservice.dk/dataset/electricitybalance
 #
 #TEMPLATE
 #

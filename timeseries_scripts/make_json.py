@@ -1,7 +1,7 @@
 """
 Open Power System Data
 
-Timeseries Datapackage
+Time series Datapackage
 
 make:json.py : create JSON meta data for the Data Package
 

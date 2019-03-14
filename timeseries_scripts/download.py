@@ -1,7 +1,7 @@
 '''
 Open Power System Data
 
-Timeseries Datapackage
+Time series Datapackage
 
 download.py : download time series files
 
@@ -19,7 +19,7 @@ import yaml
 from ftplib import FTP
 import math
 import sys
-import time
+from time import sleep
 import pickle
 from . import terna
 import paramiko

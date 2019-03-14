@@ -1,7 +1,7 @@
 """
 Open Power System Data
 
-Timeseries Datapackage
+Time series Datapackage
 
 imputation.py : fill functions for imputation of missing data.
 
@@ -210,8 +210,7 @@ def choose_fill_method(
             patched_col = col
 
     patched_blocks = nan_blocks.shape[0] - j
-    logger.info(message + 'interpolated %s blocks',
-                patched_blocks)
+    logger.info(message + 'interpolated %s blocks', patched_blocks)
 
     return patched_col, marker_col, patched_blocks
 
