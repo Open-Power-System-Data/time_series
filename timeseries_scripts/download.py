@@ -284,12 +284,12 @@ def download_source(
             if starts[0].date() > start_server:
                 # make sure to include full first period, i.e. if start_server
                 # is 2014-12-14, set first start to 2014-01-01
-                starts = starts.union([starts[0] - 1])
+                starts = starts.union([starts[0] - 1 * starts.freq])
 
             if ends[-1].date() < end_server:
                 # make sure to include full last period, i.e. if end_server
                 # is 2018-01-14, set last end to 2018-01-31
-                ends = ends.union([ends[-1] + 1])
+                ends = ends.union([ends[-1] + 1 * ends.freq])
 
             # else:
             #    # extend both by one period to load a little more data than the user asked for.
@@ -303,6 +303,8 @@ def download_source(
                 transport.connect(username=source_auth['username'],
                                   password=source_auth['password'])
                 sftp = paramiko.SFTPClient.from_transport(transport)
+                param_dict['url_template'] = None
+                param_dict['url_params_template'] = None
 
             else:
                 sftp = None
@@ -315,6 +317,8 @@ def download_source(
                     param_dict,
                     start=s,
                     end=e,
+                    url=param_dict['url_template'],
+                    url_params_template=param_dict['url_params_template'],
                     filename=filename,
                     session=session,
                     sftp=sftp
@@ -467,7 +471,7 @@ def download_file(
         start,
         end,
         url,
-        url_params=None,
+        url_params_template=None,
         filename=None,
         session=None,
         cookies=None,
@@ -547,7 +551,7 @@ def download_file(
                 filename,
                 container,
                 url_template=url,
-                url_params_template=url_params,
+                url_params_template=url_params_template,
                 cookies=cookies)
 
         if downloaded:
@@ -629,14 +633,14 @@ def download_request(
         resp = session.get(url, params=url_params, cookies=cookies)
         if resp.status_code == 200:
             break
-        elif i == tries - 1:
+        elif i == attempts - 1:
             downloaded = False
             return downloaded, session
         elif source_name == 'PSE':
             logger.warning(
                 'http status %s, attempt %s, trying again in 1:10 minutes...',
                 resp.status_code, i + 1)
-            time.sleep(70)
+            sleep(70)
 
     # Get the original filename
     try:

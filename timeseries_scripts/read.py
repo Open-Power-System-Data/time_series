@@ -1,7 +1,7 @@
 '''
 Open Power System Data
 
-Timeseries Datapackage
+Time series Datapackage
 
 read.py : read time series files
 
@@ -139,16 +139,10 @@ def read_entso_e_transparency(
 
         dfs[res + 'min'] = df
 
-    # throw out obs with wrong timestamp
-    # no_gaps = pd.DatetimeIndex(start=df.index[0],
-    #                           end=df.index[-1],
-    #                           freq=res_key)
-    #df = df.reindex(index=no_gaps)
-
     return dfs
 
 
-def read_pse(filepath, variable_name, url, headers):
+def read_pse(filepath, url, headers):
     '''
     Read a .csv file from PSE into a DataFrame.
 
@@ -156,8 +150,6 @@ def read_pse(filepath, variable_name, url, headers):
     ----------
     filepath : str
         Directory path of file to be read
-    variable_name : str
-        Name of variable, e.g. ``solar``
     url : str
         URL linking to the source website where this data comes from
     headers : list
@@ -188,15 +180,14 @@ def read_pse(filepath, variable_name, url, headers):
         # UTC 01:00-02:00 = CET  2:00-3:00 is indicated by '03'.
         # regular hours require backshifting by 1 period
         converters={
-            'Time':
-                lambda x: '2:00' if x == '2A' else str(int(x) - 1) + ':00'
+            'Time': lambda x: '2:00' if x == '2A' else str(int(x) - 1) + ':00'
         }
     )
     # Create a list of spring-daylight savings time (DST)-transitions
     dst_transitions_spring = [
         d.replace(hour=2)
-        for d in pytz.timezone('Europe/Copenhagen')._utc_transition_times
-        if d.year >= 2000 and d.month == 3]
+        for d in pytz.timezone('Europe/Warsaw')._utc_transition_times
+        if 2000 <= d.year <= datetime.today().year and d.month == 3]
 
     # Account for an error where an hour is jumped in the data, incrementing
     # the hour by one
@@ -217,15 +208,15 @@ def read_pse(filepath, variable_name, url, headers):
     df.loc[slicer, 'Time'] = '1:00'
 
     # create the actual timestamp from the corrected "Date"-column
-    df['timestamp'] = pd.to_datetime(
-        df['Date'].astype(str) + ' ' + df['Time'])
-    df.set_index('timestamp', inplace=True)
+    df.index = pd.to_datetime(df['Date'].astype(str) + ' ' + df['Time'])
 
-    # 'ambigous' refers to how the October dst-transition hour is handled.
+    # DST-handling
+    # 'ambiguous' refers to how the October dst-transition hour is handled.
     # 'infer' will attempt to infer dst-transition hours based on order.
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     colmap = {
         'Generation of Wind Farms': {
             'region': 'PL',
@@ -237,31 +228,29 @@ def read_pse(filepath, variable_name, url, headers):
         }
     }
 
-    # Create the MultiIndex
     df = make_multiindex(df, colmap, headers)
 
     return df
 
 
-def read_ceps(filepath, variable_name, url, headers):
+def read_ceps(filepath, url, headers):
     '''Read a file from CEPS into a DataFrame'''
     df = pd.read_csv(
-        # pd.read_excel(io=filepath,
-        #sheet_name='ČEPS report',
         filepath,
         sep=';',
         header=2,
+        parse_dates=True,
+        dayfirst=True,
         skiprows=None,
         index_col=0,
         usecols=[0, 1, 2]
     )
 
-    df.index = pd.to_datetime(df.index.rename('timestamp'))
-
+    # DST-handling
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    # Translate columns
+    # Create the MultiIndex
     colmap = {
         'WPP [MW]': {
             'region': 'CZ',
@@ -281,7 +270,6 @@ def read_ceps(filepath, variable_name, url, headers):
         }
     }
 
-    # Create the MultiIndex
     df = make_multiindex(df, colmap, headers)
 
     return df
@@ -291,16 +279,21 @@ def read_elia(filepath, dataset_name, url, headers):
     '''Read a file from Elia into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
-        header=None,
-        skiprows=4,
-        index_col=0,
+        header=3,
+        parse_dates={'timestamp': ['DateTime']},
+        dayfirst=True,
+        index_col='timestamp',
         usecols=None
     )
 
+    # DST handling
+    df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
+
+    # Create the MultiIndex
     colmap = {
         'Day-Ahead forecast [MW]': {
             'region': 'BE',
-            'attribute': 'generation_forecast',
             'variable': '{variable}',
             'attribute': 'day_ahead_generation_forecast',
             'source': 'Elia',
@@ -341,10 +334,6 @@ def read_elia(filepath, dataset_name, url, headers):
         }
     }
 
-    df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
-    df.index = df.index.tz_convert(None)
-
-    # Create the MultiIndex
     df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
@@ -358,7 +347,7 @@ def read_energinet_dk(filepath, url, headers):
         # 2nd row also contains header info like in a multiindex,
         # i.e. wether the colums are price or generation data.
         # However, we will make our own columnnames below.
-        # Row 3 is enough to unambigously identify the columns
+        # Row 3 is enough to unambiguously identify the columns
         skiprows=None,
         index_col=None,
         parse_dates=True,
@@ -542,15 +531,19 @@ def read_entso_e_statistics(filepath, url, headers):
         header=18,
         usecols='A, B, G, K, L, N, P:AU'
     )
-
-    # Construct the index and set timezone
+    # rename columns
     renamer = {df.columns[0]: 'date', df.columns[1]: 'time'}
     df.rename(columns=renamer, inplace=True)
+
+    # Construct the index and set timezone
+    # for some reason, the 'date' column has already been parsed to datetime
     df['date'] = df['date'].fillna(method='ffill').dt.strftime('%Y-%m-%d')
     df.index = pd.to_datetime(df.pop('date') + ' ' + df.pop('time').str[:5])
+    # DST-handling
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     colmap_template = {
         'variable': 'load',
         'region': '{region_from_col}',
@@ -560,8 +553,6 @@ def read_entso_e_statistics(filepath, url, headers):
         'unit': 'MW'
     }
     colmap = {col: colmap_template for col in df.columns}
-
-    # Create the MultiIndex
     df = make_multiindex(df, colmap, headers)
 
     return df
@@ -591,9 +582,9 @@ def read_entso_e_portal(filepath, url, headers):
     df = df.stack(level='hour').unstack(level='Country').reset_index()
 
     # Create the timestamp column and set as index
-    df['timestamp'] = df.pop('date') + pd.to_timedelta(df.pop('hour'), unit='h')
-    df.set_index('timestamp', inplace=True)
+    df.index = df.pop('date') + pd.to_timedelta(df.pop('hour'), unit='h')
 
+    # DST-handling
     # Delete values in DK and FR that should not exist
     df = df.loc[df.index != '2015-03-29 02:00', :]
 
@@ -608,20 +599,19 @@ def read_entso_e_portal(filepath, url, headers):
     df.index = df.index.tz_localize('CET', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     renamer = {'DK_W': 'DK_1', 'UA_W': 'UA_west', 'NI': 'GB_NIR'}
     df.rename(columns=renamer, inplace=True)
 
     colmap_template = {
         'variable': 'load',
-        'attribute': 'entsoe_power_statistics_actual',
         'region': '{region_from_col}',
+        'attribute': 'actual_entsoe_power_statistics',
         'source': 'ENTSO-E Data Portal and Power Statistics',
         'web': url,
         'unit': 'MW'
     }
     colmap = {col: colmap_template for col in df.columns}
-
-    # Create the MultiIndex
     df = make_multiindex(df, colmap, headers)
 
     return df
@@ -665,6 +655,7 @@ def read_hertz(filepath, dataset_name, url, headers):
 
     variable, attribute = dataset_name.split(' ')[:2]
 
+    # Create the MultiIndex
     colmap = {
         'MW': {
             'variable': '{variable}',
@@ -696,8 +687,6 @@ def read_hertz(filepath, dataset_name, url, headers):
     # early 2015 (source: Wikipedia) so it is probably not correct that
     # 50Hertz-Wind data pre-2016 is only onshore. Maybe we can ask at
     # 50Hertz directly.
-
-    # Create the MultiIndex
     df.columns = make_multiindex(df, colmap, headers, variable, attribute)
 
     return df
@@ -719,9 +708,7 @@ def read_amprion(filepath, dataset_name, url, headers):
         converters={'Uhrzeit': lambda x: x[:5]},
     )
 
-    index1 = df.index[df.index.year <= 2009]
-    index1 = index1.tz_localize('Europe/Berlin', ambiguous='infer')
-
+    # DST-Handling:
     # In the years after 2009, during the fall dst-transistion, only the
     # summertime hour is reported, the wintertime hour is missing in the data.
     # dst_arr is a boolean array consisting only of "True" entries, telling
@@ -729,17 +716,21 @@ def read_amprion(filepath, dataset_name, url, headers):
 
     # Verify that daylight savings time transitions are handled as expected
     check_dst(df.index, autumn_expect=2)
+
+    index1 = df.index[df.index.year <= 2009]
+    index1 = index1.tz_localize('Europe/Berlin', ambiguous='infer')
     index2 = df.index[df.index.year > 2009]
     dst_arr = np.ones(len(index2), dtype=bool)
     index2 = index2.tz_localize('Europe/Berlin', ambiguous=dst_arr)
     df.index = index1.append(index2)
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     colmap = {
         '8:00 Uhr Prognose [MW]': {
             'variable': '{variable}',
             'region': 'DE_amprion',
-            'attribute': 'generation_forecast',
+            'attribute': 'day_ahead_generation_forecast',
             'source': 'Amprion',
             'web': url,
             'unit': 'MW'
@@ -753,8 +744,6 @@ def read_amprion(filepath, dataset_name, url, headers):
             'unit': 'MW'
         }
     }
-
-    # Create the MultiIndex
     df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
@@ -811,11 +800,12 @@ def read_tennet(filepath, dataset_name, url, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     colmap = {
         'prognostiziert [MW]': {
             'variable': '{variable}',
             'region': 'DE_tennet',
-            'attribute': 'generation_forecast',
+            'attribute': 'day_ahead_generation_forecast',
             'source': 'TenneT',
             'web': url,
             'unit': 'MW'
@@ -837,8 +827,6 @@ def read_tennet(filepath, dataset_name, url, headers):
             'unit': 'MW'
         }
     }
-
-    # Create the MultiIndex
     df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
@@ -874,6 +862,7 @@ def read_transnetbw(filepath, dataset_name, url, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     colmap = {
         'Prognose (MW)': {
             'variable': '{variable}',
@@ -892,8 +881,6 @@ def read_transnetbw(filepath, dataset_name, url, headers):
             'unit': 'MW'
         }
     }
-
-    # Create the MultiIndex
     df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
@@ -976,7 +963,7 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
         colnames = ['timestamp', 'load', 'wind', 'solar']
 
     df = pd.read_excel(
-        io=filePath,
+        io=filepath,
         # read the last sheet (in some years,
         # there are hidden sheets that would cause errors)
         sheet_name=-1,
@@ -986,17 +973,15 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
         usecols=cols
     )
 
-    # renamer = {'Tid': 'timestamp', 'DATUM': 'date', 'TID': 'hour'}
     df.columns = colnames
 
     if dataset_name in ['wind_solar_1', 'wind_solar_2']:
         # in 2009 there is a row below the table for the sums that we don't
         # want to read in
         df = df[df['date'].notnull()]
-        df['timestamp'] = pd.to_datetime(
-            df.pop('date').astype(int).astype(str) + ' ' +
-            df.pop('hour').astype(int).astype(
-                str).str.replace('00', '') + ':00',
+        df.index = pd.to_datetime(
+            df['date'].astype(int).astype(str) + ' ' +
+            df['hour'].astype(int).astype(str).str.replace('00', '') + ':00',
             dayfirst=False,
             infer_datetime_format=True)
 
@@ -1005,14 +990,14 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
         # want to read in
         df = df[((df['timestamp'].notnull()) &
                  (df['timestamp'].astype(str) != 'Tot summa GWh'))]
-        df['timestamp'] = pd.to_datetime(df['timestamp'], dayfirst=True)
+        df.index = pd.to_datetime(df['timestamp'], dayfirst=True)
 
-    df.set_index('timestamp', inplace=True)
     # The timestamp ("Tid" in the original) gives the time without
     # daylight savings time adjustments (normaltid). To convert to UTC,
     # one hour has to be deducted
-    df.index = df.index + pd.offsets.Hour(-1)
+    df.index = df.index - timedelta(hours=1)  # + pd.offsets.Hour(-1)
 
+    # Create the MultiIndex
     colmap = {
         'load': {
             'variable': 'load',
@@ -1039,8 +1024,6 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
             'unit': 'MW'
         }
     }
-
-    # Create the MultiIndex
     df = make_multiindex(df, colmap, headers)
 
     return df
@@ -1059,16 +1042,18 @@ def read_apg(filepath, url, headers):
         decimal=',',
         thousands='.',
         # Format of the raw_hour-column is normally is 01:00:00, 02:00:00 etc.
-        # during the year, but 3A:00:00, 3B:00:00 for the (possibely
+        # throughout the year, but 3A:00:00, 3B:00:00 for the (possibly
         # DST-transgressing) 3rd hour of every day in October, we truncate the
         # hours column after 2 characters and replace letters which are there to
         # indicate the order during fall DST-transition.
         converters={'Von': lambda x: str(x).replace('A', '').replace('B', '')}
     )
 
+    # DST-handling
     df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     colmap = {
         'Wind [MW]': {
             'variable': 'wind_onshore',
@@ -1103,14 +1088,13 @@ def read_apg(filepath, url, headers):
             'unit': 'MW'
         }
     }
-
-    # Create the MultiIndex
     df = make_multiindex(df, colmap, headers)
 
     return df
 
 
 def read_rte(filepath, url, headers):
+    '''Read a file from RTE into a DataFrame'''
     cols = ['Date', 'Heure', 'Consommation (MW)', 'Prévision J-1 (MW)',
             'Eolien (MW)', 'Solaire (MW)']
     df = pd.read_csv(
@@ -1125,16 +1109,16 @@ def read_rte(filepath, url, headers):
         usecols=cols
     )
 
-    #  filter out quarter-hourly oberservations
+    #  filter out quarter-hourly oberservations and sort the index
     df = df.loc[df.index.minute.isin([0, 30]), :]
-
     df.sort_index(axis='index', inplace=True)
 
+    # DST handling
     # drop 1 hour after spring dst as it contains inconsistent data (copy of
     # hour before). The 1 hour will later be interpolated
     dst_transitions_spring = [
         dd for d in pytz.timezone('Europe/Paris')._utc_transition_times
-        if d.year >= 2000 and d.month == 3
+        if 2000 <= d.year <= datetime.today().year and d.month == 3
         for dd in (d.replace(hour=2, minute=0), d.replace(hour=2, minute=30))]
     df = df.loc[~df.index.isin(dst_transitions_spring)]
 
@@ -1145,6 +1129,7 @@ def read_rte(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Paris', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
+    # Create the MultiIndex
     colmap = {
         'Consommation (MW)': {
             'variable': 'load',
@@ -1157,7 +1142,7 @@ def read_rte(filepath, url, headers):
         'Prévision J-1 (MW)': {
             'variable': 'load',
             'region': 'FR',
-            'attribute': 'tso_day_ahead_forecast',
+            'attribute': 'day_ahead_forecast_tso',
             'source': 'RTE',
             'web': url,
             'unit': 'MW'
@@ -1340,7 +1325,7 @@ def terna_file_to_initial_dataframe(filepath):
     return df
 
 
-def read_terna(filepath, url, headers):
+def read_terna(filepath, filedate, url, headers):
     '''
     Read a file from Terna into a dataframe
 
@@ -1360,11 +1345,6 @@ def read_terna(filepath, url, headers):
         file.
 
     '''
-    # Files from 2010-2011 are in tsv format, we ignore them
-    filedate = datetime.strptime(filepath.split(os.sep)[-1].split('_')[0],
-                                 '%Y-%m-%d').date()
-    if filedate < date(2011, 2, 1):
-        return pd.DataFrame()
 
     # Reading the file into a pandas dataframe
     df = terna_file_to_initial_dataframe(filepath)
@@ -1382,8 +1362,7 @@ def read_terna(filepath, url, headers):
     df.rename(columns=renamer, inplace=True)
 
     # Casting the timestamp column to datetime and set it as index
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df.set_index('timestamp', append=False, inplace=True)
+    df.index = pd.to_datetime(df['timestamp'])
 
     # Some files contain data for different date than they should, in which
     # case the link to the file had a different date than what we see after
@@ -1417,6 +1396,7 @@ def read_terna(filepath, url, headers):
     df.set_index(stacked, append=True, inplace=True)
     df = df['values'].unstack(stacked)
 
+    # DST-handling
     # Verify that daylight savings time transitions are handled as expected
     check_dst(df.index, autumn_expect=2)
     # drop autumn dst hours as they contain inconsistent data
@@ -1425,7 +1405,7 @@ def read_terna(filepath, url, headers):
     dst_transitions_autumn = [
         d.replace(hour=2)
         for d in pytz.timezone('Europe/Rome')._utc_transition_times
-        if d.year >= 2000 and d.month == 10]
+        if 2000 <= d.year <= datetime.today().year and d.month == 10]
     df = df.loc[~df.index.isin(dst_transitions_autumn)]
 
     # Covert to UTC
@@ -1442,7 +1422,7 @@ def read_terna(filepath, url, headers):
 
     # reorder and sort columns
     df = df.reorder_levels(headers, axis=1)
-    df.sort_index(axis=1, inplace=True)
+    df.sort_index(axis='columns', inplace=True)
 
     return df
 
@@ -1631,6 +1611,8 @@ def read_dataset(
             else:
                 parsed = {'60min': read_terna(
                     filepath, filedate, url, headers)}
+        elif source_name in ['Elexon', 'National Grid']:
+            parsed = {'30min': read_GB(filepath, url, headers)}
 
         # combine with previously parsed DataFrames of same resolution
         for res_key, df in parsed.items():
@@ -1732,14 +1714,14 @@ def trim_df(
 
 def update_progress(count, total):
     '''
-    Display or updates a console progress bar.
+    Display or updatesa console progress bar.
 
     Parameters
     ----------
     count : int
-        number of files that have been read so far
+        Number of files that have been read so far
     total : int
-        total number of files
+        Total number of files
 
     Returns
     ----------
