@@ -822,8 +822,8 @@ def read_transnetbw(filepath, dataset_name, url, headers):
         filepath,
         sep=';',
         header=0,
-        index_col='timestamp',
-        parse_dates={'timestamp': ['Datum bis', 'Uhrzeit bis']},
+        index_col=None,
+        parse_dates=None,  # {'timestamp': ['Datum von', 'Uhrzeit von']},
         date_parser=None,
         dayfirst=True,
         decimal=',',
@@ -831,21 +831,20 @@ def read_transnetbw(filepath, dataset_name, url, headers):
         converters=None,
     )
 
-    # DST-transistion is conducted 2 hours too late in the data
-    # (hour 4:00-5:00 is repeated instead of 2:00-3:00)
-    if df.index[0].date().month == 10:
-        df.index = pd.DatetimeIndex(start=df.index[0],
-                                    end=df.index[-1],
-                                    freq='15min',
-                                    tz=pytz.timezone('Europe/Berlin'))
-    else:
-        df.index = df.index.tz_localize('Europe/Berlin')
-    df.index = df.index.tz_convert(None)
+    # rename columns
+    renamer = {'Datum von': 'date', 'Uhrzeit von': 'time'}
+    df.rename(columns=renamer, inplace=True)
 
-    # The 2nd column represents the start and the 4th the end of the respective
-    # period. The former has some errors, so we use the latter to construct the
-    # index and shift the data back by 1 period.
-    df = df.shift(periods=-1, freq='15min', axis='index')
+    # DST-handling
+    # timestamp 01:45 just before spring DST transistion has been falsely set to
+    # 3:45, which we correct here
+    slicer = (df['time'] == '03:45') & (df['time'].shift(periods=1) == '01:30')
+    df.loc[slicer, 'time'] = '01:45'
+    df.index = pd.to_datetime(df['date'] + ' ' + df['time'], dayfirst=True)
+
+    dst_arr = np.zeros(len(df.index), dtype=bool)
+    df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
 
     colmap = {
         'Prognose (MW)': {
