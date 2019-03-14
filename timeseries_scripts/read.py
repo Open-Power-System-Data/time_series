@@ -745,40 +745,37 @@ def read_tennet(filepath, dataset_name, url, headers):
     )
 
     renamer = {'Datum': 'date', 'Position': 'pos'}
-    df = df.rename(columns=renamer)
+    df.rename(columns=renamer, inplace=True)
 
     df['date'].fillna(method='ffill', limit=100, inplace=True)
 
     # Check the rows for irregularities
-    for i in range(len(df.index)):
+    for i, row in df.iterrows():
+        # there must not be more than 100 quarter-hours in a day
+        if row['pos'] > 100:
+            logger.warning('%s th quarter-hour at %s, position %s',
+                           row['pos'], row['date'], i)
+
         # On the day in March when summertime begins, shift the data forward by
         # 1 hour, beginning with the 9th quarter-hour, so the index runs again
         # up to 96
-        if (df['pos'][i] == 92 and ((i == len(df.index) - 1) or
-                                    (df['pos'][i + 1] == 1))):
-            slicer = df[(df['date'] == df['date'][i]) & (df['pos'] >= 9)].index
+        elif (row['pos'] == 92 and (
+                (i == len(df.index) - 1) or (df['pos'][i + 1] == 1))):
+            slicer = df[(df['date'] == row['date']) & (df['pos'] >= 9)].index
             df.loc[slicer, 'pos'] = df['pos'] + 4
 
-        elif df['pos'][i] > 96:  # True when summertime ends in October
-            logger.debug('%s th quarter-hour at %s, position %s',
-                         df['pos'][i], df.ix[i, 'date'], (i))
-
-            # Instead of having the quarter-hours' index run up to 100, we want
-            # to have it set back by 1 hour beginning from the 13th
-            # quarter-hour, ending at 96
-            if df['pos'][i] == 100 and not (df['pos'] == 101).any():
-                slicer = df[(df['date'] == df['date'][i])
-                            & (df['pos'] >= 13)].index
-                df.loc[slicer, 'pos'] = df['pos'] - 4
+        # Instead of having the quarter-hours' index run up to 100, we want
+        # to have it set back by 1 hour beginning from the 13th
+        # quarter-hour, ending at 96
+        elif row['pos'] == 100:  # True when summertime ends in October
+            slicer = df[(df['date'] == row['date']) & (df['pos'] >= 13)].index
+            df.loc[slicer, 'pos'] = df['pos'] - 4
 
     # Compute timestamp from position and generate datetime-index
     df['hour'] = (np.trunc((df['pos'] - 1) / 4)).astype(int).astype(str)
     df['minute'] = (((df['pos'] - 1) % 4) * 15).astype(int).astype(str)
-    df['timestamp'] = pd.to_datetime(df['date'] + ' ' + df['hour'] + ':' +
-                                     df['minute'], dayfirst=True)
-    df.set_index('timestamp', inplace=True)
-
-    df.drop(columns=['pos', 'date', 'hour', 'minute'], inplace=True)
+    df.index = pd.to_datetime(
+        df['date'] + ' ' + df['hour'] + ':' + df['minute'], dayfirst=True)
 
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
