@@ -496,8 +496,11 @@ def download_file(
         if source_name == 'ENTSO-E Transparency FTP':
             filename = filename.format(u_start=start, u_end=end)
             filepath = os.path.join(container, filename)
-            sftp.get(param_dict['path'] + filename, filepath)
-            downloaded = True
+            try:
+                sftp.get(param_dict['path'] + filename, filepath)
+                downloaded = True
+            except SSHException:
+                donwloaded = False
 
         else:
             downloaded, session = download_request(
