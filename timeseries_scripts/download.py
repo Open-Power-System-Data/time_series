@@ -207,7 +207,7 @@ def download_source(
                 filename=filename
             )
 
-        elif param_dict['frequency'] in ['complete', 'irregular']:
+        elif param_dict['frequency'] == 'single file':
             # In these two cases, all data is housed in one file on the server
             downloaded, session = download_file(
                 source_name,
@@ -216,8 +216,44 @@ def download_source(
                 param_dict,
                 start=start_server,
                 end=end_server,
+                url=param_dict['url_template'],
+                url_params_template=param_dict['url_params_template'],
                 filename=filename
             )
+
+        elif param_dict['frequency'] == 'file list':
+            # Log into the Elexon website to obtain cookies to download files
+            jar = None
+            if source_name == 'Elexon':
+                from selenium import webdriver
+                from selenium.webdriver.common.keys import Keys
+
+                driver = webdriver.Chrome(
+                    executable_path='./chromedriver/chromedriver')
+                driver.get("https://www.elexonportal.co.uk")
+                u = driver.find_element_by_id('pf_control_pf_username')
+                p = driver.find_element_by_id('pf_control_pf_password')
+                u.send_keys(source_auth['username'])
+                p.send_keys(source_auth['password'])
+                p.send_keys(Keys.RETURN)
+                jar = requests.cookies.RequestsCookieJar()
+                for cookie in driver.get_cookies():
+                    jar.set(cookie['name'], cookie['value'],
+                            domain=cookie['domain'], path=cookie['path'])
+                driver.quit()
+
+            for file in param_dict['files']:
+                downloaded, session = download_file(
+                    source_name,
+                    dataset_name,
+                    data_path,
+                    param_dict,
+                    start=file['start'],
+                    end=file['end'],
+                    url=file['url'],
+                    filename=filename,
+                    cookies=jar
+                )
         else:
             # In all other cases, the files on the servers usually contain the
             # data for subperiods of some regular length (i.e. months or years)
@@ -590,7 +626,7 @@ def download_request(
     # For polish TSO PSE, sometimes the first attempt to download does not work,
     # but later attempts will.
     for i in range(attempts):
-        resp = session.get(url, params=url_params)
+        resp = session.get(url, params=url_params, cookies=cookies)
         if resp.status_code == 200:
             break
         elif i == tries - 1:

@@ -1133,10 +1133,123 @@ def read_rte(filepath, url, headers):
             'unit': 'MW'
         }
     }
+    df = make_multiindex(df, colmap, headers)
 
+    return df
+
+
+def read_GB(filepath, url, headers):
+    '''Read a file from National Grid or Elexon into a DataFrame'''
+    colmap = {
+        'time_cols': {
+            '#Settlement Date': 'date',  # Elexon
+            'Settlement Period': 'pos',  # Elexon
+            'SETTLEMENT_DATE': 'date',   # National Grid
+            'SETTLEMENT_PERIOD': 'pos'   # National Grid
+        },
+        'data_cols': {
+            'WIND': {
+                'variable': 'wind',
+                'region': 'GB_GBN',
+                'attribute': 'generation_actual_tso',
+                'source': 'Elexon',
+                'web': url,
+                'unit': 'MW'
+            },
+            'PS': {
+                'variable': 'solar',
+                'region': 'GB_GBN',
+                'attribute': 'generation_actual_tso',
+                'source': 'Elexon',
+                'web': url,
+                'unit': 'MW'
+            },
+            'EMBEDDED_WIND_GENERATION': {
+                'variable': 'wind',
+                'region': 'GB_GBN',
+                'attribute': 'generation_actual_dso',
+                'source': 'National Grid',
+                'web': url,
+                'unit': 'MW'
+            },
+            'EMBEDDED_SOLAR_GENERATION': {
+                'variable': 'solar',
+                'region': 'GB_GBN',
+                'attribute': 'generation_actual_dso',
+                'source': 'National Grid',
+                'web': url,
+                'unit': 'MW'
+            },
+            'ND': {
+                'variable': 'load',
+                'region': 'GB_GBN',
+                'attribute': 'actual_tso',
+                'source': 'National Grid',
+                'web': url,
+                'unit': 'MW'
+            },
+            'TSD': {
+                'variable': 'load',
+                'region': 'GB_GBN',
+                'attribute': 'actual_gross_generation_tso',
+                'source': 'National Grid',
+                'web': url,
+                'unit': 'MW'
+            },
+            'ENGLAND_WALES_DEMAND': {
+                'variable': 'load',
+                'region': 'GB_EAW',
+                'attribute': 'actual_tso',
+                'source': 'National Grid',
+                'web': url,
+                'unit': 'MW'
+            }
+        }
+    }
+
+    df = pd.read_csv(
+        filepath,
+        header=0,
+        # selecet columns from colmap
+        usecols=lambda x: x in [c for cc in colmap.values() for c in cc],
+        dayfirst=True,
+    )
+
+    df.rename(columns=colmap['time_cols'], inplace=True)
+
+    for i, row in df.iterrows():
+        # there must not be more than 50 half-hours in a day
+        if row['pos'] > 50:
+            logger.warning('%s th half-hour at %s, position %s',
+                           row['pos'], row['date'], i)
+
+        # On the day in March when summertime begins, shift the data forward by
+        # 1 hour, beginning with the 5th half-hour, so the index runs again
+        # up to 48
+        elif (row['pos'] == 46 and (
+                (i == len(df.index) - 1) or (df['pos'][i + 1] == 1))):
+            slicer = df[(df['date'] == row['date']) & (df['pos'] >= 3)].index
+            df.loc[slicer, 'pos'] = df['pos'] + 2
+
+        # Instead of having the half-hours' index run up to 50, we want
+        # to have it set back by 1 hour beginning from the 5th
+        # half-hour, ending at 48
+        elif row['pos'] == 50:  # True when summertime ends in October
+            slicer = df[(df['date'] == row['date']) & (df['pos'] >= 5)].index
+            df.loc[slicer, 'pos'] = df['pos'] - 2
+
+    # Compute timestamp from position and generate datetime-index
+    df['hour'] = (np.trunc((df['pos'] - 1) / 2)).astype(int).astype(str)
+    df['minute'] = (((df['pos'] - 1) % 2) * 30).astype(int).astype(str)
+    df.index = pd.to_datetime(
+        df['date'] + ' ' + df['hour'] + ':' + df['minute'], dayfirst=True)
+
+    # DST-handling
+    df.index = df.index.tz_localize('Europe/London', ambiguous='infer')
+    df.index = df.index.tz_convert(None)
 
     # Create the MultiIndex
-    df = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap['data_cols'], headers)
 
     return df
 

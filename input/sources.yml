@@ -134,7 +134,7 @@ ENTSO-E Data Portal:
     load:
         url_template: https://docstore.entsoe.eu/Documents/Publications/Statistics/Monthly-hourly-load-values_2006-2015.xlsx
         url_params_template:
-        frequency: complete
+        frequency: single file
         start: 2006-01-01
         end: 2015-12-31
         filetype: xls
@@ -144,7 +144,7 @@ ENTSO-E Data Portal:
 
 ENTSO-E Power Statistics:  # Automatic download not implemented
     load:
-        frequency: complete
+        frequency: single file
         start: 2016-01-01
         end: recent
         filetype: xlsx
@@ -233,7 +233,7 @@ Amprion:
             format: csv
             start: '{u_start.day}.{u_start.month}.{u_start.year}'
             end: '{u_end.day}.{u_end.month}.{u_end.year}' # dates must not be zero-padded
-        frequency: complete
+        frequency: single file
         start: 2008-01-04
         end: recent
         filetype: csv
@@ -247,7 +247,7 @@ Amprion:
             format: csv
             start: '{u_start.day}.{u_start.month}.{u_start.year}'
             end: '{u_end.day}.{u_end.month}.{u_end.year}' # dates must not be zero-padded
-        frequency: complete
+        frequency: single file
         start: 2010-01-07
         end: recent
         filetype: csv
@@ -323,7 +323,7 @@ Svenska Kraftnaet:
     wind_solar_2:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot201001-06.xls
         url_params_template:
-        frequency: irregular
+        frequency: single file
         start: 2010-01-01
         end: 2010-06-30
         filetype: xls
@@ -334,7 +334,7 @@ Svenska Kraftnaet:
     wind_solar_3:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot2010-07-12.xls
         url_params_template:
-        frequency: irregular
+        frequency: single file
         start: 2010-07-01
         end: 2010-12-31
         filetype: xls
@@ -345,7 +345,7 @@ Svenska Kraftnaet:
     wind_solar_4:
         url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n-fot2011-01-12.xls
         url_params_template:
-        frequency: yearly
+        frequency: single file
         start: 2011-01-01
         end: 2011-12-31
         filetype: xls
@@ -496,7 +496,7 @@ RTE:
             format: csv
             timezone: UTC
             use_labels_for_header: "true"
-        frequency: complete
+        frequency: single file
         start: 2012-01-01
         end: recent
         filetype: csv
@@ -521,6 +521,76 @@ Terna:
         resolution:
             - 60min
         web: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
+
+National Grid:
+    demand data:
+        files: 
+            - url: https://www.nationalgrideso.com/document/54256/download
+              start: 2005-01-01
+              end: 2010-12-31
+            - url: https://www.nationalgrideso.com/document/54251/download
+              start: 2011-01-01
+              end: 2016-12-31
+            - url: https://www.nationalgrideso.com/document/54241/download
+              start: 2017-01-01
+              end: 2017-12-31
+            - url: https://www.nationalgrideso.com/document/109391/download
+              start: 2018-01-01
+              end: 2018-12-31
+        start: 2005-01-01
+        end: 2018-12-31
+        frequency: file list
+        filetype: csv
+        resolution:
+             - 30min
+        web: https://www.nationalgrideso.com/balancing-data/data-explorer
+
+Elexon:
+    generation_by_source:
+        files: 
+            - url: https://downloads.elexonportal.co.uk/file/download/7326
+              start: 2008-01-01
+              end: 2008-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/7327
+              start: 2009-01-01
+              end: 2009-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/7328
+              start: 2010-01-01
+              end: 2010-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/7329
+              start: 2011-01-01
+              end: 2011-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/7330
+              start: 2012-01-01
+              end: 2012-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/7331
+              start: 2013-01-01
+              end: 2013-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/7504
+              start: 2014-01-01
+              end: 2014-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/9385
+              start: 2015-01-01
+              end: 2015-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/12745
+              start: 2016-01-01
+              end: 2016-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/17716
+              start: 2017-01-01
+              end: 2017-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/21844
+              start: 2018-01-01
+              end: 2018-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/24412
+              start: 2019-01-01
+              end: 2019-12-31
+        start: 2005-01-01
+        end: 2018-12-31
+        frequency: file list
+        filetype: csv
+        resolution:
+             - 30min
+        web: https://www.elexonportal.co.uk/fuelhh
 
 #
 # For the Following sources, the download/read has not yet been implemented
