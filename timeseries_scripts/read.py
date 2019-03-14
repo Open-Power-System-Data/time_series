@@ -361,24 +361,24 @@ def read_energinet_dk(filepath, url, headers):
         # Row 3 is enough to unambigously identify the columns
         skiprows=None,
         index_col=None,
+        parse_dates=True,
+        dayfirst=False,
         usecols=None,  # None means: parse all columns
-        thousands=','
+        thousands=',',
+        # hours in 2nd column run from 1-24, we need 0-23:
+        # (converters seem not to work in combination with parse_dates)
+        converters={1: lambda x: x - 1}
     )
 
-    # pandas on it's own authority sets first 2 columns as index
-    # probably because the column's names are in merged cells
-    df.index.rename(['date', 'hour'], inplace=True)
-    df.reset_index(inplace=True)
-    df['timestamp'] = pd.to_datetime(
-        df['date'].astype(str) + ' ' +
-        (df['hour'] - 1).astype(str) + ':00')
-    df.set_index('timestamp', inplace=True)
+    # Create the timestamp column and set as index
+    df.index = df.iloc[:, 0] + pd.to_timedelta(df.iloc[:, 1], unit='h')
 
+    # DST-handling
     # Create a list of spring-daylight savings time (DST)-transitions
     dst_transitions_spring = [
         d.replace(hour=2)
         for d in pytz.timezone('Europe/Copenhagen')._utc_transition_times
-        if d.year >= 2000 and d.month == 3]
+        if 2000 <= d.year <= datetime.today().year and d.month == 3]
 
     # Drop 3rd hour for (spring) DST-transition from df.
     df = df[~df.index.isin(dst_transitions_spring)]
@@ -391,13 +391,13 @@ def read_energinet_dk(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Copenhagen', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
-    source = 'Energinet.dk'
+    # Create the MultiIndex
     colmap = {
         'DK-Vest': {
             'variable': 'price',
             'region': 'DK_1',
             'attribute': 'day_ahead',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'EUR'
         },
@@ -405,15 +405,15 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'price',
             'region': 'DK_2',
             'attribute': 'day_ahead',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'EUR'
         },
         'Norge': {
             'variable': 'price',
-            'region': 'NO',
+            'region': 'NO_2',
             'attribute': 'day_ahead',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'EUR'
         },
@@ -421,7 +421,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'price',
             'region': 'SE',
             'attribute': 'day_ahead',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'EUR'
         },
@@ -429,7 +429,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'price',
             'region': 'SE_3',
             'attribute': 'day_ahead',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'EUR'
         },
@@ -437,7 +437,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'price',
             'region': 'SE_4',
             'attribute': 'day_ahead',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'EUR'
         },
@@ -445,7 +445,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'price',
             'region': 'DE',
             'attribute': 'day_ahead',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'EUR'
         },
@@ -453,7 +453,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'wind',
             'region': 'DK_1',
             'attribute': 'generation_actual',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
@@ -461,7 +461,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'solar',
             'region': 'DK_1',
             'attribute': 'generation_actual',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
@@ -469,7 +469,15 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'load',
             'region': 'DK_1',
             'attribute': 'actual_tso',
-            'source': source,
+            'source': 'Energinet.dk',
+            'web': url,
+            'unit': 'MW'
+        },
+        'DK-Vest: Nettoforbrug': {
+            'variable': 'load',
+            'region': 'DK_1',
+            'attribute': 'actual_net_consumption_tso',
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
@@ -477,7 +485,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'wind',
             'region': 'DK_2',
             'attribute': 'generation_actual',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
@@ -485,7 +493,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'solar',
             'region': 'DK_2',
             'attribute': 'generation_actual',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
@@ -493,7 +501,15 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'load',
             'region': 'DK_2',
             'attribute': 'actual_tso',
-            'source': source,
+            'source': 'Energinet.dk',
+            'web': url,
+            'unit': 'MW'
+        },
+        'DK-Øst: Nettoforbrug': {
+            'variable': 'load',
+            'region': 'DK_2',
+            'attribute': 'actual_net_consumption_tso',
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
@@ -501,7 +517,7 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'wind_onshore',
             'region': 'DK',
             'attribute': 'generation_actual',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
@@ -509,13 +525,11 @@ def read_energinet_dk(filepath, url, headers):
             'variable': 'wind_offshore',
             'region': 'DK',
             'attribute': 'generation_actual',
-            'source': source,
+            'source': 'Energinet.dk',
             'web': url,
             'unit': 'MW'
         },
     }
-
-    # Create the MultiIndex
     df = make_multiindex(df, colmap, headers)
 
     return df
