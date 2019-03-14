@@ -176,7 +176,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         filetype: csv
         resolution:
             - 15min
-        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
+        web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_forecast pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
@@ -188,7 +188,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         filetype: csv
         resolution:
             - 15min
-        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
+        web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_actual with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
         url_params_template:
@@ -200,7 +200,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         filetype: csv
         resolution:
             - 15min
-        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
+        web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_forecast with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
@@ -212,7 +212,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         filetype: csv
         resolution:
             - 15min
-        web: http://www.50hertz.com/en/Grid-Data/Wind-power/Archive-Wind-power
+        web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     solar generation_actual :
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicActual/DownloadFile
         url_params_template:
@@ -224,7 +224,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         filetype: csv
         resolution:
             - 15min
-        web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
+        web: https://www.50hertz.com/en/Transparency/GridData/Photovoltaics
     solar generation_forecast:
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicForecast/DownloadFile
         url_params_template:
@@ -236,7 +236,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         filetype: csv
         resolution:
             - 15min
-        web: http://www.50hertz.com/en/Grid-Data/Photovoltaics/Archive-Photovoltaics
+        web: https://www.50hertz.com/en/Transparency/GridData/Photovoltaics
 
 Amprion:
     wind:
@@ -281,7 +281,7 @@ TenneT:
         filetype: csv
         resolution:
             - 15min
-        web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-wind-energy-feed-in
+        web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
     solar:
         url_template: http://www.tennettso.de/site/de/phpbridge
         url_params_template:
@@ -295,7 +295,7 @@ TenneT:
         filetype: csv
         resolution:
             - 15min
-        web: http://www.tennettso.de/site/en/Transparency/publications/network-figures/actual-and-forecast-photovoltaic-energy-feed-in
+        web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-solar-energy-feed-in/tennet-control-area-combined/
 
 TransnetBW:
     wind:
@@ -323,7 +323,7 @@ TransnetBW:
 
 Svenska Kraftnaet:
     wind_solar_1:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}.xls
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n_fot{u_start:%Y}.xls
         url_params_template:
         frequency: yearly
         start: 2002-01-01
@@ -331,10 +331,10 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot{u_start:%Y}.xls
     wind_solar_2:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot201001-06.xls
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n_fot201001-06.xls
         url_params_template:
         frequency: single file
         start: 2010-01-01
@@ -342,10 +342,10 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot201001-06.xls
     wind_solar_3:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot2010-07-12.xls
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n_fot2010-07-12.xls
         url_params_template:
         frequency: single file
         start: 2010-07-01
@@ -353,10 +353,10 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot2010-07-12.xls
     wind_solar_4:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n-fot2011-01-12.xls
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n-fot2011-01-12.xls
         url_params_template:
         frequency: single file
         start: 2011-01-01
@@ -364,10 +364,10 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik
         filename: n-fot2011-01-12.xls
     wind_solar_5:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/n_fot{u_start:%Y}-01-12.xls
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n_fot{u_start:%Y}-01-12.xls
         url_params_template:
         frequency: yearly
         start: 2012-01-01
@@ -375,51 +375,72 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik
         filename: n_fot{u_start:%Y}-01-12.xls
     wind_solar_6:
-        url_template: http://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/sverigestatistik/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
         url_params_template:
         frequency: yearly
         start: 2015-01-01
-        end: 2017-12-31
+        end: 2016-12-31
         filetype: xls
         resolution:
             - 60min
-        web: http://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik
         filename: forbrukning-och-tillforsel-per-timme-i-normaltid-{u_start:%Y}.xls
+    wind_solar_7:
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n_fot{u_start:%Y}-01-12.xls
+        url_params_template:
+        frequency: yearly
+        start: 2017-01-01
+        end: 2018-12-31
+        filetype: xls
+        resolution:
+            - 60min
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik
+        filename: n_fot{u_start:%Y}-01-12.xls
+    wind_solar_8:
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/forbrukning-och-tillforsel-per-timme-i-normaltid-2019.xls
+        url_params_template:
+        frequency: yearly
+        start: 2019-01-01
+        end: 2019-12-31
+        filetype: xls
+        resolution:
+            - 60min
+        web: https://www.svk.se/aktorsportalen/elmarknad/statistik
+        filename: n_fot{u_start:%Y}-01-12.xls
 
 Elia:
-    wind-onshore:
-        url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
+    wind_onshore:
+        url_template: https://publications.elia.be/Publications/Publications/WindForecasting.v4.svc/ExportForecastData
         url_params_template:
             beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
             endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
             isOffshore: 'false'
             isEliaConnected: ''
         frequency: monthly #the frequency could in principle be chosen arbitrarily, even complete the complete dataset, but in practise the server often times out if too much data is requested at once
-        start: 2012-01-19  #the data starts from 2012-01-19
+        start: 2013-01-01
         end: recent
         filetype: xls
         resolution:
             - 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
-    wind-offshore:
-        url_template: http://publications.elia.be/Publications/Publications/WindForecasting.v2.svc/ExportForecastData
+    wind_offshore:
+        url_template: https://publications.elia.be/Publications/Publications/WindForecasting.v4.svc/ExportForecastData
         url_params_template:
             beginDate: '{u_start:%Y-%m-%dT%H:%M:%S.000Z}'
             endDate: '{u_end:%Y-%m-%dT%H:%M:%S.000Z}'
             isOffshore: 'true'
             isEliaConnected: ''
         frequency: quarterly
-        start: 2012-01-19  #the data starts from 2012-01-19
-        end: recent
+        start: 2013-01-01
         filetype: xls
         resolution:
             - 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
     solar:
-        url_template: http://publications.elia.be/Publications/Publications/SolarForecasting.v3.svc/ExportSolarForecastGraph
+        url_template: https://publications.elia.be/Publications/Publications/SolarForecasting.v4.svc/ExportSolarForecastGraph
         url_params_template:
             dateFrom: '{u_start:%Y-%m-%d}T23:00:00.000Z'
             dateTo: '{u_end:%Y-%m-%d}T23:00:00.000Z'
@@ -505,11 +526,9 @@ Terna:
         frequency: daily
 # In total, data is available from May 2010 until recently, but there is a large gap in 2011-2012 and since 2016, data 
 # is available from ENTSO-E transparency, so we use 2012-2016. Furthermore, the 2010-2011 data would require a different read function,
-# as the fles arein  tsv, not xls/xml
-        start: 2010-05-25
-        end: recent
-#        start: 2012-07-17
-#        end: 2015-12-31
+# as the files are in  tsv format, not xls/xml
+        start: 2012-07-17
+        end: 2015-12-31
         filetype: xls
         filename: "{u_start}_terna.xls"
         method: scrape
