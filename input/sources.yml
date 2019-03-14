@@ -117,14 +117,26 @@ ENTSO-E Transparency FTP:
         append_headers:
             attribute: day_ahead
             source: ENTSO-E Transparency
+            
 OPSD:
-    capacity:
-        url_template: http://data.open-power-system-data.org/renewable_power_plants/2018-02-27/renewable_capacity_timeseries_DE.csv
+    capacity_DE:
+        url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-02-25/renewable_capacity_timeseries_DE.csv
         filename: renewable_capacity_timeseries_DE.csv
         url_params_template:
         frequency: single file
         start: 2005-01-01
-        end: 2017-12-31
+        end: 2018-12-31
+        filetype: csv
+        resolution:
+            - 15min
+        web: http://data.open-power-system-data.org/renewable_power_plants
+    capacity_GB:
+        url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-02-25/renewable_capacity_timeseries_UK.csv
+        filename: renewable_capacity_timeseries_UK.csv
+        url_params_template:
+        frequency: single file
+        start: 1906-01-01
+        end: 2018-11-21
         filetype: csv
         resolution:
             - 15min

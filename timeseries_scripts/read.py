@@ -899,7 +899,7 @@ def read_transnetbw(filepath, dataset_name, url, headers):
     return df
 
 
-def read_opsd(filepath, url, headers):
+def read_opsd(filepath, url, headers, region):
     '''Read a file from OPSD into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -922,14 +922,18 @@ def read_opsd(filepath, url, headers):
     last = pd.to_datetime([df.index[-1]]) + timedelta(days=1, minutes=59)
     until_last = df.index.append(last).rename('timestamp')
     df = df.reindex(index=until_last, method='ffill')
-    df.index = df.index.tz_localize('Europe/Berlin')
+
+    # DST-handling
+    timezones = {'DE': 'Europe/Berlin', 'GB': 'Europe/London'}
+    df.index = df.index.tz_localize(timezones[region])
     df.index = df.index.tz_convert(None)
     df = df.resample('15min').ffill().round(0)
 
+    # Create the MultiIndex
     colmap = {
         'Solar': {
             'variable': 'solar',
-            'region': 'DE',
+            'region': '{region}',
             'attribute': 'capacity',
             'source': 'own calculation based on BNetzA and netztransparenz.de',
             'web': url,
@@ -937,7 +941,7 @@ def read_opsd(filepath, url, headers):
         },
         'Onshore': {
             'variable': 'wind_onshore',
-            'region': 'DE',
+            'region': '{region}',
             'attribute': 'capacity',
             'source': 'own calculation based on BNetzA and netztransparenz.de',
             'web': url,
@@ -945,14 +949,13 @@ def read_opsd(filepath, url, headers):
         },
         'Offshore': {
             'variable': 'wind_offshore',
-            'region': 'DE',
+            'region': '{region}',
             'attribute': 'capacity',
             'source': 'own calculation based on BNetzA and netztransparenz.de',
             'web': url,
             'unit': 'MW'
         }
     }
-    # Create the MultiIndex
     df.columns = make_multiindex(df, colmap, headers, region=region)
 
     return df
