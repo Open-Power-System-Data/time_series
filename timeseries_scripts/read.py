@@ -366,6 +366,10 @@ def read_energinet_dk(filepath, url, headers):
     # Drop 3rd hour for (spring) DST-transition from df.
     df = df[~df.index.isin(dst_transitions_spring)]
 
+    # Verify that daylight savings time transitions are handled as expected
+    check_dst(df.index, autumn_expect=1)
+
+    # Conform index to UTC
     dst_arr = np.ones(len(df.index), dtype=bool)
     df.index = df.index.tz_localize('Europe/Copenhagen', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
@@ -566,6 +570,9 @@ def read_entso_e_portal(filepath, url, headers):
     df.loc[df.index.isin(['2014-10-26 02:00:00', '2015-10-25 02:00:00']),
            'DK'] = np.nan
 
+    # Verify that daylight savings time transitions are handled as expected
+    check_dst(df.index, autumn_expect=1)
+    # Conform index to UTC
     dst_arr = np.ones(len(df.index), dtype=bool)
     df.index = df.index.tz_localize('CET', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
@@ -611,6 +618,10 @@ def read_hertz(filepath, dataset_name, url, headers):
     # hour, (marked by an A) is missing in the data.
     # dst_arr is a boolean array consisting only of "False" entries, telling
     # python to treat the hour from 2:00 to 2:59 as wintertime.
+
+    # Verify that daylight savings time transitions are handled as expected
+    check_dst(df.index, autumn_expect=2)
+    # Conform index to UTC
     if (pd.to_datetime(df.index.values[0]).year not in [2005, 2006, 2015] or
             (dataset_name == 'wind generation_actual pre-offshore' and
              pd.to_datetime(df.index.values[0]).year == 2015)):
@@ -684,6 +695,9 @@ def read_amprion(filepath, dataset_name, url, headers):
     # summertime hour is reported, the wintertime hour is missing in the data.
     # dst_arr is a boolean array consisting only of "True" entries, telling
     # python to treat the hour from 2:00 to 2:59 as summertime.
+
+    # Verify that daylight savings time transitions are handled as expected
+    check_dst(df.index, autumn_expect=2)
     index2 = df.index[df.index.year > 2009]
     dst_arr = np.ones(len(index2), dtype=bool)
     index2 = index2.tz_localize('Europe/Berlin', ambiguous=dst_arr)
@@ -1094,7 +1108,9 @@ def read_rte(filepath, url, headers):
         for dd in (d.replace(hour=2, minute=0), d.replace(hour=2, minute=30))]
     df = df.loc[~df.index.isin(dst_transitions_spring)]
 
-    # Make sure there are no ambiguous or nonexistent times
+    # Verify that daylight savings time transitions are handled as expected
+    check_dst(df.index, autumn_expect=1)
+    # Conform index to UTC
     dst_arr = np.zeros(len(df.index), dtype=bool)
     df.index = df.index.tz_localize('Europe/Paris', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
@@ -1371,6 +1387,8 @@ def read_terna(filepath, url, headers):
     df.set_index(stacked, append=True, inplace=True)
     df = df['values'].unstack(stacked)
 
+    # Verify that daylight savings time transitions are handled as expected
+    check_dst(df.index, autumn_expect=2)
     # drop autumn dst hours as they contain inconsistent data
     # (apparently 2:00 and 3:00 are added up and reported as value for 2:00).
     # The 2 hours will later be interpolated
@@ -1765,3 +1783,47 @@ def make_multiindex(
     return df
 
 
+def check_dst(index, autumn_expect=2, timezone='CET'):
+    '''
+    Count how many times the the daylight saving times (DST) transistion hours 
+    in October and March appear in a DataFrame.index and compare against
+    expected number, informing when they deviate. In reality, the DST-hours
+    appear 0 times in March and 2 times in October.
+    Note: When the expected number for October is 2, we don't need this function
+    since df.index.tz_localize('Europe/Berlin', ambiguous='infer') throws an 
+    exception if the actual number is 1
+
+    Parameters
+    ----------
+    index : pandas.DatetimeIndex
+        The index to be checked
+    autumn_expect : int
+        Number of times the DST hour is expected in autumn
+    timezone : str
+        A timezone name from pytz.all_timezones
+
+    Returns
+    ----------
+    None
+
+    '''
+    transition_hour = {'CET': 2, 'WET': 1}
+    dst_transitions_spring = [
+        d.replace(hour=transition_hour[timezone])
+        for d in pytz.timezone(timezone)._utc_transition_times
+        if 2000 <= d.year <= datetime.today().year and d.month == 3]
+
+    dst_transitions_autumn = [
+        d.replace(hour=transition_hour[timezone])
+        for d in pytz.timezone(timezone)._utc_transition_times
+        if 2000 <= d.year <= datetime.today().year and d.month == 10]
+
+    for d1, d2 in zip(dst_transitions_spring, dst_transitions_autumn):
+        if d1 in index:
+            logger.info('DST hours: spring: {} | {}'.format(
+                d1.year, sum(index == d1)))
+        if d2.replace(hour=0) in index and sum(index == d2) != autumn_expect:
+            logger.info('DST hours: autumn: {} | {}'.format(
+                d2.year, sum(index == d2)))
+
+    return
