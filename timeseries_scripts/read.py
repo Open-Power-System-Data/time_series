@@ -238,7 +238,7 @@ def read_pse(filepath, variable_name, url, headers):
     }
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -282,7 +282,7 @@ def read_ceps(filepath, variable_name, url, headers):
     }
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -495,7 +495,7 @@ def read_energinet_dk(filepath, url, headers):
     }
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -527,7 +527,7 @@ def read_entso_e_statistics(filepath, url, headers):
     colmap = {col: colmap_template for col in df.columns}
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -584,7 +584,7 @@ def read_entso_e_portal(filepath, url, headers):
     colmap = {col: colmap_template for col in df.columns}
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -796,13 +796,8 @@ def read_tennet(filepath, dataset_name, url, headers):
         }
     }
 
-    # Drop any column not in colmap
-    df = df[[key for key in colmap.keys() if key in df.columns]]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level].format(tech=tech) for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
 
@@ -857,13 +852,8 @@ def read_transnetbw(filepath, dataset_name, url, headers):
         }
     }
 
-    # Drop any column not in colmap
-    df = df[list(colmap.keys())]
-
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level].format(tech=tech) for level in headers)
-              for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
 
     return df
 
@@ -1007,7 +997,7 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
     }
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -1071,7 +1061,7 @@ def read_apg(filepath, url, headers):
     }
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
@@ -1146,7 +1136,7 @@ def read_rte(filepath, url, headers):
 
 
     # Create the MultiIndex
-    df.columns = make_multiindex(df, colmap, headers)
+    df = make_multiindex(df, colmap, headers)
 
     return df
 
