@@ -302,6 +302,15 @@ def read_elia(filepath, dataset_name, url, headers):
             'region': 'BE',
             'attribute': 'generation_forecast',
             'variable': '{variable}',
+            'attribute': 'day_ahead_generation_forecast',
+            'source': 'Elia',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Measured & upscaled [MW]': {
+            'region': 'BE',
+            'variable': '{variable}',
+            'attribute': 'generation_actual',
             'source': 'Elia',
             'web': url,
             'unit': 'MW'
@@ -310,6 +319,14 @@ def read_elia(filepath, dataset_name, url, headers):
             'region': 'BE',
             'variable': '{variable}',
             'attribute': 'generation_actual',
+            'source': 'Elia',
+            'web': url,
+            'unit': 'MW'
+        },
+        'Monitored Capacity [MW]': {
+            'region': 'BE',
+            'variable': '{variable}',
+            'attribute': 'capacity',
             'source': 'Elia',
             'web': url,
             'unit': 'MW'
