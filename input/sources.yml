@@ -37,6 +37,7 @@ ENTSO-E Transparency FTP:
         unstacked: attribute
         append_headers:
             source: ENTSO-E Transparency
+            web: https://transparency.entsoe.eu/generation/r2/actualGenerationPerProductionType/show
             unit: MW
     Actual Total Load:
         host: 'sftp-transparency.entsoe.eu'
@@ -63,6 +64,7 @@ ENTSO-E Transparency FTP:
         append_headers:
             attribute: actual_entsoe_transparency
             source: ENTSO-E Transparency
+            web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
             unit: MW
     Day-ahead Total Load Forecast:
         host: 'sftp-transparency.entsoe.eu'
@@ -89,6 +91,7 @@ ENTSO-E Transparency FTP:
         append_headers:
             attribute: day_ahead_forecast_entsoe_transparency
             source: ENTSO-E Transparency
+            web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
             unit: MW
     Day-ahead Prices:
         host: 'sftp-transparency.entsoe.eu'
@@ -117,7 +120,8 @@ ENTSO-E Transparency FTP:
         append_headers:
             attribute: day_ahead
             source: ENTSO-E Transparency
-            
+            web: https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
+
 OPSD:
     capacity_DE:
         url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-02-25/renewable_capacity_timeseries_DE.csv
@@ -130,6 +134,28 @@ OPSD:
         resolution:
             - 15min
         web: http://data.open-power-system-data.org/renewable_power_plants
+        colmap:
+            Offshore:
+                attribute: capacity
+                region: DE
+                source: own calculation based on BNetzA and netztransparenz.de
+                unit: MW
+                variable: wind_offshore
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            Onshore:
+                attribute: capacity
+                region: DE
+                source: own calculation based on BNetzA and netztransparenz.de
+                unit: MW
+                variable: wind_onshore
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            Solar:
+                attribute: capacity
+                region: DE
+                source: own calculation based on BNetzA and netztransparenz.de
+                unit: MW
+                variable: solar
+                web: https://data.open-power-system-data.org/renewable_power_plants
     capacity_GB:
         url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-02-25/renewable_capacity_timeseries_UK.csv
         filename: renewable_capacity_timeseries_UK.csv
@@ -141,6 +167,28 @@ OPSD:
         resolution:
             - 15min
         web: http://data.open-power-system-data.org/renewable_power_plants
+        colmap:
+            Offshore:
+                attribute: capacity
+                region: GB_GBN
+                source: own calculation based on BEIS
+                unit: MW
+                variable: wind_offshore
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            Onshore:
+                attribute: capacity
+                region: GB_GBN
+                source: own calculation based on BEIS
+                unit: MW
+                variable: wind_onshore
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            Solar:
+                attribute: capacity
+                region: GB_GBN
+                source: own calculation based on BEIS
+                unit: MW
+                variable: solar
+                web: https://data.open-power-system-data.org/renewable_power_plants
 
 ENTSO-E Data Portal:
     load:
@@ -154,6 +202,13 @@ ENTSO-E Data Portal:
             - 60min
         web: https://www.entsoe.eu/data/power-stats/
         filename: Monthly-hourly-load-values_2006-2015.xlsx
+        colmap:
+            attribute: actual_entsoe_power_statistics
+            region: '{region_from_col}'
+            source: ENTSO-E Data Portal and Power Statistics
+            unit: MW
+            variable: load
+            web: https://www.entsoe.eu/data/power-stats
 
 ENTSO-E Power Statistics:  # Automatic download not implemented
     load:
@@ -164,6 +219,14 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 60min
         web: https://www.entsoe.eu/data/power-stats/
+        colmap:
+            attribute: actual_entsoe_power_statistics
+            region: '{region_from_col}'
+            source: ENTSO-E Data Portal and Power Statistics
+            unit: MW
+            variable: load
+            web: https://www.entsoe.eu/data/power-stats
+
 50Hertz:
     wind generation_actual pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
@@ -177,6 +240,14 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+        colmap:
+            MW:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_forecast pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
@@ -189,6 +260,14 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+        colmap:
+            MW:
+                attribute: day_ahead_generation_forecast
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_actual with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerActual/DownloadFile
         url_params_template:
@@ -201,6 +280,21 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+        colmap:
+            Offshore MW:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind_offshore
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+            Onshore MW:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind_onshore
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_forecast with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
@@ -213,6 +307,21 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+        colmap:
+            Offshore MW:
+                attribute: day_ahead_generation_forecast
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind_offshore
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+            Onshore MW:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind_onshore
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     solar generation_actual :
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicActual/DownloadFile
         url_params_template:
@@ -225,6 +334,14 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Photovoltaics
+        colmap:
+            MW:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: solar
+                web: https://www.50hertz.com/en/Transparency/GridData/Photovoltaics
     solar generation_forecast:
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicForecast/DownloadFile
         url_params_template:
@@ -237,6 +354,14 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         resolution:
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Photovoltaics
+        colmap:
+            MW:
+                attribute: day_ahead_generation_forecast
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: solar
+                web: https://www.50hertz.com/en/Transparency/GridData/Photovoltaics
 
 Amprion:
     wind:
@@ -253,6 +378,21 @@ Amprion:
         resolution:
             - 15min
         web: http://www.amprion.net/en/wind-feed-in
+        colmap:
+            8:00 Uhr Prognose [MW]:
+                attribute: day_ahead_generation_forecast
+                region: DE_amprion
+                source: Amprion
+                unit: MW
+                variable: wind
+                web: http://www.amprion.net/en/wind-feed-in
+            Online Hochrechnung [MW]:
+                attribute: generation_actual
+                region: DE_amprion
+                source: Amprion
+                unit: MW
+                variable: wind
+                web: http://www.amprion.net/en/wind-feed-in
     solar:
         url_template: http://amprion.de/applications/applicationfiles/PV_einspeisung.php
         url_params_template:
@@ -267,6 +407,21 @@ Amprion:
         resolution:
             - 15min
         web: http://www.amprion.net/en/photovoltaic-infeed
+        colmap:
+            8:00 Uhr Prognose [MW]:
+                attribute: day_ahead_generation_forecast
+                region: DE_amprion
+                source: Amprion
+                unit: MW
+                variable: solar
+                web: http://www.amprion.net/en/photovoltaic-infeed
+            Online Hochrechnung [MW]:
+                attribute: generation_actual
+                region: DE_amprion
+                source: Amprion
+                unit: MW
+                variable: solar
+                web: http://www.amprion.net/en/photovoltaic-infeed
 
 TenneT:
     wind:
@@ -282,6 +437,28 @@ TenneT:
         resolution:
             - 15min
         web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
+        colmap:
+            Anteil Offshore [MW]:
+                attribute: generation_actual
+                region: DE_tennet
+                source: TenneT
+                unit: MW
+                variable: wind_offshore
+                web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
+            prognostiziert [MW]:
+                attribute: day_ahead_generation_forecast
+                region: DE_tennet
+                source: TenneT
+                unit: MW
+                variable: wind
+                web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
+            tatsächlich [MW]:
+                attribute: generation_actual
+                region: DE_tennet
+                source: TenneT
+                unit: MW
+                variable: wind
+                web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
     solar:
         url_template: http://www.tennettso.de/site/de/phpbridge
         url_params_template:
@@ -295,7 +472,22 @@ TenneT:
         filetype: csv
         resolution:
             - 15min
-        web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-solar-energy-feed-in/tennet-control-area-combined/
+        web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-solar-energy-feed-in/tennet-control-area-combined
+        colmap:
+            prognostiziert [MW]:
+                attribute: day_ahead_generation_forecast
+                region: DE_tennet
+                source: TenneT
+                unit: MW
+                variable: solar
+                web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-solar-energy-feed-in/tennet-control-area-combined
+            tatsächlich [MW]:
+                attribute: generation_actual
+                region: DE_tennet
+                source: TenneT
+                unit: MW
+                variable: solar
+                web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-solar-energy-feed-in/tennet-control-area-combined
 
 TransnetBW:
     wind:
@@ -309,6 +501,21 @@ TransnetBW:
         resolution:
             - 15min
         web: https://www.transnetbw.com/en/transparency/market-data/key-figures
+        colmap:
+            Ist-Wert (MW):
+                attribute: generation_actual
+                region: DE_transnetbw
+                source: TransnetBW
+                unit: MW
+                variable: wind
+                web: https://www.transnetbw.com/en/transparency/market-data/key-figures
+            Prognose (MW):
+                attribute: day_ahead_generation_forecast
+                region: DE_transnetbw
+                source: TransnetBW
+                unit: MW
+                variable: wind
+                web: https://www.transnetbw.com/en/transparency/market-data/key-figures
     solar:
         url_template: https://api.transnetbw.de/photovoltaics/csv
         url_params_template:
@@ -320,6 +527,21 @@ TransnetBW:
         resolution:
             - 15min
         web: https://www.transnetbw.com/en/transparency/market-data/key-figures
+        colmap:
+            Ist-Wert (MW):
+                attribute: generation_actual
+                region: DE_transnetbw
+                source: TransnetBW
+                unit: MW
+                variable: solar
+                web: https://www.transnetbw.com/en/transparency/market-data/key-figures
+            Prognose (MW):
+                attribute: day_ahead_generation_forecast
+                region: DE_transnetbw
+                source: TransnetBW
+                unit: MW
+                variable: solar
+                web: https://www.transnetbw.com/en/transparency/market-data/key-figures
 
 Svenska Kraftnaet:
     wind_solar_1:
@@ -333,6 +555,28 @@ Svenska Kraftnaet:
             - 60min
         web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
         filename: n_fot{u_start:%Y}.xls
+        colmap:
+            load:
+                attribute: actual_tso
+                region: SE
+                source: Svenska Kraftnaet
+                unit: MW
+                variable: load
+                web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
+            solar:
+                attribute: generation_actual
+                region: SE
+                source: Svenska Kraftnaet
+                unit: MW
+                variable: solar
+                web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
+            wind:
+                attribute: generation_actual
+                region: SE
+                source: Svenska Kraftnaet
+                unit: MW
+                variable: wind
+                web: https://data.open-power-system-data.org/renewable_power_plants
     wind_solar_2:
         url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n_fot201001-06.xls
         url_params_template:
@@ -426,6 +670,28 @@ Elia:
         resolution:
             - 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
+        colmap:
+            Day-Ahead forecast [MW]:
+                attribute: day_ahead_generation_forecast
+                region: BE
+                source: Elia
+                unit: MW
+                variable: wind_onshore
+                web: http://www.elia.be/en/grid-data/power-generation/wind-power
+            Measured & upscaled [MW]:
+                attribute: generation_actual
+                region: BE
+                source: Elia
+                unit: MW
+                variable: wind_onshore
+                web: http://www.elia.be/en/grid-data/power-generation/wind-power
+            Monitored Capacity [MW]:
+                attribute: capacity
+                region: BE
+                source: Elia
+                unit: MW
+                variable: wind_onshore
+                web: http://www.elia.be/en/grid-data/power-generation/wind-power
     wind_offshore:
         url_template: https://publications.elia.be/Publications/Publications/WindForecasting.v4.svc/ExportForecastData
         url_params_template:
@@ -439,6 +705,28 @@ Elia:
         resolution:
             - 15min
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
+        colmap:
+            Day-Ahead forecast [MW]:
+                attribute: day_ahead_generation_forecast
+                region: BE
+                source: Elia
+                unit: MW
+                variable: wind_offshore
+                web: http://www.elia.be/en/grid-data/power-generation/wind-power
+            Measured & upscaled [MW]:
+                attribute: generation_actual
+                region: BE
+                source: Elia
+                unit: MW
+                variable: wind_offshore
+                web: http://www.elia.be/en/grid-data/power-generation/wind-power
+            Monitored Capacity [MW]:
+                attribute: capacity
+                region: BE
+                source: Elia
+                unit: MW
+                variable: wind_offshore
+                web: http://www.elia.be/en/grid-data/power-generation/wind-power
     solar:
         url_template: https://publications.elia.be/Publications/Publications/SolarForecasting.v4.svc/ExportSolarForecastGraph
         url_params_template:
@@ -452,6 +740,28 @@ Elia:
         resolution:
             - 15min
         web: http://www.elia.be/en/grid-data/power-generation/Solar-power-generation-data/Graph
+        colmap:
+            Corrected Upscaled Measurement [MW]:
+                attribute: generation_actual
+                region: BE
+                source: Elia
+                unit: MW
+                variable: solar
+                web: https://publications.elia.be/Publications/Publications/SolarForecasting.v4.svc/ExportSolarForecastGraph
+            Day-Ahead forecast [MW]:
+                attribute: day_ahead_generation_forecast
+                region: BE
+                source: Elia
+                unit: MW
+                variable: solar
+                web: https://publications.elia.be/Publications/Publications/SolarForecasting.v4.svc/ExportSolarForecastGraph
+            Monitored Capacity [MWp]:
+                attribute: capacity
+                region: BE
+                source: Elia
+                unit: MW
+                variable: solar
+                web: https://publications.elia.be/Publications/Publications/SolarForecasting.v4.svc/ExportSolarForecastGraph
 
 Energinet.dk:  # Automatic download not implemented
     prices_wind_solar:
@@ -462,6 +772,126 @@ Energinet.dk:  # Automatic download not implemented
         resolution:
             - 60min
         web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+        colmap:
+            DE European Power Exchange:
+                attribute: day_ahead
+                region: DE
+                source: Energinet.dk
+                unit: EUR
+                variable: price
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            DK-Øst:
+                attribute: day_ahead
+                region: DK_2
+                source: Energinet.dk
+                unit: EUR
+                variable: price
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Øst: Bruttoforbrug':
+                attribute: actual_tso
+                region: DK_2
+                source: Energinet.dk
+                unit: MW
+                variable: load
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Øst: Nettoforbrug':
+                attribute: actual_net_consumption_tso
+                region: DK_2
+                source: Energinet.dk
+                unit: MW
+                variable: load
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Øst: Solcelle produktion (estimeret)':
+                attribute: generation_actual
+                region: DK_2
+                source: Energinet.dk
+                unit: MW
+                variable: solar
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Øst: Vindproduktion':
+                attribute: generation_actual
+                region: DK_2
+                source: Energinet.dk
+                unit: MW
+                variable: wind
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            DK-Vest:
+                attribute: day_ahead
+                region: DK_1
+                source: Energinet.dk
+                unit: EUR
+                variable: price
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Vest: Bruttoforbrug':
+                attribute: actual_tso
+                region: DK_1
+                source: Energinet.dk
+                unit: MW
+                variable: load
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Vest: Nettoforbrug':
+                attribute: actual_net_consumption_tso
+                region: DK_1
+                source: Energinet.dk
+                unit: MW
+                variable: load
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Vest: Solcelle produktion (estimeret)':
+                attribute: generation_actual
+                region: DK_1
+                source: Energinet.dk
+                unit: MW
+                variable: solar
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK-Vest: Vindproduktion':
+                attribute: generation_actual
+                region: DK_1
+                source: Energinet.dk
+                unit: MW
+                variable: wind
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK: Vindproduktion (offshore)':
+                attribute: generation_actual
+                region: DK
+                source: Energinet.dk
+                unit: MW
+                variable: wind_offshore
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            'DK: Vindproduktion (onshore)':
+                attribute: generation_actual
+                region: DK
+                source: Energinet.dk
+                unit: MW
+                variable: wind_onshore
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            Norge:
+                attribute: day_ahead
+                region: NO_2
+                source: Energinet.dk
+                unit: EUR
+                variable: price
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            Sverige (SE):
+                attribute: day_ahead
+                region: SE
+                source: Energinet.dk
+                unit: EUR
+                variable: price
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            Sverige (SE3):
+                attribute: day_ahead
+                region: SE_3
+                source: Energinet.dk
+                unit: EUR
+                variable: price
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
+            Sverige (SE4):
+                attribute: day_ahead
+                region: SE_4
+                source: Energinet.dk
+                unit: EUR
+                variable: price
+                web: http://osp.energinet.dk/_layouts/Markedsdata/framework/integrations/markedsdatatemplate.aspx
 
 CEPS:  # Automatic download not implemented
     wind_pv:
@@ -472,6 +902,21 @@ CEPS:  # Automatic download not implemented
         resolution:
             - 60min
         web: http://www.ceps.cz/en/all-data#GenerationRES
+        colmap:
+            PVPP [MW]:
+                attribute: generation_actual
+                region: CZ
+                source: CEPS
+                unit: MW
+                variable: solar
+                web: http://www.ceps.cz/en/all-data#GenerationRES
+            WPP [MW]:
+                attribute: generation_actual
+                region: CZ
+                source: CEPS
+                unit: MW
+                variable: wind_onshore
+                web: http://www.ceps.cz/en/all-data#GenerationRES
 
 PSE:
     wind:
@@ -484,6 +929,14 @@ PSE:
         resolution:
             - 60min
         web: https://www.pse.pl/web/pse-eng/data/polish-power-system-operation/generation-in-wind-farms
+        colmap:
+            Generation of Wind Farms:
+                attribute: generation_actual
+                region: PL
+                source: PSE
+                unit: MW
+                variable: wind_onshore
+                web: https://www.pse.pl/web/pse-eng/data/polish-power-system-operation/generation-in-wind-farms
 
 APG:
     generation_by_source:
@@ -504,6 +957,35 @@ APG:
         resolution:
             - 15min
         web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
+        colmap:
+            Solar  [MW]:
+                attribute: generation_actual
+                region: AT
+                source: APG
+                unit: MW
+                variable: solar
+                web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung-pro-Typ
+            Solar [MW]:
+                attribute: generation_actual
+                region: AT
+                source: APG
+                unit: MW
+                variable: solar
+                web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung-pro-Typ
+            Wind  [MW]:
+                attribute: generation_actual
+                region: AT
+                source: APG
+                unit: MW
+                variable: wind_onshore
+                web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung-pro-Typ
+            Wind [MW]:
+                attribute: generation_actual
+                region: AT
+                source: APG
+                unit: MW
+                variable: wind_onshore
+                web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung-pro-Typ
 
 RTE:
     generation_by_source:
@@ -519,6 +1001,35 @@ RTE:
         resolution:
             - 30min
         web: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def
+        colmap:
+            Consommation (MW):
+                attribute: actual_tso
+                region: FR
+                source: RTE
+                unit: MW
+                variable: load
+                web: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def
+            Eolien (MW):
+                attribute: generation_actual
+                region: FR
+                source: RTE
+                unit: MW
+                variable: wind_onshore
+                web: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def
+            Prévision J-1 (MW):
+                attribute: day_ahead_forecast_tso
+                region: FR
+                source: RTE
+                unit: MW
+                variable: load
+                web: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def
+            Solaire (MW):
+                attribute: generation_actual
+                region: FR
+                source: RTE
+                unit: MW
+                variable: solar
+                web: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def
 
 Terna:
     generation_by_source:
@@ -535,6 +1046,13 @@ Terna:
         resolution:
             - 60min
         web: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
+        colmap:
+            attribute: '{attribute}'
+            region: '{region}'
+            source: Terna
+            unit: MW
+            variable: '{variable}'
+            web: https://www.terna.it/SistemaElettrico/TransparencyReport/Generation/Forecastandactualgeneration.aspx
 
 National Grid:
     demand data:
@@ -558,6 +1076,42 @@ National Grid:
         resolution:
              - 30min
         web: https://www.nationalgrideso.com/balancing-data/data-explorer
+        colmap:
+            EMBEDDED_SOLAR_GENERATION:
+                attribute: generation_actual_dso
+                region: GB_GBN
+                source: National Grid
+                unit: MW
+                variable: solar
+                web: https://www.nationalgrideso.com/balancing-data/data-explorer
+            EMBEDDED_WIND_GENERATION:
+                attribute: generation_actual_dso
+                region: GB_GBN
+                source: National Grid
+                unit: MW
+                variable: wind
+                web: https://www.nationalgrideso.com/balancing-data/data-explorer
+            ENGLAND_WALES_DEMAND:
+                attribute: actual_tso
+                region: GB_EAW
+                source: National Grid
+                unit: MW
+                variable: load
+                web: https://www.nationalgrideso.com/balancing-data/data-explorer
+            ND:
+                attribute: actual_tso
+                region: GB_GBN
+                source: National Grid
+                unit: MW
+                variable: load
+                web: https://www.nationalgrideso.com/balancing-data/data-explorer
+            TSD:
+                attribute: actual_gross_generation_tso
+                region: GB_GBN
+                source: National Grid
+                unit: MW
+                variable: load
+                web: https://www.nationalgrideso.com/balancing-data/data-explorer
 
 Elexon:
     generation_by_source:
@@ -605,6 +1159,21 @@ Elexon:
         resolution:
              - 30min
         web: https://www.elexonportal.co.uk/fuelhh
+        colmap:
+            PS:
+                attribute: generation_actual_tso
+                region: GB_GBN
+                source: Elexon
+                unit: MW
+                variable: solar
+                web: https://www.elexonportal.co.uk/fuelhh
+            WIND:
+                attribute: generation_actual_tso
+                region: GB_GBN
+                source: Elexon
+                unit: MW
+                variable: wind
+                web: https://www.elexonportal.co.uk/fuelhh
 
 #
 # For the Following sources, the download/read has not yet been implemented

@@ -26,7 +26,6 @@ def read_entso_e_transparency(
         areas,
         filepath,
         dataset_name,
-        url,
         headers,
         cols,
         stacked,
@@ -127,11 +126,11 @@ def read_entso_e_transparency(
         # keep only columns that have at least some nonzero values
         df = df.loc[:, (df > 0).any(axis=0)]
 
-        # add source and url to the columns.
+        # add source, url and unit to the column names.
         # Note: pd.concat inserts new MultiIndex values infront of the old ones
         df = pd.concat([df],
-                       keys=[tuple([*append_headers.values(), url])],
-                       names=[*append_headers.keys(), 'web'],
+                       keys=[tuple(append_headers.values())],
+                       names=append_headers.keys(),
                        axis='columns')
 
         # reorder and sort columns
@@ -142,7 +141,7 @@ def read_entso_e_transparency(
     return dfs
 
 
-def read_pse(filepath, url, headers):
+def read_pse(filepath):
     '''
     Read a .csv file from PSE into a DataFrame.
 
@@ -216,24 +215,10 @@ def read_pse(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        'Generation of Wind Farms': {
-            'region': 'PL',
-            'variable': 'wind_onshore',
-            'attribute': 'generation_actual',
-            'source': 'PSE',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-
-    df = make_multiindex(df, colmap, headers)
-
     return df
 
 
-def read_ceps(filepath, url, headers):
+def read_ceps(filepath):
     '''Read a file from CEPS into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -247,35 +232,13 @@ def read_ceps(filepath, url, headers):
     )
 
     # DST-handling
-    df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
+    df.index = df.index.tz_localize('Europe/Prague', ambiguous='infer')
     df.index = df.index.tz_convert(None)
-
-    # Create the MultiIndex
-    colmap = {
-        'WPP [MW]': {
-            'region': 'CZ',
-            'variable': 'wind_onshore',
-            'attribute': 'generation_actual',
-            'source': 'CEPS',
-            'web': url,
-            'unit': 'MW'
-        },
-        'PVPP [MW]': {
-            'region': 'CZ',
-            'variable': 'solar',
-            'attribute': 'generation_actual',
-            'source': 'CEPS',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-
-    df = make_multiindex(df, colmap, headers)
 
     return df
 
 
-def read_elia(filepath, dataset_name, url, headers):
+def read_elia(filepath):
     '''Read a file from Elia into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
@@ -290,56 +253,10 @@ def read_elia(filepath, dataset_name, url, headers):
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        'Day-Ahead forecast [MW]': {
-            'region': 'BE',
-            'variable': '{variable}',
-            'attribute': 'day_ahead_generation_forecast',
-            'source': 'Elia',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Measured & upscaled [MW]': {
-            'region': 'BE',
-            'variable': '{variable}',
-            'attribute': 'generation_actual',
-            'source': 'Elia',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Corrected Upscaled Measurement [MW]': {
-            'region': 'BE',
-            'variable': '{variable}',
-            'attribute': 'generation_actual',
-            'source': 'Elia',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Monitored Capacity [MW]': {
-            'region': 'BE',
-            'variable': '{variable}',
-            'attribute': 'capacity',
-            'source': 'Elia',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Monitored Capacity [MWp]': {
-            'region': 'BE',
-            'variable': '{variable}',
-            'attribute': 'capacity',
-            'source': 'Elia',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-
-    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
-
     return df
 
 
-def read_energinet_dk(filepath, url, headers):
+def read_energinet_dk(filepath):
     '''Read a file from energinet.dk into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
@@ -380,151 +297,10 @@ def read_energinet_dk(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Copenhagen', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        'DK-Vest': {
-            'variable': 'price',
-            'region': 'DK_1',
-            'attribute': 'day_ahead',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'EUR'
-        },
-        'DK-Øst': {
-            'variable': 'price',
-            'region': 'DK_2',
-            'attribute': 'day_ahead',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'EUR'
-        },
-        'Norge': {
-            'variable': 'price',
-            'region': 'NO_2',
-            'attribute': 'day_ahead',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'EUR'
-        },
-        'Sverige (SE)': {
-            'variable': 'price',
-            'region': 'SE',
-            'attribute': 'day_ahead',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'EUR'
-        },
-        'Sverige (SE3)': {
-            'variable': 'price',
-            'region': 'SE_3',
-            'attribute': 'day_ahead',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'EUR'
-        },
-        'Sverige (SE4)': {
-            'variable': 'price',
-            'region': 'SE_4',
-            'attribute': 'day_ahead',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'EUR'
-        },
-        'DE European Power Exchange': {
-            'variable': 'price',
-            'region': 'DE',
-            'attribute': 'day_ahead',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'EUR'
-        },
-        'DK-Vest: Vindproduktion': {
-            'variable': 'wind',
-            'region': 'DK_1',
-            'attribute': 'generation_actual',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK-Vest: Solcelle produktion (estimeret)': {
-            'variable': 'solar',
-            'region': 'DK_1',
-            'attribute': 'generation_actual',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK-Vest: Bruttoforbrug': {
-            'variable': 'load',
-            'region': 'DK_1',
-            'attribute': 'actual_tso',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK-Vest: Nettoforbrug': {
-            'variable': 'load',
-            'region': 'DK_1',
-            'attribute': 'actual_net_consumption_tso',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK-Øst: Vindproduktion': {
-            'variable': 'wind',
-            'region': 'DK_2',
-            'attribute': 'generation_actual',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK-Øst: Solcelle produktion (estimeret)': {
-            'variable': 'solar',
-            'region': 'DK_2',
-            'attribute': 'generation_actual',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK-Øst: Bruttoforbrug': {
-            'variable': 'load',
-            'region': 'DK_2',
-            'attribute': 'actual_tso',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK-Øst: Nettoforbrug': {
-            'variable': 'load',
-            'region': 'DK_2',
-            'attribute': 'actual_net_consumption_tso',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK: Vindproduktion (onshore)': {
-            'variable': 'wind_onshore',
-            'region': 'DK',
-            'attribute': 'generation_actual',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-        'DK: Vindproduktion (offshore)': {
-            'variable': 'wind_offshore',
-            'region': 'DK',
-            'attribute': 'generation_actual',
-            'source': 'Energinet.dk',
-            'web': url,
-            'unit': 'MW'
-        },
-    }
-    df = make_multiindex(df, colmap, headers)
-
     return df
 
 
-def read_entso_e_statistics(filepath, url, headers):
+def read_entso_e_statistics(filepath,):
     '''Read a file from ENTSO-E into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
@@ -543,22 +319,10 @@ def read_entso_e_statistics(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap_template = {
-        'variable': 'load',
-        'region': '{region_from_col}',
-        'attribute': 'actual_entsoe_power_statistics',
-        'source': 'ENTSO-E Data Portal and Power Statistics',
-        'web': url,
-        'unit': 'MW'
-    }
-    colmap = {col: colmap_template for col in df.columns}
-    df = make_multiindex(df, colmap, headers)
-
     return df
 
 
-def read_entso_e_portal(filepath, url, headers):
+def read_entso_e_portal(filepath):
     '''Read a file from the old ENTSO-E Data Portal into a DataFrame'''
     df = pd.read_excel(
         io=filepath,
@@ -599,25 +363,14 @@ def read_entso_e_portal(filepath, url, headers):
     df.index = df.index.tz_localize('CET', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
+    # Renam regions to comply with naming conventions
     renamer = {'DK_W': 'DK_1', 'UA_W': 'UA_west', 'NI': 'GB_NIR'}
     df.rename(columns=renamer, inplace=True)
-
-    colmap_template = {
-        'variable': 'load',
-        'region': '{region_from_col}',
-        'attribute': 'actual_entsoe_power_statistics',
-        'source': 'ENTSO-E Data Portal and Power Statistics',
-        'web': url,
-        'unit': 'MW'
-    }
-    colmap = {col: colmap_template for col in df.columns}
-    df = make_multiindex(df, colmap, headers)
 
     return df
 
 
-def read_hertz(filepath, dataset_name, url, headers):
+def read_hertz(filepath, dataset_name):
     '''Read a file from 50Hertz into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -655,44 +408,16 @@ def read_hertz(filepath, dataset_name, url, headers):
 
     variable, attribute = dataset_name.split(' ')[:2]
 
-    # Create the MultiIndex
-    colmap = {
-        'MW': {
-            'variable': '{variable}',
-            'region': 'DE_50hertz',
-            'attribute': '{attribute}',
-            'source': '50Hertz',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Onshore MW': {
-            'variable': 'wind_onshore',
-            'region': 'DE_50hertz',
-            'attribute': '{attribute}',
-            'source': '50Hertz',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Offshore MW': {
-            'variable': 'wind_offshore',
-            'region': 'DE_50hertz',
-            'attribute': '{attribute}',
-            'source': '50Hertz',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
     # Since 2016, wind data has an aditional column for offshore.
     # Baltic 1 has been producing since 2011-05-02 and Baltic2 since
     # early 2015 (source: Wikipedia) so it is probably not correct that
     # 50Hertz-Wind data pre-2016 is only onshore. Maybe we can ask at
     # 50Hertz directly.
-    df.columns = make_multiindex(df, colmap, headers, variable, attribute)
 
     return df
 
 
-def read_amprion(filepath, dataset_name, url, headers):
+def read_amprion(filepath):
     '''Read a file from Amprion into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -725,31 +450,10 @@ def read_amprion(filepath, dataset_name, url, headers):
     df.index = index1.append(index2)
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        '8:00 Uhr Prognose [MW]': {
-            'variable': '{variable}',
-            'region': 'DE_amprion',
-            'attribute': 'day_ahead_generation_forecast',
-            'source': 'Amprion',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Online Hochrechnung [MW]': {
-            'variable': '{variable}',
-            'region': 'DE_amprion',
-            'attribute': 'generation_actual',
-            'source': 'Amprion',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
-
     return df
 
 
-def read_tennet(filepath, dataset_name, url, headers):
+def read_tennet(filepath, dataset_name):
     '''Read a file from TenneT into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -766,7 +470,6 @@ def read_tennet(filepath, dataset_name, url, headers):
 
     renamer = {'Datum': 'date', 'Position': 'pos'}
     df.rename(columns=renamer, inplace=True)
-
     df['date'].fillna(method='ffill', limit=100, inplace=True)
 
     # Check the rows for irregularities
@@ -800,39 +503,10 @@ def read_tennet(filepath, dataset_name, url, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        'prognostiziert [MW]': {
-            'variable': '{variable}',
-            'region': 'DE_tennet',
-            'attribute': 'day_ahead_generation_forecast',
-            'source': 'TenneT',
-            'web': url,
-            'unit': 'MW'
-        },
-        'tatsächlich [MW]': {
-            'variable': '{variable}',
-            'region': 'DE_tennet',
-            'attribute': 'generation_actual',
-            'source': 'TenneT',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Anteil Offshore [MW]': {
-            'variable': 'wind_offshore',
-            'region': 'DE_tennet',
-            'attribute': 'generation_actual',
-            'source': 'TenneT',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
-
     return df
 
 
-def read_transnetbw(filepath, dataset_name, url, headers):
+def read_transnetbw(filepath):
     '''Read a file from TransnetBW into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -862,31 +536,10 @@ def read_transnetbw(filepath, dataset_name, url, headers):
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        'Prognose (MW)': {
-            'variable': '{variable}',
-            'region': 'DE_transnetbw',
-            'attribute': 'day_ahead_generation_forecast',
-            'source': 'TransnetBW',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Ist-Wert (MW)': {
-            'variable': '{variable}',
-            'region': 'DE_transnetbw',
-            'attribute': 'generation_actual',
-            'source': 'TransnetBW',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-    df.columns = make_multiindex(df, colmap, headers, variable=dataset_name)
-
     return df
 
 
-def read_opsd(filepath, url, headers, region):
+def read_opsd(filepath, region):
     '''Read a file from OPSD into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -916,51 +569,20 @@ def read_opsd(filepath, url, headers, region):
     df.index = df.index.tz_convert(None)
     df = df.resample('15min').ffill().round(0)
 
-    # Create the MultiIndex
-    colmap = {
-        'Solar': {
-            'variable': 'solar',
-            'region': '{region}',
-            'attribute': 'capacity',
-            'source': 'own calculation based on BNetzA and netztransparenz.de',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Onshore': {
-            'variable': 'wind_onshore',
-            'region': '{region}',
-            'attribute': 'capacity',
-            'source': 'own calculation based on BNetzA and netztransparenz.de',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Offshore': {
-            'variable': 'wind_offshore',
-            'region': '{region}',
-            'attribute': 'capacity',
-            'source': 'own calculation based on BNetzA and netztransparenz.de',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-    df.columns = make_multiindex(df, colmap, headers, region=region)
-
     return df
 
 
-def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
+def read_svenska_kraftnaet(filepath, dataset_name):
     '''Read a file from Svenska Kraftnät into a DataFrame'''
     if dataset_name in ['wind_solar_1', 'wind_solar_2']:
         skip = 4
-        cols = [0, 1, 2, 3]
-        colnames = ['date', 'hour', 'load', 'wind']
+        cols = {0: 'date', 1: 'hour', 2: 'load', 3: 'wind'}
     else:
         if dataset_name == 'wind_solar_4':
             skip = 5
         else:
             skip = 7
-        cols = [0, 1, 2, 8]
-        colnames = ['timestamp', 'load', 'wind', 'solar']
+        cols = {0: 'timestamp', 1: 'load', 2: 'wind', 8: 'solar'}
 
     df = pd.read_excel(
         io=filepath,
@@ -970,10 +592,9 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
         header=None,
         skiprows=skip,
         index_col=None,
-        usecols=cols
+        usecols=cols.keys(),
+        names=cols.values()
     )
-
-    df.columns = colnames
 
     if dataset_name in ['wind_solar_1', 'wind_solar_2']:
         # in 2009 there is a row below the table for the sums that we don't
@@ -997,39 +618,10 @@ def read_svenska_kraftnaet(filepath, dataset_name, url, headers):
     # one hour has to be deducted
     df.index = df.index - timedelta(hours=1)  # + pd.offsets.Hour(-1)
 
-    # Create the MultiIndex
-    colmap = {
-        'load': {
-            'variable': 'load',
-            'region': 'SE',
-            'attribute': 'actual_tso',
-            'source': 'Svenska Kraftnaet',
-            'web': url,
-            'unit': 'MW'
-        },
-        'wind': {
-            'variable': 'wind',
-            'region': 'SE',
-            'attribute': 'generation_actual',
-            'source': 'Svenska Kraftnaet',
-            'web': url,
-            'unit': 'MW'
-        },
-        'solar': {
-            'variable': 'solar',
-            'region': 'SE',
-            'attribute': 'generation_actual',
-            'source': 'Svenska Kraftnaet',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-    df = make_multiindex(df, colmap, headers)
-
     return df
 
 
-def read_apg(filepath, url, headers):
+def read_apg(filepath):
     '''Read a file from APG into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -1053,47 +645,10 @@ def read_apg(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        'Wind [MW]': {
-            'variable': 'wind_onshore',
-            'region': 'AT',
-            'attribute': 'generation_actual',
-            'source': 'APG',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Solar [MW]': {
-            'variable': 'solar',
-            'region': 'AT',
-            'attribute': 'generation_actual',
-            'source': 'APG',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Wind  [MW]': {
-            'variable': 'wind_onshore',
-            'region': 'AT',
-            'attribute': 'generation_actual',
-            'source': 'APG',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Solar  [MW]': {
-            'variable': 'solar',
-            'region': 'AT',
-            'attribute': 'generation_actual',
-            'source': 'APG',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-    df = make_multiindex(df, colmap, headers)
-
     return df
 
 
-def read_rte(filepath, url, headers):
+def read_rte(filepath):
     '''Read a file from RTE into a DataFrame'''
     cols = ['Date', 'Heure', 'Consommation (MW)', 'Prévision J-1 (MW)',
             'Eolien (MW)', 'Solaire (MW)']
@@ -1129,124 +684,26 @@ def read_rte(filepath, url, headers):
     df.index = df.index.tz_localize('Europe/Paris', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
-    # Create the MultiIndex
-    colmap = {
-        'Consommation (MW)': {
-            'variable': 'load',
-            'region': 'FR',
-            'attribute': 'actual_tso',
-            'source': 'RTE',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Prévision J-1 (MW)': {
-            'variable': 'load',
-            'region': 'FR',
-            'attribute': 'day_ahead_forecast_tso',
-            'source': 'RTE',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Eolien (MW)': {
-            'variable': 'wind_onshore',
-            'region': 'FR',
-            'attribute': 'generation_actual',
-            'source': 'RTE',
-            'web': url,
-            'unit': 'MW'
-        },
-        'Solaire (MW)': {
-            'variable': 'solar',
-            'region': 'FR',
-            'attribute': 'generation_actual',
-            'source': 'RTE',
-            'web': url,
-            'unit': 'MW'
-        }
-    }
-    df = make_multiindex(df, colmap, headers)
-
     return df
 
 
-def read_GB(filepath, url, headers):
+def read_GB(filepath):
     '''Read a file from National Grid or Elexon into a DataFrame'''
-    colmap = {
-        'time_cols': {
-            '#Settlement Date': 'date',  # Elexon
-            'Settlement Period': 'pos',  # Elexon
-            'SETTLEMENT_DATE': 'date',   # National Grid
-            'SETTLEMENT_PERIOD': 'pos'   # National Grid
-        },
-        'data_cols': {
-            'WIND': {
-                'variable': 'wind',
-                'region': 'GB_GBN',
-                'attribute': 'generation_actual_tso',
-                'source': 'Elexon',
-                'web': url,
-                'unit': 'MW'
-            },
-            'PS': {
-                'variable': 'solar',
-                'region': 'GB_GBN',
-                'attribute': 'generation_actual_tso',
-                'source': 'Elexon',
-                'web': url,
-                'unit': 'MW'
-            },
-            'EMBEDDED_WIND_GENERATION': {
-                'variable': 'wind',
-                'region': 'GB_GBN',
-                'attribute': 'generation_actual_dso',
-                'source': 'National Grid',
-                'web': url,
-                'unit': 'MW'
-            },
-            'EMBEDDED_SOLAR_GENERATION': {
-                'variable': 'solar',
-                'region': 'GB_GBN',
-                'attribute': 'generation_actual_dso',
-                'source': 'National Grid',
-                'web': url,
-                'unit': 'MW'
-            },
-            'ND': {
-                'variable': 'load',
-                'region': 'GB_GBN',
-                'attribute': 'actual_tso',
-                'source': 'National Grid',
-                'web': url,
-                'unit': 'MW'
-            },
-            'TSD': {
-                'variable': 'load',
-                'region': 'GB_GBN',
-                'attribute': 'actual_gross_generation_tso',
-                'source': 'National Grid',
-                'web': url,
-                'unit': 'MW'
-            },
-            'ENGLAND_WALES_DEMAND': {
-                'variable': 'load',
-                'region': 'GB_EAW',
-                'attribute': 'actual_tso',
-                'source': 'National Grid',
-                'web': url,
-                'unit': 'MW'
-            }
-        }
+    time_cols = {
+        '#Settlement Date': 'date',  # Elexon
+        'Settlement Period': 'pos',  # Elexon
+        'SETTLEMENT_DATE': 'date',   # National Grid
+        'SETTLEMENT_PERIOD': 'pos'   # National Grid
     }
 
     df = pd.read_csv(
         filepath,
         header=0,
-        # selecet columns from colmap
-        usecols=lambda x: x in [c for cc in colmap.values() for c in cc],
-        dayfirst=True,
+        usecols=None,
+        dayfirst=True
     )
 
-    df.rename(columns=colmap['time_cols'], inplace=True)
+    df.rename(columns=time_cols, inplace=True)
 
     for i, row in df.iterrows():
         # there must not be more than 50 half-hours in a day
@@ -1278,9 +735,6 @@ def read_GB(filepath, url, headers):
     # DST-handling
     df.index = df.index.tz_localize('Europe/London', ambiguous='infer')
     df.index = df.index.tz_convert(None)
-
-    # Create the MultiIndex
-    df = make_multiindex(df, colmap['data_cols'], headers)
 
     return df
 
@@ -1325,7 +779,7 @@ def terna_file_to_initial_dataframe(filepath):
     return df
 
 
-def read_terna(filepath, filedate, url, headers):
+def read_terna(filepath, filedate, param_dict, headers):
     '''
     Read a file from Terna into a dataframe
 
@@ -1412,17 +866,13 @@ def read_terna(filepath, filedate, url, headers):
     df.index = df.index.tz_localize('Europe/Rome')
     df.index = df.index.tz_convert(None)
 
-    # add source and url to the columns.
-    append_headers = {'source': 'Terna', 'unit': 'MW'}
-    # Note: pd.concat inserts new MultiIndex values infront of the old ones
-    df = pd.concat([df],
-                   keys=[tuple([*append_headers.values(), url])],
-                   names=[*append_headers.keys(), 'web'],
-                   axis='columns')
-
-    # reorder and sort columns
-    df = df.reorder_levels(headers, axis=1)
-    df.sort_index(axis='columns', inplace=True)
+    # Create the MultiIndex
+    cols = [tuple(param_dict['colmap'][level]
+                  .format(region=col_name[0],
+                          variable=col_name[1],
+                          attribute=col_name[2])
+                  for level in headers) for col_name in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(cols, names=headers)
 
     return df
 
@@ -1441,6 +891,9 @@ def read(
     for source_name, source_dict in sources.items():
         # For each dataset from source_name
         for dataset_name, param_dict in source_dict.items():
+            if source_name == 'Svenska Kraftnaet':
+                param_dict['colmap'] = source_dict['wind_solar_1']['colmap']
+
             read_dataset(
                 source_name,
                 dataset_name,
@@ -1560,48 +1013,42 @@ def read_dataset(
             continue
 
         logger.debug(source_dataset_timerange + 'reading...')
-        url = param_dict['web']
 
         # Select read function for source
-        if dataset_name == 'capacity DE':
-            parsed = {'15min': read_opsd(filepath, url, headers, region='DE')}
-        if dataset_name == 'capacity GB':
             parsed = {'30min': read_opsd(filepath, url, headers, region='GB')}
+        if dataset_name == 'capacity_DE':
+            parsed = {'15min': read_opsd(filepath, region='DE')}
+        if dataset_name == 'capacity_GB':
+            parsed = {'30min': read_opsd(filepath, region='GB')}
         elif source_name == 'CEPS':
-            parsed = {'60min': read_ceps(filepath, url, headers)}
+            parsed = {'60min': read_ceps(filepath)}
         elif source_name == 'ENTSO-E Transparency FTP':
             parsed = read_entso_e_transparency(
-                areas, filepath, dataset_name, url, headers, **param_dict)
+                areas, filepath, dataset_name, headers, **param_dict)
         elif source_name == 'ENTSO-E Data Portal':
-            parsed = {'60min': read_entso_e_portal(filepath, url, headers)}
+            parsed = {'60min': read_entso_e_portal(filepath)}
         elif source_name == 'ENTSO-E Power Statistics':
-            parsed = {'60min': read_entso_e_statistics(
-                filepath, url, headers)}
+            parsed = {'60min': read_entso_e_statistics(filepath)}
         elif source_name == 'Energinet.dk':
-            parsed = {'60min': read_energinet_dk(filepath, url, headers)}
+            parsed = {'60min': read_energinet_dk(filepath)}
         elif source_name == 'Elia':
-            parsed = {'15min': read_elia(filepath, dataset_name, url, headers)}
+            parsed = {'15min': read_elia(filepath)}
         elif source_name == 'PSE':
-            parsed = {'60min': read_pse(filepath, url, headers)}
+            parsed = {'60min': read_pse(filepath)}
         elif source_name == 'RTE':
-            parsed = {'30min': read_rte(filepath, url, headers)}
+            parsed = {'30min': read_rte(filepath)}
         elif source_name == 'Svenska Kraftnaet':
-            parsed = {'60min': read_svenska_kraftnaet(
-                filepath, dataset_name, url, headers)}
+            parsed = {'60min': read_svenska_kraftnaet(filepath, dataset_name)}
         elif source_name == '50Hertz':
-            parsed = {'15min': read_hertz(
-                filepath, dataset_name, url, headers)}
+            parsed = {'15min': read_hertz(filepath, dataset_name)}
         elif source_name == 'Amprion':
-            parsed = {'15min': read_amprion(
-                filepath, dataset_name, url, headers)}
+            parsed = {'15min': read_amprion(filepath)}
         elif source_name == 'TenneT':
-            parsed = {'15min': read_tennet(
-                filepath, dataset_name, url, headers)}
+            parsed = {'15min': read_tennet(filepath, dataset_name)}
         elif source_name == 'TransnetBW':
-            parsed = {'15min': read_transnetbw(
-                filepath, dataset_name, url, headers)}
+            parsed = {'15min': read_transnetbw(filepath)}
         elif source_name == 'APG':
-            parsed = {'15min': read_apg(filepath, url, headers)}
+            parsed = {'15min': read_apg(filepath)}
         elif source_name == 'Terna':
             # Files from 2010-2011 are in tsv format, we ignore them
             filedate = datetime.strptime(
@@ -1610,16 +1057,17 @@ def read_dataset(
                 continue
             else:
                 parsed = {'60min': read_terna(
-                    filepath, filedate, url, headers)}
+                    filepath, filedate, param_dict, headers)}
         elif source_name in ['Elexon', 'National Grid']:
-            parsed = {'30min': read_GB(filepath, url, headers)}
+            parsed = {'30min': read_GB(filepath)}
 
-        # combine with previously parsed DataFrames of same resolution
+        # combine with previously parsed DataFrames from same dataset and same
+        # resolution
         for res_key, df in parsed.items():
             if res_key in param_dict['resolution'] and df.empty:
-                logger.warning('%s | %s | empty DataFrame: ',
-                               files[0], res_key)
+                logger.info('%s | %s | empty DataFrame: ', files[0], res_key)
                 continue
+
             if cumulated[res_key].empty:
                 cumulated[res_key] = df
             else:
@@ -1635,20 +1083,29 @@ def read_dataset(
                        .format(source_name, dataset_name))
         return
 
-    # Finally, trim the DataFrames and save them on disk
+    # Finally, create the MultiIndex, trim the DataFrames and save them on disk
     for res_key, df in cumulated.items():
-        if not df.empty:
-            df = trim_df(
-                df,
-                res_key,
-                source_name,
-                dataset_name,
-                start_from_user,
-                end_from_user)
+        if df.empty:
+            continue
+        elif source_name in ['ENTSO-E Transparency FTP', 'Terna']:
+            pass
+        else:
+            if source_name in ['ENTSO-E Data Portal', 'ENTSO-E Power Statistics']:
+                colmap = {col: param_dict['colmap'] for col in df.columns}
+            else:
+                colmap = param_dict['colmap']
+            df = make_multiindex(df, colmap, headers)
 
-            filename = '_'.join(
-                [res_key, source_name, dataset_name]) + '.pickle'
-            df.to_pickle(os.path.join(parsed_path, filename))
+        df = trim_df(
+            df,
+            res_key,
+            source_name,
+            dataset_name,
+            start_from_user,
+            end_from_user)
+
+        filename = '_'.join([res_key, source_name, dataset_name]) + '.pickle'
+        df.to_pickle(os.path.join(parsed_path, filename))
 
     return
 
@@ -1787,10 +1244,18 @@ def make_multiindex(
     df = df[[key for key in colmap.keys() if key in df.columns]]
 
     # Create the MultiIndex
-    tuples = [tuple(colmap[col][level]
-                    .format(region=region, variable=variable, attribute=attribute, region_from_col=col)
-                    for level in headers) for col in df.columns]
-    df.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+    cols = [tuple(colmap[col_name][level].format(region=region,
+                                                 variable=variable,
+                                                 attribute=attribute,
+                                                 region_from_col=col_name)
+        for level in headers) for col_name in df.columns]
+
+#    for col_name in df.columns:
+#        for level in headers:
+#            if level in df.columns.names
+#            if type(df.columns) == pd.core.indexes.multi.MultiIndex:
+
+    df.columns = pd.MultiIndex.from_tuples(cols, names=headers)
 
     return df
 
