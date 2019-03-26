@@ -386,6 +386,12 @@ def read_hertz(filepath, dataset_name):
         converters={'Von': lambda x: x[:5]},
     )
 
+    # Wind onshore
+    if dataset_name == 'wind generation_actual pre-offshore':
+        df['wind_onshore'] = df['MW']
+    elif dataset_name == 'wind generation_actual with-offshore':
+        df['wind'] = df['Onshore MW'].add(df['Onshore MW'])
+
     # Until 2006, and in 2015 (except for wind_generation_pre-offshore),
     # during the fall dst-transistion, only the
     # wintertime hour (marked by a B in the data) is reported, the summertime
@@ -399,9 +405,11 @@ def read_hertz(filepath, dataset_name):
     if (pd.to_datetime(df.index.values[0]).year not in [2005, 2006, 2015] or
             (dataset_name == 'wind generation_actual pre-offshore' and
              pd.to_datetime(df.index.values[0]).year == 2015)):
+        check_dst(df.index, autumn_expect=2)
         df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     else:
         dst_arr = np.zeros(len(df.index), dtype=bool)
+        check_dst(df.index, autumn_expect=1)
         df.index = df.index.tz_localize('Europe/Berlin', ambiguous=dst_arr)
 
     df.index = df.index.tz_convert(None)
@@ -417,7 +425,7 @@ def read_hertz(filepath, dataset_name):
     return df
 
 
-def read_amprion(filepath):
+def read_amprion(filepath, dataset_name):
     '''Read a file from Amprion into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -432,6 +440,10 @@ def read_amprion(filepath):
         # Truncate values in 'time' column after 5th character.
         converters={'Uhrzeit': lambda x: x[:5]},
     )
+
+    # Wind onshore
+    if dataset_name == 'wind':
+        df['wind_onshore'] = df['Online Hochrechnung [MW]']
 
     # DST-Handling:
     # In the years after 2009, during the fall dst-transistion, only the
@@ -468,6 +480,13 @@ def read_tennet(filepath, dataset_name):
         converters=None,
     )
 
+    # Wind onshore
+    if dataset_name == 'wind':
+        # Calculate onshore wind-generation
+        df['wind_onshore'] = df['tatsächlich [MW]'].sub(
+            df['Anteil Offshore [MW]'])
+
+    # Construct the datetime-inex
     renamer = {'Datum': 'date', 'Position': 'pos'}
     df.rename(columns=renamer, inplace=True)
     df['date'].fillna(method='ffill', limit=100, inplace=True)
@@ -507,7 +526,7 @@ def read_tennet(filepath, dataset_name):
     return df
 
 
-def read_transnetbw(filepath):
+def read_transnetbw(filepath, dataset_name):
     '''Read a file from TransnetBW into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -521,6 +540,10 @@ def read_transnetbw(filepath):
         thousands=None,
         converters=None,
     )
+
+    # Wind onshore
+    if dataset_name == 'wind':
+        df['wind_onshore'] = df['Ist-Wert (MW)']
 
     # rename columns
     renamer = {'Datum von': 'date', 'Uhrzeit von': 'time'}
@@ -554,6 +577,10 @@ def read_opsd(filepath, region):
         thousands=None,
         converters=None,
     )
+
+    # Calculate aggregate wind capacity (onshore + offshore):
+    if not 'Wind' in df.columns:
+        df['Wind'] = df['Onshore'].add(df['Offshore'], fill_value=0)
 
     # The capacities data only has one entry per day, which pandas
     # interprets as 00:00h. We will broadcast the dayly data for
@@ -1044,11 +1071,11 @@ def read_dataset(
         elif source_name == '50Hertz':
             parsed = {'15min': read_hertz(filepath, dataset_name)}
         elif source_name == 'Amprion':
-            parsed = {'15min': read_amprion(filepath)}
+            parsed = {'15min': read_amprion(filepath, dataset_name)}
         elif source_name == 'TenneT':
             parsed = {'15min': read_tennet(filepath, dataset_name)}
         elif source_name == 'TransnetBW':
-            parsed = {'15min': read_transnetbw(filepath)}
+            parsed = {'15min': read_transnetbw(filepath, dataset_name)}
         elif source_name == 'APG':
             parsed = {'15min': read_apg(filepath)}
         elif source_name == 'Terna':

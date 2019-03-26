@@ -149,6 +149,13 @@ OPSD:
                 unit: MW
                 variable: wind_onshore
                 web: https://data.open-power-system-data.org/renewable_power_plants
+            Wind:
+                attribute: capacity
+                region: DE
+                source: own calculation based on BNetzA and netztransparenz.de
+                unit: MW
+                variable: wind
+                web: https://data.open-power-system-data.org/renewable_power_plants            
             Solar:
                 attribute: capacity
                 region: DE
@@ -181,6 +188,13 @@ OPSD:
                 source: own calculation based on BEIS
                 unit: MW
                 variable: wind_onshore
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            Wind:
+                attribute: capacity
+                region: GB_GBN
+                source: own calculation based on BEIS
+                unit: MW
+                variable: wind
                 web: https://data.open-power-system-data.org/renewable_power_plants
             Solar:
                 attribute: capacity
@@ -295,6 +309,13 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
                 unit: MW
                 variable: wind_onshore
                 web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+            wind:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_forecast with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
@@ -393,6 +414,13 @@ Amprion:
                 unit: MW
                 variable: wind
                 web: http://www.amprion.net/en/wind-feed-in
+            wind_onshore:
+                attribute: generation_actual
+                region: DE_amprion
+                source: Amprion
+                unit: MW
+                variable: wind_onshore
+                web: http://www.amprion.net/en/wind-feed-in
     solar:
         url_template: http://amprion.de/applications/applicationfiles/PV_einspeisung.php
         url_params_template:
@@ -459,6 +487,13 @@ TenneT:
                 unit: MW
                 variable: wind
                 web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
+            wind_onshore:
+                attribute: generation_actual
+                region: DE_tennet
+                source: TenneT
+                unit: MW
+                variable: wind_onshore
+                web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
     solar:
         url_template: http://www.tennettso.de/site/de/phpbridge
         url_params_template:
@@ -502,6 +537,13 @@ TransnetBW:
             - 15min
         web: https://www.transnetbw.com/en/transparency/market-data/key-figures
         colmap:
+            wind_onshore:
+                attribute: generation_actual
+                region: DE_transnetbw
+                source: TransnetBW
+                unit: MW
+                variable: wind_onshore
+                web: https://www.transnetbw.com/en/transparency/market-data/key-figures
             Ist-Wert (MW):
                 attribute: generation_actual
                 region: DE_transnetbw
