@@ -212,7 +212,7 @@ def read_pse(filepath):
     # DST-handling
     # 'ambiguous' refers to how the October dst-transition hour is handled.
     # 'infer' will attempt to infer dst-transition hours based on order.
-    df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
+    df.index = df.index.tz_localize('Europe/Warsaw', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
     return df
@@ -500,6 +500,7 @@ def read_tennet(filepath, dataset_name):
     df.index = pd.to_datetime(
         df['date'] + ' ' + df['hour'] + ':' + df['minute'], dayfirst=True)
 
+    # DST-handling
     df.index = df.index.tz_localize('Europe/Berlin', ambiguous='infer')
     df.index = df.index.tz_convert(None)
 
@@ -904,7 +905,7 @@ def read(
                 headers,
                 start_from_user=start_from_user,
                 end_from_user=end_from_user,
-                testmode=False)
+                testmode=testmode)
     return
 
 
@@ -955,6 +956,8 @@ def read_dataset(
         A DataFrame containing the combined data for dataset_name 
 
     '''
+
+    # The cumulated dict will store parsed data from all files from one dataset
     cumulated = {'15min': pd.DataFrame(),
                  '30min': pd.DataFrame(),
                  '60min': pd.DataFrame()}
@@ -1015,7 +1018,6 @@ def read_dataset(
         logger.debug(source_dataset_timerange + 'reading...')
 
         # Select read function for source
-            parsed = {'30min': read_opsd(filepath, url, headers, region='GB')}
         if dataset_name == 'capacity_DE':
             parsed = {'15min': read_opsd(filepath, region='DE')}
         if dataset_name == 'capacity_GB':
@@ -1153,7 +1155,7 @@ def trim_df(
     # UTC and CE(S)T, we set the start in CE(S)T, but the end in UTC
     if start_from_user:
         start_from_user = (
-            pytz.timezone('Europe/Brussels')
+            pytz.timezone('CET')
             .localize(datetime.combine(start_from_user, time()))
             .astimezone(pytz.timezone('UTC')))
     if end_from_user:

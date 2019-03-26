@@ -20,6 +20,9 @@ temp
 .ipynb_checkpoints/
 *.pyc
 
+# sublime projectfiles
+*.sublime*
+
 # chromedriver (required for Scraping of Terna URLs)
 chromedriver
 
