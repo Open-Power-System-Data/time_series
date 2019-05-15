@@ -1,8 +1,14 @@
 region,variable,attribute,Explanation
-"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",load,entsoe_power_statistics,Hourly Load from ENTSO-E Data Portal
-"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",load,entsoe_transparency,Hourly Load from ENTSO-E Transparency Platform
-"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",price,day_ahead,Day-ahead spot price
-"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,generation_actual,Electricity produced py solar power plants
-"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,generation_forecast,Day-ahead generation forecast
-"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,capacity,Installed capacity (actual availability not accounted for)
-"ISO-2 digit country code and name of control  balancing area if applicable, eg. DE_amprion",solar  / wind-onshore / wind-offshore,profile,Share of installed capacity producing
+ISO 3166 area code and name or control area or bidding zone,load,actual_entsoe_power_statistics,Total load as published on ENTSO-E Data Portal
+ISO 3166 area code and name or control area or bidding zone,load,actual_entsoe_transparency,Total load as published on ENTSO-E Data Portal/Power Statistics
+ISO 3166 area code and name or control area or bidding zone,load,actual_tso,Total load as published by the TSO
+ISO 3166 area code and name or control area or bidding zone,load,actual_net_consumption_tso,Total load exluding transmission losses as published onby the TSO
+ISO 3166 area code and name or control area or bidding zone,load,actual_gross_generation_tso,Total power generation from national TSO
+ISO 3166 area code and name or control area or bidding zone,load,day_ahead_forecast_entsoe_transparency,Day ahead total load forecast from ENTSO-E Transparency Platform
+ISO 3166 area code and name or control area or bidding zone,solar / wind / wind_onshore / wind_offshore,generation_actual,Electricity produced by all power plants
+ISO 3166 area code and name or control area or bidding zone,solar / wind / wind_onshore / wind_offshore,day_ahead_generation_forecast,Day-ahead generation forecast
+ISO 3166 area code and name or control area or bidding zone,solar / wind / wind_onshore / wind_offshore,generation_actual_dso,Electricity produced by power plants connected to distribution grid
+ISO 3166 area code and name or control area or bidding zone,solar / wind / wind_onshore / wind_offshore,generation_actual_tso,Electricity produced by power plants connected to transmission grid
+ISO 3166 area code and name or control area or bidding zone,solar / wind / wind_onshore / wind_offshore,capacity,Aggregated installed capacity of power plants (actual availability not accounted for)
+ISO 3166 area code and name or control area or bidding zone,solar / wind / wind_onshore / wind_offshore,profile,Share of installed capacity producing
+ISO 3166 area code and name or control area or bidding zone,price,day_ahead,Day-ahead spot price
