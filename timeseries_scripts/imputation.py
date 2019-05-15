@@ -42,7 +42,7 @@ def find_nan(df, res_key, headers, patch=False):
     '''
     nan_table = pd.DataFrame()
     patched = pd.DataFrame()
-    marker_col = pd.Series(np.nan, index=df.index)
+#    marker_col = pd.Series(np.nan, index=df.index)
 
     if df.empty:
         overview = pd.DataFrame()
@@ -119,9 +119,8 @@ def find_nan(df, res_key, headers, patch=False):
             nan_list.columns = col.columns
 
             if patch:
-                patched_col, marker_col, patched_blocks = choose_fill_method(
-                    message,
-                    col, col_name, nan_blocks, df, marker_col, one_period)
+                patched_col, patched_blocks = choose_fill_method(
+                    message, col, col_name, nan_blocks, df, one_period)
 
                 overview.loc['interpolated_blocks', col_name] = patched_blocks
                 overview.loc['interpolated_values', col_name] = patched_col.iloc[
@@ -141,11 +140,11 @@ def find_nan(df, res_key, headers, patch=False):
 
         overview.loc['nan_blocks', col_name] = nan_blocks.shape[0]
 
-    # append the marker to the DataFrame
-    marker_col = marker_col.to_frame()
-    tuples = [('interpolated_values', '', '', '', '', '')]
-    marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
-    patched = pd.concat([patched, marker_col], axis=1)
+#    # append the marker to the DataFrame
+#    marker_col = marker_col.to_frame()
+#    tuples = [('interpolated_values', '', '', '', '', '')]
+#    marker_col.columns = pd.MultiIndex.from_tuples(tuples, names=headers)
+#    patched = pd.concat([patched, marker_col], axis=1)
 
     # set the level names for the output
     nan_table.columns.names = headers
@@ -156,7 +155,7 @@ def find_nan(df, res_key, headers, patch=False):
 
 
 def choose_fill_method(
-        message, col, col_name, nan_blocks, df, marker_col, one_period):
+        message, col, col_name, nan_blocks, df, one_period):
     '''
     Choose the appropriate function for filling a block of missing values.
 
@@ -193,8 +192,8 @@ def choose_fill_method(
 
         # Interpolate missing value spans up to 2 hours
         elif nan_block['span'] <= timedelta(hours=2):
-            patched_col, marker_col = my_interpolate(
-                i, j, nan_block, col, col_name, marker_col, nan_blocks,
+            patched_col = my_interpolate(
+                i, j, nan_block, col, col_name, nan_blocks,
                 one_period, message)
 
         # Guess missing value spans longer than one hour based on other tsos
@@ -212,11 +211,11 @@ def choose_fill_method(
     patched_blocks = nan_blocks.shape[0] - j
     logger.info(message + 'interpolated %s blocks', patched_blocks)
 
-    return patched_col, marker_col, patched_blocks
+    return patched_col, patched_blocks
 
 
 def my_interpolate(
-        i, j, nan_block, col, col_name, marker_col, nan_blocks, one_period, message):
+        i, j, nan_block, col, col_name, nan_blocks, one_period, message):
     '''
     Interpolate one missing value block in one column as described by 
     nan_block.
@@ -224,7 +223,7 @@ def my_interpolate(
     The default pd.Series.interpolate() function does not work if
     interpolation is to be restricted to periods of a certain length.
     (A limit-argument can be specified, but it results in longer periods 
-    of missing data to be filled parcially) 
+    of missing data to be filled partially) 
 
     Parameters
     ----------
@@ -258,15 +257,15 @@ def my_interpolate(
     col_name_str = '_'.join(
         [level for level in col_name[0:3] if not level == ''])
 
-    comment_before = marker_col.notnull()
-    comment_again = comment_before.loc[comment_now]
-    if comment_again.any():
-        marker_col[comment_before & comment_again] = marker_col + \
-            ' | ' + col_name_str
-    else:
-        marker_col.loc[comment_now] = col_name_str
+#    comment_before = marker_col.notnull()
+#    comment_again = comment_before.loc[comment_now]
+#    if comment_again.any():
+#        marker_col[comment_before & comment_again] = marker_col + \
+#            ' | ' + col_name_str
+#    else:
+#        marker_col.loc[comment_now] = col_name_str
 
-    return col, marker_col
+    return col
 
 
 # Not implemented: For the generation timeseries, larger gaps are guessed
