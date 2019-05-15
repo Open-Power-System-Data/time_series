@@ -128,11 +128,11 @@ resource_template = '''
         description: Start of timeperiod in Coordinated Universal Time
         type: datetime
         format: fmt:%Y-%m-%dT%H%M%SZ
-        opsd-contentfilter: true
       - name: {cet}
         description: Start of timeperiod in Central European (Summer-) Time
         type: datetime
         format: fmt:%Y-%m-%dT%H%M%S%z
+        opsdContentfilter: true
 '''
 
 field_template = '''
