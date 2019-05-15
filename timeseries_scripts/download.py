@@ -649,6 +649,7 @@ def download_request(
             .split('filename=')[-1]
             .replace('"', '')
             .replace(';', '')
+            .replace(':', '_')
         )
         logger.debug('Downloaded from URL: %s Original filename: %s',
                      resp.url, original_filename)
