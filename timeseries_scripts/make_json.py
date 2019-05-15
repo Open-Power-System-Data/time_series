@@ -149,12 +149,19 @@ field_template = '''
 '''
 
 descriptions_template = '''
-entsoe_power_statistics: Total load in {geo} in {unit} as published on ENTSO-E Data Portal/Power Statistics
-entsoe_transparency: Total load in {geo} in {unit} as published on ENTSO-E Transparency Platform
-generation_actual: Actual {tech} generation in {geo} in {unit}
-generation_forecast: Forecasted {tech} generation in {geo} in {unit}
-capacity: Electrical capacity of {tech} in {geo} in {unit}
-profile: Percentage of {tech} capacity producing in {geo}
+actual_entsoe_power_statistics: Total load in {geo} in {unit} as published on ENTSO-E Data Portal/Power Statistics
+actual_entsoe_transparency: Total load in {geo} in {unit} as published on ENTSO-E Transparency Platform
+actual_tso: Total load in {geo} in {unit} as published by {source}
+forecast_entsoe_transparency: Day-ahead load forecast in {geo} in {unit} as published on ENTSO-E Transparency Platform
+forecast_tso: Day-ahead load forecast in {geo} in {unit} as published by {source}
+actual_net_consumption_tso: Total load excl. tansmission system losses in {geo} in {unit}
+actual_gross_generation_tso: Gross generation incl. auto-generation by power plants, pump storage pumping, exports and transmission system losses in {geo} in {unit}
+generation_forecast: Day-ahead forecasted {variable} generation in {geo} in {unit}
+generation_actual: Actual {variable} generation in {geo} in {unit}
+generation_actual_dso: Actual {variable} generation connected to distribution grid in {geo} in {unit}
+generation_actual_tso: Actual {variable} generation connected to transmission grid in {geo} in {unit}
+capacity: Electrical capacity of {variable} in {geo} in {unit}
+profile: Share of {variable} capacity producing in {geo}
 day_ahead: Day-ahead spot price for {geo} in {unit}
 '''
 
