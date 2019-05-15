@@ -22,18 +22,19 @@ profile: tabular-data-package
 
 name: opsd_time_series
 
+id: https://doi.org/10.25832/time_series/{version}
+
 title: Time series
 
 description: Load, wind and solar, prices in hourly resolution
 
-long_description: This data package contains different kinds of timeseries
+longDescription: This data package contains different kinds of timeseries
     data relevant for power system modelling, namely electricity consumption 
     (load) for 37 European countries as well as wind and solar power generation
     and capacities and prices for a growing subset of countries. 
     The timeseries become available at different points in time depending on the
-    sources. The
-    data has been downloaded from the sources, resampled and merged in
-    a large CSV file with hourly resolution. Additionally, the data
+    sources. The data has been downloaded from the sources, resampled and merged
+    in a large CSV file with hourly resolution. Additionally, the data
     available at a higher resolution (Some renewables in-feed, 15
     minutes) is provided in a separate file. All data processing is
     conducted in python and pandas and has been documented in the
@@ -47,7 +48,7 @@ documentation:
 version: '{version}'
 created: '{version}'
 
-last_changes: '{changes}'
+lastChanges: '{changes}'
 
 keywords:
     - Open Power System Data
@@ -60,9 +61,9 @@ keywords:
     - power consumption
     - power market
 
-geographical-scope: 38 European countries
+geographicalScope: 37 European countries
 
-temporal-scope:
+temporal:
     start: '{start}'
     end: '{end}'
 
@@ -106,7 +107,7 @@ resource_template = '''
       delimiter: ","
       lineTerminator: "\\n" 
       header: true
-  alternative_formats:
+  _alternativeFormats:
       - path: time_series_{res_key}_singleindex.csv
         stacking: Singleindex
         format: csv
@@ -144,9 +145,9 @@ field_template = '''
         type: number
         unit: {unit}
         source:
-            name: {source}
-            web: {web}
-        opsd-properties: 
+            name: {source} #title: {source} 
+            web: {web} #path: {web}
+        opsdProperties: 
             Region: "{region}"
             Variable: {variable}_{attribute}
 '''

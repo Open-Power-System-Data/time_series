@@ -957,7 +957,7 @@ CEPS:  # Automatic download not implemented
 
 PSE:
     wind:
-        url_template: https://www.pse.pl/getcsv/-/export/csv/Operation_PPS_G_WF/data/{u_start:%Y%m%d}
+        url_template: https://www.pse.pl/getcsv/-/export/csv/EN_Operation_PPS_G_WF/data/{u_start:%Y%m%d}
         url_params_template:
         frequency: daily
         start:  2012-05-26
@@ -1059,7 +1059,7 @@ Terna:
         url_params_template: 
         frequency: daily
 # In total, data is available from May 2010 until recently, but there is a large gap in 2011-2012 and since 2016, data 
-# is available from ENTSO-E transparency, so we use 2012-2016. Furthermore, the 2010-2011 data would require a different read function,
+# is available from ENTSO-E Transparency, so we use 2012-2016. Furthermore, the 2010-2011 data would require a different read function,
 # as the files are in  tsv format, not xls/xml
         start: 2012-07-17
         end: 2015-12-31
