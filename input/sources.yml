@@ -421,14 +421,10 @@ Amprion:
                 variable: wind_onshore
                 web: http://www.amprion.net/en/wind-feed-in
     solar:
-        url_template: http://amprion.de/applications/applicationfiles/PV_einspeisung.php
+        url_template: https://www.amprion.net/api/grid-data/items/csv/PV_EINSPEISUNG/{u_start:%Y-%m-%d}/{u_end:%Y-%m-%d}
         url_params_template:
-            mode: download
-            format: csv
-            start: '{u_start.day}.{u_start.month}.{u_start.year}'
-            end: '{u_end.day}.{u_end.month}.{u_end.year}' # dates must not be zero-padded
         frequency: single file
-        start: 2010-01-07
+        start: 2010-07-01
         end: recent
         filetype: csv
         resolution:

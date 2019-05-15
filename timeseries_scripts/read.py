@@ -474,14 +474,14 @@ def read_amprion(filepath, dataset_name):
     # python to treat the hour from 2:00 to 2:59 as summertime.
 
     # Verify that daylight savings time transitions are handled as expected
-    check_dst(df.index, autumn_expect=2)
+    check_dst(df.index, autumn_expect=0)
 
-    index1 = df.index[df.index.year <= 2009]
+    index1 = df.index[df.index.year >= 2018]
     index1 = index1.tz_localize('Europe/Berlin', ambiguous='infer')
-    index2 = df.index[df.index.year > 2009]
+    index2 = df.index[df.index.year < 2018]
     dst_arr = np.ones(len(index2), dtype=bool)
     index2 = index2.tz_localize('Europe/Berlin', ambiguous=dst_arr)
-    df.index = index1.append(index2)
+    df.index = index2.append(index1)
     df.index = df.index.tz_convert(None)
 
     return df
