@@ -89,7 +89,7 @@ ENTSO-E Transparency FTP:
             - region
         unstacked: variable
         append_headers:
-            attribute: day_ahead_forecast_entsoe_transparency
+            attribute: forecast_entsoe_transparency
             source: ENTSO-E Transparency
             web: https://transparency.entsoe.eu/load-domain/r2/totalLoadR2/show
             unit: MW
@@ -279,7 +279,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
         colmap:
             MW:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_50hertz
                 source: 50Hertz
                 unit: MW
@@ -333,7 +333,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
         colmap:
             Offshore MW:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_50hertz
                 source: 50Hertz
                 unit: MW
@@ -380,7 +380,7 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
         web: https://www.50hertz.com/en/Transparency/GridData/Photovoltaics
         colmap:
             MW:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_50hertz
                 source: 50Hertz
                 unit: MW
@@ -404,7 +404,7 @@ Amprion:
         web: http://www.amprion.net/en/wind-feed-in
         colmap:
             8:00 Uhr Prognose [MW]:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_amprion
                 source: Amprion
                 unit: MW
@@ -440,7 +440,7 @@ Amprion:
         web: http://www.amprion.net/en/photovoltaic-infeed
         colmap:
             8:00 Uhr Prognose [MW]:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_amprion
                 source: Amprion
                 unit: MW
@@ -477,7 +477,7 @@ TenneT:
                 variable: wind_offshore
                 web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-wind-energy-feed-in
             prognostiziert [MW]:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_tennet
                 source: TenneT
                 unit: MW
@@ -513,7 +513,7 @@ TenneT:
         web: https://www.tennet.eu/electricity-market/transparency-pages/transparency-germany/network-figures/actual-and-forecast-solar-energy-feed-in/tennet-control-area-combined
         colmap:
             prognostiziert [MW]:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_tennet
                 source: TenneT
                 unit: MW
@@ -555,7 +555,7 @@ TransnetBW:
                 variable: wind
                 web: https://www.transnetbw.com/en/transparency/market-data/key-figures
             Prognose (MW):
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_transnetbw
                 source: TransnetBW
                 unit: MW
@@ -581,7 +581,7 @@ TransnetBW:
                 variable: solar
                 web: https://www.transnetbw.com/en/transparency/market-data/key-figures
             Prognose (MW):
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: DE_transnetbw
                 source: TransnetBW
                 unit: MW
@@ -717,7 +717,7 @@ Elia:
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
         colmap:
             Day-Ahead forecast [MW]:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: BE
                 source: Elia
                 unit: MW
@@ -752,7 +752,7 @@ Elia:
         web: http://www.elia.be/en/grid-data/power-generation/wind-power
         colmap:
             Day-Ahead forecast [MW]:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: BE
                 source: Elia
                 unit: MW
@@ -794,7 +794,7 @@ Elia:
                 variable: solar
                 web: https://publications.elia.be/Publications/Publications/SolarForecasting.v4.svc/ExportSolarForecastGraph
             Day-Ahead forecast [MW]:
-                attribute: day_ahead_generation_forecast
+                attribute: generation_forecast
                 region: BE
                 source: Elia
                 unit: MW
@@ -1062,7 +1062,7 @@ RTE:
                 variable: wind_onshore
                 web: https://opendata.reseaux-energies.fr/explore/dataset/eco2mix-national-cons-def
             Prévision J-1 (MW):
-                attribute: day_ahead_forecast_tso
+                attribute: forecast_tso
                 region: FR
                 source: RTE
                 unit: MW
