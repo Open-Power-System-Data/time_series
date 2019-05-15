@@ -389,12 +389,8 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
 
 Amprion:
     wind:
-        url_template: http://amprion.de/applications/applicationfiles/winddaten2.php
+        url_template: https://www.amprion.net/api/grid-data/items/csv/WINDDATEN/{u_start:%Y-%m-%d}/{u_end:%Y-%m-%d}
         url_params_template:
-            mode: download
-            format: csv
-            start: '{u_start.day}.{u_start.month}.{u_start.year}'
-            end: '{u_end.day}.{u_end.month}.{u_end.year}' # dates must not be zero-padded
         frequency: single file
         start: 2008-01-04
         end: recent

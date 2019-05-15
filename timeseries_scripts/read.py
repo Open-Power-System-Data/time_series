@@ -100,6 +100,10 @@ def read_entso_e_transparency(
             (df_raw.index < pd.to_datetime('2017-03-02 00:00:00')))
         df_raw = df_raw.loc[no_polish_euro]
 
+    if dataset_name in ['Actual Total Load', 'Day-ahead Total Load Forecast']:
+    # Zero load is highly unlikely. Such occurences are actually NaNs
+        df['load'].replace(0, np.nan, inplace=True)
+
     # keep only entries for selected geographic entities as specified in
     # areas.csv
     area_filter = areas['primary AreaName ENTSO-E'].dropna()
@@ -308,13 +312,19 @@ def read_entso_e_statistics(filepath,):
         usecols='A, B, G, K, L, N, P:AU'
     )
     # rename columns
-    renamer = {df.columns[0]: 'date', df.columns[1]: 'time'}
+    # According to the specific national considerations, GB data reflects the
+    # whole UK including Northern Ireland since 2016
+    renamer = {df.columns[0]: 'date', df.columns[1]: 'time', 'GB': 'GB_UKM'}
     df.rename(columns=renamer, inplace=True)
+
+    # Zero load is highly unlikely. Such occurences are actually NaNs
+    df.replace(0, np.nan, inplace=True)
 
     # Construct the index and set timezone
     # for some reason, the 'date' column has already been parsed to datetime
     df['date'] = df['date'].fillna(method='ffill').dt.strftime('%Y-%m-%d')
     df.index = pd.to_datetime(df.pop('date') + ' ' + df.pop('time').str[:5])
+
     # DST-handling
     df.index = df.index.tz_localize('Europe/Brussels', ambiguous='infer')
     df.index = df.index.tz_convert(None)
@@ -356,6 +366,15 @@ def read_entso_e_portal(filepath):
     df.loc[df.index.isin(['2014-10-26 02:00:00', '2015-10-25 02:00:00']),
            'DK'] = np.nan
 
+    # Delete values in UK that are all zero except for one day
+    df.loc[(df.index.year == 2010) & (df.index.month == 1), 'GB'] = np.nan
+
+    # Delete values in CY that are mostly zero but not always
+    df.loc[(df.index.year < 2013), 'CY'] = np.nan
+
+    # Zero load is highly unlikely. Such occurences are actually NaNs
+    df.replace(0, np.nan, inplace=True)
+
     # Verify that daylight savings time transitions are handled as expected
     check_dst(df.index, autumn_expect=1)
     # Conform index to UTC
@@ -363,9 +382,12 @@ def read_entso_e_portal(filepath):
     df.index = df.index.tz_localize('CET', ambiguous=dst_arr)
     df.index = df.index.tz_convert(None)
 
-    # Renam regions to comply with naming conventions
-    renamer = {'DK_W': 'DK_1', 'UA_W': 'UA_west', 'NI': 'GB_NIR'}
+    # Rename regions to comply with naming conventions
+    renamer = {'DK_W': 'DK_1', 'UA_W': 'UA_west', 'NI': 'GB_NIR', 'GB': 'GB_GBN'}
     df.rename(columns=renamer, inplace=True)
+
+    # Calculate load for whole UK from Great Britain and Northern Ireland data
+    df['GB_UKM'] = df['GB_GBN'].add(df['GB_NIR'])
 
     return df
 
