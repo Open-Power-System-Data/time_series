@@ -988,33 +988,19 @@ APG:
         #    CacheDir: 20170428131612_4266553c941447f4a8836f88af6cc4ef  #is unnecessary
             CacheFileName: export_agpt_{u_start:%Y-%m-%d}T00_00_00Z_{u_end:%Y-%m-%d}T23_45_00Z_15M_de.csv
         frequency: quarterly
-        start: 2006-01-01
+        start: 2010-01-01
         end: recent
         filetype: csv
         resolution:
             - 15min
         web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung pro Typ
         colmap:
-            Solar  [MW]:
-                attribute: generation_actual
-                region: AT
-                source: APG
-                unit: MW
-                variable: solar
-                web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung-pro-Typ
             Solar [MW]:
                 attribute: generation_actual
                 region: AT
                 source: APG
                 unit: MW
                 variable: solar
-                web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung-pro-Typ
-            Wind  [MW]:
-                attribute: generation_actual
-                region: AT
-                source: APG
-                unit: MW
-                variable: wind_onshore
                 web: https://www.apg.at/de/markt/Markttransparenz/erzeugung/Erzeugung-pro-Typ
             Wind [MW]:
                 attribute: generation_actual

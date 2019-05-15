@@ -708,6 +708,9 @@ def read_apg(filepath):
         converters={'Von': lambda x: str(x).replace('A', '').replace('B', '')}
     )
 
+    # Correct column names
+    df.rename(columns=lambda x: x.replace('  ', ' '), inplace=True)
+
     # DST-handling
     df.index = df.index.tz_localize('Europe/Vienna', ambiguous='infer')
     df.index = df.index.tz_convert(None)
