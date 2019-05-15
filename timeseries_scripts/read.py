@@ -1049,13 +1049,9 @@ def read_dataset(
         logger.warning('folder not found')
         return
 
-    update_progress(files_success, files_existing)
-
     # For each file downloaded for that dataset
     for container in sorted(os.listdir(dataset_dir)):
         files = os.listdir(os.path.join(dataset_dir, container))
-        source_dataset_timerange = ' {:20.20} | {:20.20} | {:21.21} | '.format(
-            source_name, dataset_name, container)
 
         # Skip this file if period covered excluded by user
         if start_from_user:
@@ -1070,21 +1066,23 @@ def read_dataset(
 
         # Check if there is only one file per folder
         if len(files) == 0:
-            logger.warning(source_dataset_timerange + 'no file found')
+            logger.warning(container + 'no file found')
             continue
 
         elif len(files) > 1:
-            logger.warning(source_dataset_timerange + '> 1 file found')
+            logger.warning(container + '> 1 file found')
             continue
 
         filepath = os.path.join(dataset_dir, container, files[0])
 
         # Check if file is not empty
         if os.path.getsize(filepath) < 128:
-            logger.warning(source_dataset_timerange + 'file too small')
+            logger.warning(container + 'file too small')
             continue
 
-        logger.debug(source_dataset_timerange + 'reading...')
+        # First call to update_progress
+        update_progress(files_success, files_existing, container)
+#        logger.debug(source_dataset_timerange + 'reading...')
 
         # Select read function for source
         if dataset_name == 'capacity_DE':
