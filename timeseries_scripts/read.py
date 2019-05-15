@@ -1085,10 +1085,8 @@ def read_dataset(
 #        logger.debug(source_dataset_timerange + 'reading...')
 
         # Select read function for source
-        if dataset_name == 'capacity_DE':
-            parsed = {'15min': read_opsd(filepath, region='DE')}
-        if dataset_name == 'capacity_GB':
-            parsed = {'30min': read_opsd(filepath, region='GB')}
+        if source_name == 'OPSD':
+            parsed = read_opsd(filepath, param_dict, headers)
         elif source_name == 'CEPS':
             parsed = {'60min': read_ceps(filepath)}
         elif source_name == 'ENTSO-E Transparency FTP':
@@ -1156,7 +1154,7 @@ def read_dataset(
     for res_key, df in cumulated.items():
         if df.empty:
             continue
-        elif source_name in ['ENTSO-E Transparency FTP', 'Terna']:
+        elif source_name in ['ENTSO-E Transparency FTP', 'Terna', 'OPSD']:
             pass
         else:
             if source_name in ['ENTSO-E Data Portal', 'ENTSO-E Power Statistics']:
