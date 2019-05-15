@@ -133,10 +133,6 @@ resource_template = '''
         description: Start of timeperiod in Central European (Summer-) Time
         type: datetime
         format: fmt:%Y-%m-%dT%H%M%S%z
-      - name: {marker}
-        description: marker to indicate which columns are missing data in source data
-            and has been interpolated (e.g. DE_transnetbw_solar_generation_actual)
-        type: string
 '''
 
 field_template = '''
