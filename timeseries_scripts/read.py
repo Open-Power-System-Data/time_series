@@ -1145,7 +1145,7 @@ def read_dataset(
                 cumulated[res_key] = cumulated[res_key].combine_first(df)
 
         files_success += 1
-        update_progress(files_success, files_existing)
+        update_progress(files_success, files_existing, container)
         if testmode:
             break
 
@@ -1240,7 +1240,7 @@ def trim_df(
     return df
 
 
-def update_progress(count, total):
+def update_progress(count, total, container):
     '''
     Display or updatesa console progress bar.
 
@@ -1250,7 +1250,8 @@ def update_progress(count, total):
         Number of files that have been read so far
     total : int
         Total number of files
-
+    container : str
+        timerange of file currently bein read, also directory name of that file
     Returns
     ----------
     None
@@ -1258,16 +1259,17 @@ def update_progress(count, total):
     '''
 
     barLength = 50  # Modify this to change the length of the progress bar
-    status = ''
+    status = 'reading'
     progress = count / total
     if isinstance(progress, int):
         progress = float(progress)
     if progress >= 1:
         progress = 1
-        status = 'Done...\r\n'
+        status = 'Done.\r\n'
+        container = ''
     block = int(round(barLength * progress))
-    text = '\rProgress: {0} {1}/{2} files {3}'.format(
-        '░' * block + '█' * (barLength - block), count, total, status)
+    text = '\rProgress: {0} {1}/{2} files {3} {4}'.format(
+        '░' * block + '█' * (barLength - block), count, total, status, container)
     sys.stdout.write(text)
     sys.stdout.flush()
 
