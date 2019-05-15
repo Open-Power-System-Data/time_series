@@ -216,9 +216,6 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
 
     for res_key, df in data_sets.items():
         field_list = ''  # list of columns in a file in YAML-format
-        file_name = 'time_series_' + res_key + '_singleindex.csv'
-        file_size = os.path.getsize(file_name)
-        file_hash = get_sha_hash(file_name)
 
         # Create the field_list (list of of columns) in a file, starting with
         # the index field
@@ -228,13 +225,12 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
             h = {k: v for k, v in zip(headers, col)}
             row = areas['area ID'] == h['region']
             primary_concept = areas.loc[row, 'primary concept'].values[0]
-            geo = areas[primary_concept][row].values[0]
+            geo = areas.loc[row, primary_concept].values[0]
             if not primary_concept == 'country':
                 geo = geo + ' (' + primary_concept + ')'
 
             descriptions = yaml.load(
-                descriptions_template.format(
-                    tech=h['variable'], unit=h['unit'], geo=geo))
+                descriptions_template.format(**h, geo=geo))
             try:
                 h['description'] = descriptions[h['attribute']]
             except KeyError:
@@ -243,11 +239,14 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
             field_list = field_list + field_template.format(**h)
             source_list = source_list + source_template.format(**h)
 
-        # All datasets (15min, 30min, 60min) get an entry in the resource list
-        resource_list = (resource_list + resource_template.format(
-            res_key=res_key, bytes=file_size, hash=file_hash, **info_cols) +
-            field_list)
+        file_name = 'time_series_' + res_key + '_singleindex.csv'
+        file_size = os.path.getsize(file_name)
+        file_hash = get_sha_hash(file_name)
 
+        # All datasets (15min, 30min, 60min) get an entry in the resource list
+        resource_list = resource_list + resource_template.format(
+            res_key=res_key, bytes=file_size, hash=file_hash, **info_cols) + field_list
+        
     # Remove duplicates from sources_list. set() returns unique values from a
     # collection, but it cannot compare dicts. Since source_list is a list of of
     # dicts, this requires first converting it to a tuple, then converting it back to a dict.
@@ -263,7 +262,9 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
     # Parse the YAML-Strings and stitch the building blocks together
     metadata = yaml.load(metadata_head.format(
         version=version, changes=changes,
-        start=start_from_user, end=end_from_user))
+        start=start_from_user, end=end_from_user,
+        bytes=os.path.getsize('time_series.xlsx'),
+        hash=get_sha_hash('time_series.xlsx')))
     metadata['sources'] = source_list
     metadata['resources'] = yaml.load(resource_list)
 
