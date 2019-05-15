@@ -563,7 +563,7 @@ def read_transnetbw(filepath, dataset_name):
     return df
 
 
-def read_opsd(filepath, region):
+def read_opsd(filepath, param_dict, headers):
     '''Read a file from OPSD into a DataFrame'''
     df = pd.read_csv(
         filepath,
@@ -578,9 +578,14 @@ def read_opsd(filepath, region):
         converters=None,
     )
 
-    # Calculate aggregate wind capacity (onshore + offshore):
-    if not 'Wind' in df.columns:
-        df['Wind'] = df['Onshore'].add(df['Offshore'], fill_value=0)
+    # Split the colname after the first "_"
+    cols = [(col_name.split('_')[0], '_'.join(col_name.split('_')[1:-1]))
+            for col_name in df.columns]
+    df.columns = pd.MultiIndex.from_tuples(cols)
+
+    # Keep only wind and solar
+    keep = ['wind', 'wind_onshore', 'wind_offshore', 'solar']
+    df = df.loc[:, (slice(None), keep)]
 
     # The capacities data only has one entry per day, which pandas
     # interprets as 00:00h. We will broadcast the dayly data for
@@ -590,14 +595,26 @@ def read_opsd(filepath, region):
     last = pd.to_datetime([df.index[-1]]) + timedelta(days=1, minutes=59)
     until_last = df.index.append(last).rename('timestamp')
     df = df.reindex(index=until_last, method='ffill')
+    df = df.loc[df.index.year >= 2000]
 
-    # DST-handling
-    timezones = {'DE': 'Europe/Berlin', 'GB': 'Europe/London'}
-    df.index = df.index.tz_localize(timezones[region])
-    df.index = df.index.tz_convert(None)
-    df = df.resample('15min').ffill().round(0)
+    dfs = {}
+    for timezone, res, ddf in [
+        ('CET', '15min', df.loc[:, ['DE']]),
+        ('WET', '30min', df.loc[:, ['GB-UKM', 'GB-GBN', 'GB-NIR']]),
+        ('CET', '60min', df.loc[:, ['CH', 'DK']])]:
 
-    return df
+        # DST-handling
+        ddf.index = ddf.index.tz_localize(timezone).tz_convert(None)
+        ddf = ddf.resample(res).ffill().round(0)
+
+        # Create the MultiIndex
+        cols = [tuple(param_dict['colmap'][col_name[0]][level]
+                      .format(variable=col_name[1].lower())
+                      for level in headers) for col_name in ddf.columns]
+        ddf.columns = pd.MultiIndex.from_tuples(cols, names=headers)
+        dfs[res] = ddf
+
+    return dfs
 
 
 def read_svenska_kraftnaet(filepath, dataset_name):

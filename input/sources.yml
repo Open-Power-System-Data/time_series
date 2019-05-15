@@ -123,18 +123,61 @@ ENTSO-E Transparency FTP:
             web: https://transparency.entsoe.eu/transmission-domain/r2/dayAheadPrices/show
 
 OPSD:
-    capacity_DE:
-        url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-02-25/renewable_capacity_timeseries_DE.csv
-        filename: renewable_capacity_timeseries_DE.csv
+    capacity:
+        url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-04-05/renewable_capacity_timeseries.csv
+        filename: renewable_capacity_timeseries.csv
         url_params_template:
         frequency: single file
-        start: 2005-01-01
-        end: 2018-12-31
+        start: 1901-01-01
+        end: 2019-01-21
         filetype: csv
         resolution:
-            - 15min
+            - days
         web: http://data.open-power-system-data.org/renewable_power_plants
         colmap:
+            CH: 
+                attribute: capacity
+                region: CH
+                source: own calculation based on Swiss Bundesamt für Energie (BFE) 
+                unit: MW
+                variable: '{variable}'
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            DE: 
+                attribute: capacity
+                region: DE
+                source: own calculation based on BNetzA and netztransparenz.de
+                unit: MW
+                variable: '{variable}'
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            DK: 
+                attribute: capacity
+                region: DK
+                source: own calculation based on Energinet.dk and Energistyrelsen
+                unit: MW
+                variable: '{variable}'
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            GB-UKM:
+                attribute: capacity
+                region: GB_UKM
+                source: own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS)
+                unit: MW
+                variable: '{variable}'
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            GB-GBN:
+                attribute: capacity
+                region: GB_GBN
+                source: own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS)
+                unit: MW
+                variable: '{variable}'
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            GB-NIR:
+                attribute: capacity
+                region: GB_NIR
+                source: own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS)
+                unit: MW
+                variable: '{variable}'
+                web: https://data.open-power-system-data.org/renewable_power_plants
+
             Offshore:
                 attribute: capacity
                 region: DE
@@ -160,46 +203,6 @@ OPSD:
                 attribute: capacity
                 region: DE
                 source: own calculation based on BNetzA and netztransparenz.de
-                unit: MW
-                variable: solar
-                web: https://data.open-power-system-data.org/renewable_power_plants
-    capacity_GB:
-        url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-02-25/renewable_capacity_timeseries_UK.csv
-        filename: renewable_capacity_timeseries_UK.csv
-        url_params_template:
-        frequency: single file
-        start: 1906-01-01
-        end: 2018-11-21
-        filetype: csv
-        resolution:
-            - 15min
-        web: http://data.open-power-system-data.org/renewable_power_plants
-        colmap:
-            Offshore:
-                attribute: capacity
-                region: GB_GBN
-                source: own calculation based on BEIS
-                unit: MW
-                variable: wind_offshore
-                web: https://data.open-power-system-data.org/renewable_power_plants
-            Onshore:
-                attribute: capacity
-                region: GB_GBN
-                source: own calculation based on BEIS
-                unit: MW
-                variable: wind_onshore
-                web: https://data.open-power-system-data.org/renewable_power_plants
-            Wind:
-                attribute: capacity
-                region: GB_GBN
-                source: own calculation based on BEIS
-                unit: MW
-                variable: wind
-                web: https://data.open-power-system-data.org/renewable_power_plants
-            Solar:
-                attribute: capacity
-                region: GB_GBN
-                source: own calculation based on BEIS
                 unit: MW
                 variable: solar
                 web: https://data.open-power-system-data.org/renewable_power_plants
