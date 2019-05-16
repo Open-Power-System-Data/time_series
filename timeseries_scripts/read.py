@@ -941,8 +941,41 @@ def read_terna(filepath, filedate, param_dict, headers):
                   .format(region=col_name[0],
                           variable=col_name[1],
                           attribute=col_name[2])
-                  for level in headers) for col_name in df.columns]
+            for level in headers) for col_name in df.columns]
     df.columns = pd.MultiIndex.from_tuples(cols, names=headers)
+
+    # # add source and url to the columns.
+    # append_headers = {'source': 'Terna', 'unit': 'MW'}
+    # # Note: pd.concat inserts new MultiIndex values infront of the old ones
+    # df = pd.concat([df],
+    #                keys=[tuple([*append_headers.values(), url])],
+    #                names=[*append_headers.keys(), 'web'],
+    #                axis='columns')
+
+    # # reorder and sort columns
+    # df = df.reorder_levels(headers, axis=1)
+    # df.sort_index(axis='columns', inplace=True)
+
+    # # Common headers for calculated colmns
+    # c_h = ('own calculation from Terna', url, 'MW')
+
+    # # Italian bidding zones
+    # bz_it = ['IT_CNOR', 'IT_CSUD', 'IT_NORD', 'IT_SARD', 'IT_SICI', 'IT_SUD']
+
+    # # Aggregate DSO and TSO level measurements for solar
+    # for region in bz_it:
+    #     #import pdb; pdb.set_trace()
+
+    #     df[(region, 'solar', 'generation_actual', *c_h)] = (
+    #         df[(region, 'solar', 'generation_actual_dso')] +
+    #         df[(region, 'solar', 'generation_actual_tso')])
+
+    # # Aggregate all regions
+    # for variable in ['solar', 'wind_onshore']:
+    #     #for attribute in
+    #     df[('IT', variable, 'generation_actual', *c_h)] = (
+    #         df.loc[:, (bz_it, variable, 'generation_actual')]
+    #         .sum(axis='columns', skipna=True))
 
     return df
 
