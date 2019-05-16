@@ -609,6 +609,13 @@ def read_opsd(filepath, param_dict, headers):
     keep = ['wind', 'wind_onshore', 'wind_offshore', 'solar']
     df = df.loc[:, (slice(None), keep)]
 
+    # delete zeros before first non-zero value in each column
+    for col_name, col in df.iteritems():
+        nan_for_zero = col.replace(0, np.nan)
+        slicer = ((col.index <= nan_for_zero.first_valid_index()) |
+                 (col.index >= nan_for_zero.last_valid_index()))
+        col.loc[slicer] = np.nan  
+
     # The capacities data only has one entry per day, which pandas
     # interprets as 00:00h. We will broadcast the dayly data for
     # all quarter-hours of the day until the next given data point.
