@@ -609,13 +609,6 @@ def read_opsd(filepath, param_dict, headers):
     keep = ['wind', 'wind_onshore', 'wind_offshore', 'solar']
     df = df.loc[:, (slice(None), keep)]
 
-    # delete zeros before first non-zero value in each column
-    for col_name, col in df.iteritems():
-        nan_for_zero = col.replace(0, np.nan)
-        slicer = ((col.index <= nan_for_zero.first_valid_index()) |
-                 (col.index >= nan_for_zero.last_valid_index()))
-        col.loc[slicer] = np.nan  
-
     # The capacities data only has one entry per day, which pandas
     # interprets as 00:00h. We will broadcast the dayly data for
     # all quarter-hours of the day until the next given data point.
@@ -1122,7 +1115,6 @@ def read_dataset(
 
         # First call to update_progress
         update_progress(files_success, files_existing, container)
-#        logger.debug(source_dataset_timerange + 'reading...')
 
         # Select read function for source
         if source_name == 'OPSD':
@@ -1174,6 +1166,13 @@ def read_dataset(
             if res_key in param_dict['resolution'] and df.empty:
                 logger.info('%s | %s | empty DataFrame: ', files[0], res_key)
                 continue
+
+            # delete zeros before first/after last non-zero value in each column
+            for col_name, col in df.iteritems():
+                nan_for_zero = col.replace(0, np.nan)
+                slicer = ((col.index <= nan_for_zero.first_valid_index()) |
+                         (col.index >= nan_for_zero.last_valid_index()))
+                col.loc[slicer] = np.nan  
 
             if cumulated[res_key].empty:
                 cumulated[res_key] = df
