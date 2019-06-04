@@ -265,6 +265,13 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
                 unit: MW
                 variable: wind
                 web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+            wind_onshore:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind_onshore
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_forecast pre-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
         url_params_template:
@@ -298,12 +305,12 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
         colmap:
-            Offshore MW:
+            MW:
                 attribute: generation_actual
                 region: DE_50hertz
                 source: 50Hertz
                 unit: MW
-                variable: wind_offshore
+                variable: wind
                 web: https://www.50hertz.com/en/Transparency/GridData/Windpower
             Onshore MW:
                 attribute: generation_actual
@@ -312,12 +319,12 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
                 unit: MW
                 variable: wind_onshore
                 web: https://www.50hertz.com/en/Transparency/GridData/Windpower
-            wind:
+            Offshore MW:
                 attribute: generation_actual
                 region: DE_50hertz
                 source: 50Hertz
                 unit: MW
-                variable: wind
+                variable: wind_offshore
                 web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     wind generation_forecast with-offshore:
         url_template: http://ws.50hertz.com/web02/api/WindPowerForecast/DownloadFile
@@ -332,19 +339,26 @@ ENTSO-E Power Statistics:  # Automatic download not implemented
             - 15min
         web: https://www.50hertz.com/en/Transparency/GridData/Windpower
         colmap:
-            Offshore MW:
+            MW:
                 attribute: generation_forecast
                 region: DE_50hertz
                 source: 50Hertz
                 unit: MW
-                variable: wind_offshore
+                variable: wind
                 web: https://www.50hertz.com/en/Transparency/GridData/Windpower
             Onshore MW:
-                attribute: generation_actual
+                attribute: generation_forecast
                 region: DE_50hertz
                 source: 50Hertz
                 unit: MW
                 variable: wind_onshore
+                web: https://www.50hertz.com/en/Transparency/GridData/Windpower
+            Offshore MW:
+                attribute: generation_actual
+                region: DE_50hertz
+                source: 50Hertz
+                unit: MW
+                variable: wind_offshore
                 web: https://www.50hertz.com/en/Transparency/GridData/Windpower
     solar generation_actual :
         url_template: http://ws.50hertz.com/web02/api/PhotovoltaicActual/DownloadFile

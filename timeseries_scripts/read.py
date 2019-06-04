@@ -102,7 +102,7 @@ def read_entso_e_transparency(
 
     if dataset_name in ['Actual Total Load', 'Day-ahead Total Load Forecast']:
     # Zero load is highly unlikely. Such occurences are actually NaNs
-        df['load'].replace(0, np.nan, inplace=True)
+        df_raw['load'].replace(0, np.nan, inplace=True)
 
     # keep only entries for selected geographic entities as specified in
     # areas.csv
@@ -411,8 +411,6 @@ def read_hertz(filepath, dataset_name):
     # Wind onshore
     if dataset_name == 'wind generation_actual pre-offshore':
         df['wind_onshore'] = df['MW']
-    elif dataset_name == 'wind generation_actual with-offshore':
-        df['wind'] = df['Onshore MW'].add(df['Onshore MW'])
 
     # Until 2006, and in 2015 (except for wind_generation_pre-offshore),
     # during the fall dst-transistion, only the
@@ -1167,13 +1165,6 @@ def read_dataset(
                 logger.info('%s | %s | empty DataFrame: ', files[0], res_key)
                 continue
 
-            # delete zeros before first/after last non-zero value in each column
-            for col_name, col in df.iteritems():
-                nan_for_zero = col.replace(0, np.nan)
-                slicer = ((col.index <= nan_for_zero.first_valid_index()) |
-                         (col.index >= nan_for_zero.last_valid_index()))
-                col.loc[slicer] = np.nan  
-
             if cumulated[res_key].empty:
                 cumulated[res_key] = df
             else:
@@ -1225,7 +1216,8 @@ def trim_df(
         end_from_user=None):
     '''
     Reindex a DataFrame with a new index that is sure to be continuous in order
-    to expose gaps in the data and 
+    to expose gaps in the data and cut off data outside the required period
+
     Parameters
     ----------
     df : pandas.DataFrame
@@ -1271,6 +1263,13 @@ def trim_df(
             + timedelta(days=1, minutes=-int(res_key[:2])))
     # Then cut off the data
     df = df.loc[start_from_user:end_from_user, :]
+
+    # delete zeros before first/after last non-zero value in each column
+    for col_name, col in df.iteritems():
+        nan_for_zero = col.replace(0, np.nan)
+        slicer = ((col.index <= nan_for_zero.first_valid_index()) |
+                 (col.index >= nan_for_zero.last_valid_index()))
+        col.loc[slicer] = np.nan
 
     return df
 
