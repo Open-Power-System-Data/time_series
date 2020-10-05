@@ -1,5 +1,8 @@
 name: opsd_time_series
 
+channels:
+  - conda-forge
+
 dependencies:
   - python=3.6
   - pandas
@@ -13,3 +16,4 @@ dependencies:
   - requests
   - jupyter_contrib_nbextensions  # nice add-ons for jupyter
   - selenium  # required to scrape URLs from Terna website
+  - paramiko
