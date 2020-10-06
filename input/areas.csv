@@ -16,16 +16,16 @@ DE_AT_LU,,,DE-AT-LU,bidding zone,False,True,False,False,True,10Y1001A1001A63L,DE
 DK,DK,DK,Denmark,country,True,True,False,False,True,10Y1001A1001A65H,Denmark,Denmark,,,,,True,True,False,True,False,True,False,False
 DK_1,,DK1,DK1  BZ,bidding zone,False,True,False,False,True,10YDK-1--------W,DK1 BZ / MBA,,DK1,,,DK1,True,True,True,True,True,False,True,False
 DK_2,,DK2,DK2 BZ,bidding zone,False,True,False,False,True,10YDK-2--------M,DK2 BZ / MBA,,DK2,,,DK2,True,True,True,True,True,False,True,False
-DK_energinet,,DK,Energinet CA,control area,False,True,False,False,True,10Y1001A1001A796,"Denmark, Energinet CA",,,,Energinet,,True,True,False,True,False,False,False,False
+DK_energinet,,DK,,control area,False,True,False,False,True,10Y1001A1001A796,"Denmark, Energinet CA",,,,Energinet,,True,True,False,True,False,False,False,False
 EE,EE,EE,Estonia,country,True,True,False,False,True,10Y1001A1001A39I,"Estonia, Elering BZ / CA / MBA",Estonia,Elering,,Elering,Elering,True,True,False,False,False,True,False,False
 ES,ES,ES,Spain,country,True,True,False,False,True,10YES-REE------0,"Spain, REE BZ / CA / MBA",Spain,REE,,REE,REE,True,True,False,False,False,True,False,False
 FI,FI,FI,Finland,country,True,True,False,False,True,10YFI-1--------U,"Finland, Fingrid BZ / CA / MBA",Finland,Fingrid,,Fingrid,Fingrid,True,True,False,False,False,True,False,False
 FR,FR,FR,France,country,True,True,False,False,True,10YFR-RTE------C,"France, RTE BZ / CA / MBA",France,RTE,,RTE,RTE,True,True,False,True,False,True,False,False
-GB_UKM,GB,GB,United Kingdom,country,True,True,False,True,False,GB,,United Kingdom,,,,,True,True,False,False,False,True,False,True
-GB_GBN,,GB,National Grid BZ,country,False,True,False,True,False,10YGB----------A,National Grid BZ / CA/ MBA,Great Britain,National Grid,,National Grid,National Grid,True,True,True,False,False,False,False,True
-GB_NIR,,NIE,SONI CA,country,False,True,False,True,False,10Y1001A1001A016,"Northern Ireland, SONI CA",Northern Ireland,,,SONI,,True,True,False,False,False,False,False,True
-GB_EAW,,,,country,False,True,False,True,False,,,England and Wales,,,,,False,False,False,False,False,False,True,False
-GB_SCT,,,,country,False,True,False,True,False,,,Scotland,,,,,False,False,False,False,False,False,False,False
+GB_UKM,GB,GB,United Kingdom,country,False,False,False,True,False,GB,,United Kingdom,,,,,True,True,False,False,False,True,False,True
+GB_GBN,,GB,National Grid BZ,country,False,False,False,True,False,10YGB----------A,National Grid BZ / CA/ MBA,Great Britain,National Grid,,National Grid,National Grid,True,True,True,False,False,False,False,True
+GB_NIR,,NIE,SONI CA,country,False,False,False,True,False,10Y1001A1001A016,"Northern Ireland, SONI CA",Northern Ireland,,,SONI,,True,True,False,False,False,False,False,True
+GB_EAW,,,,country,False,False,False,True,False,,,England and Wales,,,,,False,False,False,False,False,False,True,False
+GB_SCT,,,,country,False,False,False,True,False,,,Scotland,,,,,False,False,False,False,False,False,False,False
 GR,GR,GR,Greece,country,True,True,False,False,True,10YGR-HTSO-----Y,"Greece, IPTO BZ / CA/ MBA",Greece,IPTO,,IPTO,IPTO,True,True,False,False,False,True,False,False
 HR,HR,HR,Croatia,country,True,True,False,False,True,10YHR-HEP------M,"Croatia, HOPS BZ / CA / MBA",Croatia,HOPS,,HOPS,HOPS,True,False,False,False,False,True,False,False
 HU,HU,HU,Hungary,country,True,True,True,False,False,10YHU-MAVIR----U,"Hungary, MAVIR CA / BZ / MBA",Hungary,MAVIR,,MAVIR,MAVIR,True,True,False,False,False,True,False,False

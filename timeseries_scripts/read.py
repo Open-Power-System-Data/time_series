@@ -118,11 +118,22 @@ def read_entso_e_transparency(
     for res in ['15', '30', '60']:
         df = (df_raw.loc[df_raw['resolution'] == 'PT' + res + 'M', :]
                     .copy().sort_index(axis='columns'))
-        df.drop(columns=['resolution'], inplace=True)
+
+        df = df.drop(columns=['resolution'])
+
+        # DST-handling
+        # Hours 2-3 of the DST-day in March are both labelled 3:00, with no possibility
+        # to distinguish them. We have to delete both
+        dst_transitions_spring = [d.replace(hour=3, minute=m)
+            for d in pytz.timezone('Europe/Paris')._utc_transition_times
+                if 2000 <= d.year <= datetime.today().year and d.month == 3
+                for m in [0, 15, 30, 45]]
+
+        df = df.loc[~df.index.isin(dst_transitions_spring)]
 
         # juggle the index and columns
         df.set_index(stacked, append=True, inplace=True)
-        # at this point, only the values we are intereseted in are are left as
+        # at this point, only the values we are intereseted in are left as
         # columns
         df.columns.rename(unstacked, inplace=True)
         df = df.unstack(stacked)
@@ -615,13 +626,13 @@ def read_opsd(filepath, param_dict, headers):
     last = pd.to_datetime([df.index[-1]]) + timedelta(days=1, minutes=59)
     until_last = df.index.append(last).rename('timestamp')
     df = df.reindex(index=until_last, method='ffill')
-    df = df.loc[df.index.year >= 2000]
+    df = df.loc[(2005 <= df.index.year) & (df.index.year <= 2019)]
 
     dfs = {}
     for timezone, res, ddf in [
         ('CET', '15min', df.loc[:, ['DE']]),
         ('WET', '30min', df.loc[:, ['GB-UKM', 'GB-GBN', 'GB-NIR']]),
-        ('CET', '60min', df.loc[:, ['CH', 'DK']])]:
+        ('CET', '60min', df.loc[:, ['CH', 'DK', 'SE']])]:
 
         # DST-handling
         ddf.index = ddf.index.tz_localize(timezone).tz_convert(None)
@@ -1070,7 +1081,7 @@ def read_dataset(
     files_existing = sum([len(files) for r, d, files in os.walk(dataset_dir)])
     files_success = 0
 
-    # Check there are files for dataset_name
+    # Check if there are files for dataset_name
     if files_existing == 0:
         logger.warning('no files found')
         return
@@ -1087,12 +1098,12 @@ def read_dataset(
         # Skip this file if period covered excluded by user
         if start_from_user:
             # start lies after file end => filecontent is too old
-            if start_from_user > yaml.load(container.split('_')[1]):
+            if start_from_user > yaml.full_load(container.split('_')[1]):
                 continue  # go to next container
 
         if end_from_user:
             # end lies before file start => filecontent is too recent
-            if end_from_user < yaml.load(container.split('_')[0]) - timedelta(days=1):
+            if end_from_user < yaml.full_load(container.split('_')[0]) - timedelta(days=1):
                 continue  # go to next container
 
         # Check if there is only one file per folder
@@ -1208,7 +1219,7 @@ def read_dataset(
 
 
 def trim_df(
-        df,
+        df0,
         res_key,
         source_name,
         dataset_name,
@@ -1234,14 +1245,14 @@ def trim_df(
     '''
 
     # sort the index
-    df.sort_index(axis='index', inplace=True)
+    df0.sort_index(axis='index', inplace=True)
     # Reindex with a new index that is sure to be continous in order to later
     # expose gaps in the data.
-    no_gaps = pd.date_range(start=df.index[0],
-                            end=df.index[-1],
-                            freq=res_key)
-    df = df.reindex(index=no_gaps)
-    missing_rows = df.shape[0] - df.shape[0]
+    #no_gaps = pd.date_range(start=df0.index[0],
+    #                        end=df0.index[-1],
+    #                        freq=res_key)
+    df = df0.asfreq(res_key)
+    missing_rows = df.shape[0] - df0.shape[0]
     if not missing_rows == 0:
         logger.info(' {:20.20} | {:20.20} | {} missing rows'
                     .format(source_name, dataset_name, missing_rows))
@@ -1253,11 +1264,13 @@ def trim_df(
         start_from_user = (
             pytz.timezone('CET')
             .localize(datetime.combine(start_from_user, time()))
-            .astimezone(pytz.timezone('UTC')))
+            .astimezone(pytz.timezone('UTC'))
+            .replace(tzinfo=None))
     if end_from_user:
         end_from_user = (
             pytz.timezone('UTC')
             .localize(datetime.combine(end_from_user, time()))
+            .replace(tzinfo=None)
             # Appropriate offset to include the end of period (23:45 for the
             # same day)
             + timedelta(days=1, minutes=-int(res_key[:2])))

@@ -229,7 +229,7 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
             if not primary_concept == 'country':
                 geo = geo + ' (' + primary_concept + ')'
 
-            descriptions = yaml.load(
+            descriptions = yaml.full_load(
                 descriptions_template.format(**h, geo=geo))
             try:
                 h['description'] = descriptions[h['attribute']]
@@ -252,7 +252,7 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
     # dicts, this requires first converting it to a tuple, then converting it back to a dict.
     # entry is a dict of structure {'name': source_name}
     source_list = [dict(tupleized) for tupleized in set(
-        tuple(entry.items()) for entry in yaml.load(source_list)
+        tuple(entry.items()) for entry in yaml.full_load(source_list)
         if not entry['name'].startswith('own calculation'))]
     source_list + [{'name': 'German Bundesnetzagentur (BNetzA) and German TSOs via netztransparenz.de'}, 
                    {'name': 'United Kingdom Department for Business, Energy and Industrial Strategy (BEIS)'},
@@ -260,13 +260,13 @@ def make_json(data_sets, info_cols, version, changes, headers, areas,
                    {'name': 'Swiss Bundesamt für Energie (BFE)'}]
 
     # Parse the YAML-Strings and stitch the building blocks together
-    metadata = yaml.load(metadata_head.format(
+    metadata = yaml.full_load(metadata_head.format(
         version=version, changes=changes,
         start=start_from_user, end=end_from_user,
         bytes=os.path.getsize('time_series.xlsx'),
         hash=get_sha_hash('time_series.xlsx')))
     metadata['sources'] = source_list
-    metadata['resources'] = yaml.load(resource_list)
+    metadata['resources'] = yaml.full_load(resource_list)
 
     # write the metadata to disk
     datapackage_json = json.dumps(metadata, indent=4, separators=(',', ': '))

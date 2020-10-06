@@ -4,7 +4,7 @@ channels:
   - conda-forge
 
 dependencies:
-  - python=3.6
+  - python=3.8
   - pandas
   - numpy
   - xlrd  # pandas: excel i/o
@@ -16,4 +16,4 @@ dependencies:
   - requests
   - jupyter_contrib_nbextensions  # nice add-ons for jupyter
   - selenium  # required to scrape URLs from Terna website
-  - paramiko
+  - paramiko  # for sftp access to ENTSO-E Transparency

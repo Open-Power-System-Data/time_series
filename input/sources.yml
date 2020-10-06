@@ -124,12 +124,12 @@ ENTSO-E Transparency FTP:
 
 OPSD:
     capacity:
-        url_template: https://data.open-power-system-data.org/renewable_power_plants/2019-04-05/renewable_capacity_timeseries.csv
+        url_template: https://data.open-power-system-data.org/renewable_power_plants/2020-08-25/renewable_capacity_timeseries.csv
         filename: renewable_capacity_timeseries.csv
         url_params_template:
         frequency: single file
         start: 1901-01-01
-        end: 2019-01-21
+        end: 2019-12-31
         filetype: csv
         resolution:
             - days
@@ -139,6 +139,13 @@ OPSD:
                 attribute: capacity
                 region: CH
                 source: own calculation based on Swiss Bundesamt für Energie (BFE) 
+                unit: MW
+                variable: '{variable}'
+                web: https://data.open-power-system-data.org/renewable_power_plants
+            CZ: 
+                attribute: capacity
+                region: CZ
+                source: own calculation based on Energetický regulační úřad
                 unit: MW
                 variable: '{variable}'
                 web: https://data.open-power-system-data.org/renewable_power_plants
@@ -177,34 +184,12 @@ OPSD:
                 unit: MW
                 variable: '{variable}'
                 web: https://data.open-power-system-data.org/renewable_power_plants
-
-            Offshore:
+            SE: 
                 attribute: capacity
-                region: DE
-                source: own calculation based on BNetzA and netztransparenz.de
+                region: SE
+                source: own calculation based on Vindbrukskollen
                 unit: MW
-                variable: wind_offshore
-                web: https://data.open-power-system-data.org/renewable_power_plants
-            Onshore:
-                attribute: capacity
-                region: DE
-                source: own calculation based on BNetzA and netztransparenz.de
-                unit: MW
-                variable: wind_onshore
-                web: https://data.open-power-system-data.org/renewable_power_plants
-            Wind:
-                attribute: capacity
-                region: DE
-                source: own calculation based on BNetzA and netztransparenz.de
-                unit: MW
-                variable: wind
-                web: https://data.open-power-system-data.org/renewable_power_plants            
-            Solar:
-                attribute: capacity
-                region: DE
-                source: own calculation based on BNetzA and netztransparenz.de
-                unit: MW
-                variable: solar
+                variable: '{variable}'
                 web: https://data.open-power-system-data.org/renewable_power_plants
 
 ENTSO-E Data Portal:
@@ -604,7 +589,7 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/kraftsystemdata/elstatistik/
         filename: n_fot{u_start:%Y}.xls
         colmap:
             load:
@@ -613,14 +598,14 @@ Svenska Kraftnaet:
                 source: Svenska Kraftnaet
                 unit: MW
                 variable: load
-                web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
+                web: https://www.svk.se/aktorsportalen/elmarknad/kraftsystemdata/elstatistik/
             solar:
                 attribute: generation_actual
                 region: SE
                 source: Svenska Kraftnaet
                 unit: MW
                 variable: solar
-                web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
+                web: https://www.svk.se/aktorsportalen/elmarknad/kraftsystemdata/elstatistik/
             wind:
                 attribute: generation_actual
                 region: SE
@@ -637,7 +622,7 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/kraftsystemdata/elstatistik/
         filename: n_fot201001-06.xls
     wind_solar_3:
         url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n_fot2010-07-12.xls
@@ -648,7 +633,7 @@ Svenska Kraftnaet:
         filetype: xls
         resolution:
             - 60min
-        web: https://www.svk.se/aktorsportalen/elmarknad/statistik/
+        web: https://www.svk.se/aktorsportalen/elmarknad/kraftsystemdata/elstatistik/
         filename: n_fot2010-07-12.xls
     wind_solar_4:
         url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/arkiverade/n-fot2011-01-12.xls
@@ -688,18 +673,18 @@ Svenska Kraftnaet:
         url_params_template:
         frequency: yearly
         start: 2017-01-01
-        end: 2018-12-31
+        end: 2019-12-31
         filetype: xls
         resolution:
             - 60min
         web: https://www.svk.se/aktorsportalen/elmarknad/statistik
         filename: n_fot{u_start:%Y}-01-12.xls
     wind_solar_8:
-        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/forbrukning-och-tillforsel-per-timme-i-normaltid-2019.xls
+        url_template: https://www.svk.se/siteassets/aktorsportalen/elmarknad/statistik/forbrukning-tillforsel-per-timme/n_fot2020-01-08.xls
         url_params_template:
         frequency: yearly
-        start: 2019-01-01
-        end: 2019-12-31
+        start: 2020-01-01
+        end: 2020-12-31
         filetype: xls
         resolution:
             - 60min
@@ -752,6 +737,7 @@ Elia:
             isEliaConnected: ''
         frequency: quarterly
         start: 2013-01-01
+        end: recent
         filetype: xls
         resolution:
             - 15min
@@ -990,6 +976,7 @@ PSE:
                 web: https://www.pse.pl/web/pse-eng/data/polish-power-system-operation/generation-in-wind-farms
 
 APG:
+    #https://transparency.apg.at/transparency-api/api/v1/Download/AGPT/German/M15/2020-09-01T000000/2020-10-01T000000/1a95fdf3-b194-4877-8381-c412159c8a68/AGPT_2020-08-31T22_00_00Z_2020-09-30T22_00_00Z_15M_de_2020-10-01T20_02_59Z.csv?
     generation_by_source:
         url_template: https://www.apg.at/transparency/Download.aspx
         url_params_template:
@@ -1189,6 +1176,9 @@ Elexon:
             - url: https://downloads.elexonportal.co.uk/file/download/24412
               start: 2019-01-01
               end: 2019-12-31
+            - url: https://downloads.elexonportal.co.uk/file/download/26347
+              start: 2020-01-01
+              end: 2020-12-31
         start: 2005-01-01
         end: 2018-12-31
         frequency: file list
